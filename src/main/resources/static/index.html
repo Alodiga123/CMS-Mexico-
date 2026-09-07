@@ -219,6 +219,10 @@
         .console-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 768px) { .console-split { grid-template-columns: 1fr; } }
 
+        /* MAIN FORM + SIDE PANEL LAYOUT (side panel width set per-instance via inline style) */
+        .two-col-grid { display: grid; min-width: 0; }
+        @media (max-width: 1150px) { .two-col-grid { grid-template-columns: minmax(0, 1fr) !important; } }
+
         .badge { display: inline-block; padding: 0.3rem 0.7rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
         .badge-emerald { background: rgba(5, 150, 105, 0.12); color: var(--accent-emerald); border: 1px solid rgba(5, 150, 105, 0.35); }
         .badge-cyan { background: var(--navy-soft); color: var(--navy); border: 1px solid rgba(11, 37, 69, 0.3); }
@@ -463,7 +467,7 @@
 
             <!-- TAB 0: EMPRESAS & CONTRATOS DE EMISIÓN -->
             <div id="tab-contracts" class="tab-content">
-                <div style="display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem;">
+                <div class="two-col-grid" style="grid-template-columns: minmax(0, 1fr) 340px; gap: 1.25rem;">
                     <div class="card" style="padding: 1.25rem;">
                         <div class="card-header" style="margin-bottom: 0.75rem;">
                             <span id="contractFormTitle">Registrar Empresa/Persona & Contrato de Emisión</span>
@@ -585,7 +589,7 @@
 
             <!-- TAB 1: CREAR Y EDITAR TARJETAS -->
             <div id="tab-products" class="tab-content active">
-                <div style="display: grid; grid-template-columns: 1fr 360px; gap: 1.5rem;">
+                <div class="two-col-grid" style="grid-template-columns: minmax(0, 1fr) 360px; gap: 1.5rem;">
                     <!-- FORM TO DEFINE / EDIT CARD PRODUCT -->
                     <div class="card">
                         <div class="card-header">
@@ -1022,7 +1026,7 @@
 
             <!-- TAB 2: EMITIR TARJETA CREADA A CLIENTE -->
             <div id="tab-issue" class="tab-content">
-                <div style="display: grid; grid-template-columns: 1fr 420px; gap: 1.5rem;">
+                <div class="two-col-grid" style="grid-template-columns: minmax(0, 1fr) 420px; gap: 1.5rem;">
                     <div class="card" style="background: #ffffff; border: 1px solid var(--border);">
                         <div class="card-header" style="border-bottom: 1px solid var(--border-soft); padding-bottom: 1rem; margin-bottom: 1.5rem;">
                             <div>
@@ -1247,7 +1251,7 @@
 
             <!-- TAB 4: PROMOCIONES Y BENEFICIOS -->
             <div id="tab-promotions" class="tab-content">
-                <div style="display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem;">
+                <div class="two-col-grid" style="grid-template-columns: minmax(0, 1fr) 380px; gap: 1.5rem;">
                     <!-- PROMOTION CREATION FORM -->
                     <div class="card">
                         <div class="card-header">
