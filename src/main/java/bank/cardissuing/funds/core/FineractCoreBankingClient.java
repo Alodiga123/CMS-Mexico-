@@ -46,19 +46,23 @@ public class FineractCoreBankingClient implements CoreBankingClient {
     private static final DateTimeFormatter FINERACT_DATE = DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH);
 
     private final RestClient http;
+    /** Fineract makes paymentTypeId mandatory on deposits and withdrawals. */
+    private final long paymentTypeId;
 
     public FineractCoreBankingClient(
             @Value("${core.fineract.base-url}") String baseUrl,
             @Value("${core.fineract.tenant:default}") String tenant,
             @Value("${core.fineract.username}") String username,
             @Value("${core.fineract.password}") String password,
+            @Value("${core.fineract.payment-type-id:1}") long paymentTypeId,
             RestClient.Builder builder) {
         this.http = builder
                 .baseUrl(baseUrl)
                 .defaultHeader("Fineract-Platform-TenantId", tenant)
                 .defaultHeaders(h -> h.setBasicAuth(username, password))
                 .build();
-        log.info("Core banking client: FINERACT at {} (tenant {})", baseUrl, tenant);
+        this.paymentTypeId = paymentTypeId;
+        log.info("Core banking client: FINERACT at {} (tenant {}, paymentTypeId {})", baseUrl, tenant, paymentTypeId);
     }
 
     @Override
@@ -108,6 +112,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     private String transact(String accountId, BigDecimal amount, String reference, String command) {
         Map<String, Object> payload = datedPayload(accountId, amount);
+        payload.put("paymentTypeId", paymentTypeId);
         payload.put("note", reference);
         Map<String, Object> body = call(() -> http.post()
                 .uri("/savingsaccounts/{id}/transactions?command={cmd}", accountId, command)

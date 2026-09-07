@@ -9,6 +9,7 @@ import bank.cardissuing.funds.core.CoreBankingClient;
 import bank.cardissuing.funds.domain.AuthorizationHold;
 import bank.cardissuing.funds.domain.FundsPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.math.BigDecimal;
  * Debit cards whose balance is the customer's account in the core. The core owns the
  * money and the reservation; the CMS keeps the card, the limits and a mirror of the hold.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class CoreDebitFunds implements FundsPort {
@@ -40,14 +42,27 @@ public class CoreDebitFunds implements FundsPort {
         hold.setExternalRef(ref);
     }
 
+    /**
+     * Fineract has no "capture a hold", so capture is two calls. Order matters:
+     * withdraw first, then release. If the withdrawal fails nothing has changed in
+     * the core and the hold stays consistent on both sides. If the release fails after
+     * a successful withdrawal the account is merely over-reserved until reconciliation,
+     * which is the safe side -- so that release is best-effort and never undoes the
+     * capture. It also tolerates a hold the core no longer knows about.
+     */
     @Override
     public void capture(Card card, AuthorizationHold hold) {
         String account = accountOf(card);
-        // Fineract has no "capture a hold": release the reservation, then debit for real.
+        String txRef = core.withdraw(account, hold.getCapturedAmount(), hold.getApprovalCode());
+        log.info("Captured {} on core account {} (core tx {})", hold.getCapturedAmount(), account, txRef);
         if (hold.getExternalRef() != null) {
-            core.releaseHold(account, hold.getExternalRef());
+            try {
+                core.releaseHold(account, hold.getExternalRef());
+            } catch (BusinessException e) {
+                log.warn("Hold {} on core account {} could not be released after capture ({}): "
+                         + "left for reconciliation", hold.getExternalRef(), account, e.getMessage());
+            }
         }
-        core.withdraw(account, hold.getCapturedAmount(), hold.getApprovalCode());
     }
 
     @Override
