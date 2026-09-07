@@ -9,79 +9,83 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #060913;
-            --bg-card: rgba(15, 23, 42, 0.8);
-            --bg-card-hover: rgba(30, 41, 59, 0.9);
-            --accent-blue: #38bdf8;
-            --accent-indigo: #6366f1;
-            --accent-emerald: #10b981;
-            --accent-cyan: #06b6d4;
-            --accent-purple: #a855f7;
-            --accent-amber: #f59e0b;
-            --accent-pink: #ec4899;
-            --accent-red: #f43f5e;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: rgba(56, 189, 248, 0.18);
-            --code-bg: #090e1a;
+            --bg-primary: #eef1f6;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f2f5fa;
+            --navy: #0b2545;
+            --navy-light: #163a63;
+            --navy-soft: #e7edf6;
+            --accent-blue: #1d4ed8;
+            --accent-indigo: #1d4ed8;
+            --accent-emerald: #059669;
+            --accent-cyan: #0b2545;
+            --accent-purple: #6d28d9;
+            --accent-amber: #b45309;
+            --accent-pink: #be185d;
+            --accent-red: #dc2626;
+            --text-main: #101a2c;
+            --text-muted: #5b6b85;
+            --border: #1f2937;
+            --border-soft: rgba(15, 23, 42, 0.14);
+            --code-bg: #0b2545;
+            --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.10);
+            --shadow-md: 0 8px 22px rgba(15, 23, 42, 0.10);
+            --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.16);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
         body {
             background-color: var(--bg-primary);
-            background-image: 
-                radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
-                linear-gradient(to right, rgba(255,255,255,0.01) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255,255,255,0.01) 1px, transparent 1px);
-            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(15,23,42,0.025) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(15,23,42,0.025) 1px, transparent 1px);
+            background-size: 40px 40px, 40px 40px;
             color: var(--text-main);
             line-height: 1.6;
             padding: 1.5rem;
             min-height: 100vh;
         }
-        
+
         /* TOP HEADER */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 1.1rem 1.75rem;
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(16px);
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 16px;
             margin-bottom: 1.5rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: var(--shadow-md);
         }
         .logo-area { display: flex; align-items: center; gap: 1.2rem; }
         .logo-badge {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
-            width: 48px; height: 48px; border-radius: 14px;
+            background: var(--navy);
+            width: 48px; height: 48px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
             font-weight: 800; font-size: 1.4rem; color: #fff;
-            box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
         }
         .title h1 {
             font-size: 1.6rem; font-weight: 800;
-            background: linear-gradient(to right, #ffffff, #93c5fd);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            color: var(--navy);
         }
         .title p { color: var(--text-muted); font-size: 0.85rem; }
-        
+
         .telemetry-bar { display: flex; gap: 1.5rem; align-items: center; }
         .telemetry-item { display: flex; flex-direction: column; align-items: flex-end; }
         .telemetry-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
-        .telemetry-val { font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; font-weight: 600; color: var(--accent-cyan); }
+        .telemetry-val { font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; font-weight: 600; color: var(--navy); }
 
         .status-pill {
             display: inline-flex; align-items: center; gap: 0.5rem;
-            background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35);
-            color: var(--accent-emerald); padding: 0.5rem 1.1rem; border-radius: 9999px;
+            background: #ecfdf5; border: 1px solid #a7f3d0;
+            color: #047857; padding: 0.5rem 1.1rem; border-radius: 9999px;
             font-weight: 700; font-size: 0.82rem;
         }
-        .pulse-dot { width: 8px; height: 8px; background-color: var(--accent-emerald); border-radius: 50%; box-shadow: 0 0 12px var(--accent-emerald); animation: pulse 2s infinite; }
+        .pulse-dot { width: 8px; height: 8px; background-color: var(--accent-emerald); border-radius: 50%; box-shadow: 0 0 8px rgba(5, 150, 105, 0.5); animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.25); } 100% { opacity: 1; transform: scale(1); } }
-        
+
         /* APP LAYOUT SPLIT */
         .app-layout { display: flex; gap: 1.5rem; align-items: flex-start; }
 
@@ -89,12 +93,11 @@
         .sidebar {
             width: 290px;
             flex-shrink: 0;
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(16px);
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 1.25rem 0.85rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            box-shadow: var(--shadow-md);
             display: flex;
             flex-direction: column;
             gap: 0.35rem;
@@ -107,14 +110,14 @@
         .nav-btn {
             display: flex; align-items: center; gap: 0.85rem;
             background: transparent; border: none; color: var(--text-muted);
-            padding: 0.75rem 1rem; border-radius: 14px; cursor: pointer;
+            padding: 0.75rem 1rem; border-radius: 12px; cursor: pointer;
             font-size: 0.9rem; font-weight: 600; text-align: left;
-            transition: all 0.25s ease; width: 100%;
+            transition: all 0.2s ease; width: 100%;
         }
-        .nav-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.06); }
+        .nav-btn:hover { color: var(--navy); background: var(--navy-soft); }
         .nav-btn.active {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
-            color: #fff; box-shadow: 0 4px 18px rgba(56, 189, 248, 0.35);
+            background: var(--navy);
+            color: #fff; box-shadow: var(--shadow-sm);
         }
         .nav-btn .icon { font-size: 1.1rem; }
 
@@ -126,12 +129,12 @@
 
         /* CARDS & UI COMPONENTS */
         .card {
-            background: var(--bg-card); backdrop-filter: blur(12px);
-            border: 1px solid var(--border); border-radius: 20px;
-            padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            background: var(--bg-card);
+            border: 1px solid var(--border); border-radius: 16px;
+            padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-md);
         }
-        .card-header { font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
-        
+        .card-header { font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; color: var(--navy); }
+
         /* CREATED CARDS VISUAL GALLERY GRID */
         .created-cards-grid {
             display: grid;
@@ -140,25 +143,25 @@
             margin-top: 1.25rem;
         }
         .created-card-item {
-            background: rgba(9, 14, 26, 0.85);
+            background: var(--bg-card-hover);
             border: 1px solid var(--border);
-            border-radius: 18px;
+            border-radius: 16px;
             padding: 1.25rem;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: flex; flex-direction: column; justify-content: space-between;
             gap: 1rem;
         }
         .created-card-item:hover {
-            border-color: var(--accent-cyan);
+            border-color: var(--navy);
             transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(56, 189, 248, 0.25);
+            box-shadow: var(--shadow-lg);
         }
 
         /* REALISTIC CREDIT CARD MOCKUP PREVIEW */
         .card-mockup-wrapper {
-            background: rgba(9, 14, 26, 0.75);
+            background: var(--navy-soft);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 1.5rem;
             display: flex; flex-direction: column; gap: 1rem; align-items: center;
         }
@@ -166,7 +169,7 @@
             width: 320px; height: 195px; border-radius: 18px; padding: 1.3rem;
             background: linear-gradient(135deg, #0f172a, #1e1b4b, #312e81);
             border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(99, 102, 241, 0.35);
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.35);
             display: flex; flex-direction: column; justify-content: space-between;
             position: relative; overflow: hidden;
         }
@@ -176,66 +179,67 @@
 
         .limits-box {
             width: 100%; background: var(--code-bg); border: 1px solid var(--border);
-            border-radius: 14px; padding: 0.85rem 1rem; font-size: 0.8rem;
+            border-radius: 12px; padding: 0.85rem 1rem; font-size: 0.8rem;
             display: flex; flex-direction: column; gap: 0.35rem;
+            color: #e2e8f0;
         }
         .limit-row { display: flex; justify-content: space-between; align-items: center; }
-        .limit-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent-emerald); }
+        .limit-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #6ee7b7; }
 
         /* FORMS & INPUTS */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; }
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
         .form-group label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
-        .form-control, select.form-control { background-color: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; color: var(--text-main); font-size: 0.92rem; }
-        .form-control:focus, select.form-control:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+        .form-control, select.form-control { background-color: #ffffff; border: 1px solid var(--border-soft); border-radius: 10px; padding: 0.75rem 1rem; color: var(--text-main); font-size: 0.92rem; }
+        .form-control:focus, select.form-control:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.12); }
 
         /* BUTTONS */
         .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        .btn { background: #1e293b; color: var(--text-main); border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: 10px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
-        .btn:hover { background: #334155; border-color: var(--accent-cyan); }
-        .btn-primary { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo)); border: none; color: white; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35); }
-        .btn-emerald { background: linear-gradient(135deg, var(--accent-emerald), #059669); border: none; color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35); }
-        .btn-amber { background: linear-gradient(135deg, var(--accent-amber), #d97706); border: none; color: white; }
-        .btn-red { background: linear-gradient(135deg, var(--accent-red), #dc2626); border: none; color: white; }
+        .btn { background: #ffffff; color: var(--text-main); border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: 10px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; box-shadow: var(--shadow-sm); }
+        .btn:hover { background: var(--navy-soft); border-color: var(--navy); }
+        .btn-primary { background: var(--navy); border: 1px solid var(--border); color: white; box-shadow: var(--shadow-sm); }
+        .btn-primary:hover { background: var(--navy-light); }
+        .btn-emerald { background: var(--accent-emerald); border: 1px solid var(--border); color: white; box-shadow: var(--shadow-sm); }
+        .btn-amber { background: var(--accent-amber); border: 1px solid var(--border); color: white; box-shadow: var(--shadow-sm); }
+        .btn-red { background: var(--accent-red); border: 1px solid var(--border); color: white; box-shadow: var(--shadow-sm); }
 
         /* TABLES & CUSTOM SCROLLBARS */
-        .table-container { width: 100%; overflow-x: auto; background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; }
+        .table-container { width: 100%; overflow-x: auto; background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
         .table-container::-webkit-scrollbar { height: 8px; width: 8px; }
-        .table-container::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        .table-container::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 4px; }
-        .table-container::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.6); }
+        .table-container::-webkit-scrollbar-track { background: var(--navy-soft); }
+        .table-container::-webkit-scrollbar-thumb { background: rgba(11, 37, 69, 0.35); border-radius: 4px; }
+        .table-container::-webkit-scrollbar-thumb:hover { background: rgba(11, 37, 69, 0.6); }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; white-space: nowrap; }
-        th, td { padding: 0.9rem 1.15rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        th { background-color: rgba(255,255,255,0.02); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        th, td { padding: 0.9rem 1.15rem; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+        th { background-color: var(--navy-soft); color: var(--navy); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
         tr:hover td { background-color: var(--bg-card-hover); }
 
-        textarea, pre { width: 100%; background-color: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; color: #38bdf8; font-size: 0.85rem; height: 240px; resize: none; }
+        textarea, pre { width: 100%; background-color: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; color: #93c5fd; font-size: 0.85rem; height: 240px; resize: none; }
         pre { overflow-x: auto; color: #a7f3d0; }
         .console-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 768px) { .console-split { grid-template-columns: 1fr; } }
-        
+
         .badge { display: inline-block; padding: 0.3rem 0.7rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-        .badge-emerald { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.35); }
-        .badge-cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.35); }
-        .badge-purple { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); border: 1px solid rgba(168, 85, 247, 0.35); }
-        .badge-amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.35); }
-        .badge-pink { background: rgba(236, 72, 153, 0.15); color: var(--accent-pink); border: 1px solid rgba(236, 72, 153, 0.35); }
-        .badge-red { background: rgba(244, 63, 94, 0.15); color: var(--accent-red); border: 1px solid rgba(244, 63, 94, 0.35); }
-        .badge-key { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); }
+        .badge-emerald { background: rgba(5, 150, 105, 0.12); color: var(--accent-emerald); border: 1px solid rgba(5, 150, 105, 0.35); }
+        .badge-cyan { background: var(--navy-soft); color: var(--navy); border: 1px solid rgba(11, 37, 69, 0.3); }
+        .badge-purple { background: rgba(109, 40, 217, 0.10); color: var(--accent-purple); border: 1px solid rgba(109, 40, 217, 0.3); }
+        .badge-amber { background: rgba(180, 83, 9, 0.10); color: var(--accent-amber); border: 1px solid rgba(180, 83, 9, 0.3); }
+        .badge-pink { background: rgba(190, 24, 93, 0.10); color: var(--accent-pink); border: 1px solid rgba(190, 24, 93, 0.3); }
+        .badge-red { background: rgba(220, 38, 38, 0.10); color: var(--accent-red); border: 1px solid rgba(220, 38, 38, 0.3); }
+        .badge-key { background: var(--navy-soft); color: var(--navy); border: 1px solid rgba(11, 37, 69, 0.3); }
 
         /* TOP WORKFLOW STEPPER BANNER */
         .workflow-stepper {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(16px);
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 0.85rem 1.25rem;
             margin-bottom: 1.5rem;
             gap: 1rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            box-shadow: var(--shadow-md);
             flex-wrap: wrap;
         }
         .workflow-step {
@@ -243,40 +247,41 @@
             align-items: center;
             gap: 0.85rem;
             padding: 0.6rem 1.1rem;
-            border-radius: 14px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
             flex: 1;
             min-width: 220px;
             border: 1px solid transparent;
-            background: rgba(255,255,255,0.02);
+            background: transparent;
         }
         .workflow-step:hover {
-            background: rgba(255,255,255,0.06);
-            border-color: rgba(56, 189, 248, 0.2);
+            background: var(--navy-soft);
+            border-color: var(--border-soft);
         }
         .workflow-step.active {
-            background: rgba(56, 189, 248, 0.12);
-            border-color: rgba(56, 189, 248, 0.4);
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.15);
+            background: var(--navy-soft);
+            border-color: var(--navy);
         }
         .step-number {
             width: 38px;
             height: 38px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.08);
-            color: var(--text-muted);
+            background: var(--navy-soft);
+            color: var(--navy);
             font-weight: 800;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1rem;
             flex-shrink: 0;
+            border: 1px solid var(--border-soft);
         }
         .workflow-step.active .step-number {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
+            background: var(--navy);
             color: #fff;
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+            border-color: var(--navy);
+            box-shadow: var(--shadow-sm);
         }
         .step-title {
             font-weight: 700;
@@ -301,16 +306,16 @@
             display: flex;
             gap: 0.5rem;
             margin-bottom: 1.25rem;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--border-soft);
             padding-bottom: 0.75rem;
             overflow-x: auto;
         }
         .form-step-btn {
-            background: rgba(255,255,255,0.03);
+            background: #ffffff;
             border: 1px solid var(--border);
             color: var(--text-muted);
             padding: 0.6rem 1rem;
-            border-radius: 12px;
+            border-radius: 10px;
             font-size: 0.84rem;
             font-weight: 700;
             cursor: pointer;
@@ -321,37 +326,38 @@
             gap: 0.5rem;
         }
         .form-step-btn:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.07);
+            color: var(--navy);
+            background: var(--navy-soft);
         }
         .form-step-btn.active {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
+            background: var(--navy);
             color: #fff;
-            border-color: transparent;
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
+            border-color: var(--navy);
+            box-shadow: var(--shadow-sm);
         }
 
         /* MODAL WINDOW STYLES */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(6, 9, 19, 0.85); backdrop-filter: blur(10px);
+            background: rgba(15, 23, 42, 0.55);
             display: none; justify-content: center; align-items: center; z-index: 9999;
             padding: 1.5rem;
         }
         .modal-overlay.active { display: flex; animation: fadeIn 0.25s ease-out; }
         .modal-card {
-            background: var(--bg-primary); border: 1px solid var(--border);
-            border-radius: 20px; width: 100%; max-width: 950px; max-height: 90vh;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.9), 0 0 35px rgba(56,189,248,0.25);
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; width: 100%; max-width: 950px; max-height: 90vh;
+            box-shadow: var(--shadow-lg);
             display: flex; flex-direction: column; overflow: hidden;
         }
         .modal-header {
-            padding: 1.25rem 1.75rem; background: rgba(15, 23, 42, 0.9);
+            padding: 1.25rem 1.75rem; background: var(--navy-soft);
             border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+            color: var(--navy);
         }
         .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
         .modal-footer {
-            padding: 1rem 1.75rem; background: rgba(15, 23, 42, 0.9);
+            padding: 1rem 1.75rem; background: var(--bg-card-hover);
             border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.75rem;
         }
     </style>
@@ -547,12 +553,12 @@
                                 </div>
                                 
                                 <!-- DINÁMICO: CUADRO DE INTELIGENCIA DE DETALLES DEL BIN -->
-                                <div id="binDetailsPanel" style="margin-top: 1.25rem; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 27, 75, 0.95)); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px; padding: 1.25rem; box-shadow: 0 8px 32px rgba(0,0,0,0.3); transition: all 0.3s ease;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                                <div id="binDetailsPanel" style="margin-top: 1.25rem; background: var(--navy-soft); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; box-shadow: var(--shadow-sm); transition: all 0.3s ease;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-soft); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
                                         <div style="display:flex; align-items:center; gap:0.6rem;">
                                             <span style="font-size:1.4rem;">🔍</span>
                                             <div>
-                                                <div style="font-size:0.92rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.04em;">
+                                                <div style="font-size:0.92rem; font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:0.04em;">
                                                     Ficha de Inteligencia & Enrutamiento de BIN (<span id="binCodeDisplay">453211</span>)
                                                 </div>
                                                 <div style="font-size:0.75rem; color:var(--text-muted);">
@@ -564,43 +570,43 @@
                                     </div>
 
                                     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; font-size:0.8rem;">
-                                        <div style="background:rgba(9, 14, 26, 0.7); padding:0.75rem; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                                        <div style="background:#ffffff; padding:0.75rem; border-radius:10px; border:1px solid var(--border-soft);">
                                             <div style="color:var(--text-muted); font-size:0.7rem; font-weight:700; text-transform:uppercase;">🏛️ Banco / Entidad Emisora</div>
-                                            <div id="binBankName" style="color:#fff; font-weight:800; margin-top:0.25rem; font-size:0.88rem;">Alodiga International Bank Corp</div>
-                                            <div id="binBankSub" style="color:var(--accent-cyan); font-size:0.72rem; margin-top:0.1rem;">Licencia Banking Category 1</div>
+                                            <div id="binBankName" style="color:var(--text-main); font-weight:800; margin-top:0.25rem; font-size:0.88rem;">Alodiga International Bank Corp</div>
+                                            <div id="binBankSub" style="color:var(--navy); font-size:0.72rem; margin-top:0.1rem;">Licencia Banking Category 1</div>
                                         </div>
 
-                                        <div style="background:rgba(9, 14, 26, 0.7); padding:0.75rem; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                                        <div style="background:#ffffff; padding:0.75rem; border-radius:10px; border:1px solid var(--border-soft);">
                                             <div style="color:var(--text-muted); font-size:0.7rem; font-weight:700; text-transform:uppercase;">📍 Oficina & Filial Regional</div>
-                                            <div id="binOfficeLocation" style="color:#fff; font-weight:800; margin-top:0.25rem; font-size:0.85rem;">HQ Miami Main Branch (FL-USA-808)</div>
+                                            <div id="binOfficeLocation" style="color:var(--text-main); font-weight:800; margin-top:0.25rem; font-size:0.85rem;">HQ Miami Main Branch (FL-USA-808)</div>
                                             <div id="binOfficeCode" style="color:var(--accent-emerald); font-size:0.72rem; margin-top:0.1rem;">Oficina Registrada #US-MIAMI-808</div>
                                         </div>
 
-                                        <div style="background:rgba(9, 14, 26, 0.7); padding:0.75rem; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                                        <div style="background:#ffffff; padding:0.75rem; border-radius:10px; border:1px solid var(--border-soft);">
                                             <div style="color:var(--text-muted); font-size:0.7rem; font-weight:700; text-transform:uppercase;">🌎 País & Jurisdicción ISO</div>
-                                            <div id="binCountryName" style="color:#fff; font-weight:800; margin-top:0.25rem; font-size:0.85rem;">🇺🇸 Estados Unidos (USA)</div>
+                                            <div id="binCountryName" style="color:var(--text-main); font-weight:800; margin-top:0.25rem; font-size:0.85rem;">🇺🇸 Estados Unidos (USA)</div>
                                             <div id="binIsoAlpha" style="color:var(--accent-purple); font-size:0.72rem; margin-top:0.1rem;">Código Alfa ISO: US / 840</div>
                                         </div>
 
-                                        <div style="background:rgba(9, 14, 26, 0.7); padding:0.75rem; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                                        <div style="background:#ffffff; padding:0.75rem; border-radius:10px; border:1px solid var(--border-soft);">
                                             <div style="color:var(--text-muted); font-size:0.7rem; font-weight:700; text-transform:uppercase;">⚡ Código SWIFT / BIC & Switch</div>
-                                            <div id="binSwiftCode" style="color:var(--accent-cyan); font-weight:800; margin-top:0.25rem; font-family:'JetBrains Mono',monospace;">ALODUS33-BIN453</div>
+                                            <div id="binSwiftCode" style="color:var(--navy); font-weight:800; margin-top:0.25rem; font-family:'JetBrains Mono',monospace;">ALODUS33-BIN453</div>
                                             <div id="binSwitchNode" style="color:var(--accent-amber); font-size:0.72rem; margin-top:0.1rem;">Switch ISO 8583 Port 1500</div>
                                         </div>
                                     </div>
 
-                                    <div style="margin-top:0.85rem; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.06); padding:0.6rem 0.85rem; border-radius:8px; border:1px solid rgba(56, 189, 248, 0.15); font-size:0.75rem; flex-wrap:wrap; gap:0.4rem;">
-                                        <span style="color:var(--text-muted);">MII Identifier: <strong id="binMiiDisplay" style="color:#fff;">4 (Financial & Banking)</strong></span>
+                                    <div style="margin-top:0.85rem; display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:0.6rem 0.85rem; border-radius:8px; border:1px solid var(--border-soft); font-size:0.75rem; flex-wrap:wrap; gap:0.4rem;">
+                                        <span style="color:var(--text-muted);">MII Identifier: <strong id="binMiiDisplay" style="color:var(--text-main);">4 (Financial & Banking)</strong></span>
                                         <span style="color:var(--text-muted);">Categoría Plástico: <strong id="binCategoryTierDisplay" style="color:var(--accent-emerald);">Platinum Electronic Interchange</strong></span>
-                                        <span style="color:var(--text-muted);">Red Cleared: <strong id="binNetworkClearedDisplay" style="color:var(--accent-cyan);">VISA INTERCHANGE SYSTEM</strong></span>
+                                        <span style="color:var(--text-muted);">Red Cleared: <strong id="binNetworkClearedDisplay" style="color:var(--navy);">VISA INTERCHANGE SYSTEM</strong></span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- PASO 2: APARIENCIA VISUAL & LOGO -->
                             <div class="form-step-section" id="formStep2" style="display:none;">
-                                <div style="background: rgba(99, 102, 241, 0.08); padding: 1.25rem; border-radius: 16px; border: 1px solid rgba(99, 102, 241, 0.25);">
-                                    <div style="font-size: 0.92rem; font-weight: 700; color: var(--accent-indigo); margin-bottom: 0.75rem;">🎨 Personalización Visual de Apariencia (Color & Logo)</div>
+                                <div style="background: var(--navy-soft); padding: 1.25rem; border-radius: 16px; border: 1px solid var(--border);">
+                                    <div style="font-size: 0.92rem; font-weight: 700; color: var(--navy); margin-bottom: 0.75rem;">🎨 Personalización Visual de Apariencia (Color & Logo)</div>
                                     <div class="form-grid">
                                         <div class="form-group">
                                             <label>🎨 Estilo / Paleta Presets:</label>
@@ -860,7 +866,7 @@
 
                 <!-- BUTTON TRIGGER FOR CATALOG (PREVENTS OVERLOADED SCREEN) -->
                 <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem; align-items: center;">
-                    <button type="button" class="btn btn-primary" onclick="openCatalogModal()" style="padding: 0.85rem 1.75rem; font-weight: 800; font-size: 0.95rem; box-shadow: 0 6px 22px rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 0.6rem;">
+                    <button type="button" class="btn btn-primary" onclick="openCatalogModal()" style="padding: 0.85rem 1.75rem; font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem;">
                         🎴 Abrir Catálogo de Tarjetas Creadas (<span id="catHeaderCount">0</span>)
                     </button>
                     <button type="button" class="btn" onclick="toggleCatalogCollapse()" style="padding: 0.85rem 1.4rem; font-weight: 700; font-size: 0.9rem;">
@@ -886,29 +892,29 @@
             <!-- TAB 2: EMITIR TARJETA CREADA A CLIENTE -->
             <div id="tab-issue" class="tab-content">
                 <div style="display: grid; grid-template-columns: 1fr 420px; gap: 1.5rem;">
-                    <div class="card" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25);">
-                        <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                    <div class="card" style="background: #ffffff; border: 1px solid var(--border);">
+                        <div class="card-header" style="border-bottom: 1px solid var(--border-soft); padding-bottom: 1rem; margin-bottom: 1.5rem;">
                             <div>
-                                <span style="font-size: 1.2rem; font-weight: 800; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                                <span style="font-size: 1.2rem; font-weight: 800; color: var(--navy);">
                                     Paso 2: Emitir Tarjeta Creada y Asociarla a un Cliente Titular
                                 </span>
                                 <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 400; margin-top: 0.2rem;">
                                     Emisión segura con cifrado en tiempo real vía HSM PayShield 10K
                                 </div>
                             </div>
-                            <span class="icon" style="font-size: 1.8rem; color: var(--accent-cyan);">💳</span>
+                            <span class="icon" style="font-size: 1.8rem; color: var(--navy);">💳</span>
                         </div>
                         <form onsubmit="handleIssueCard(event)">
-                            <div style="background: rgba(9, 14, 26, 0.7); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; margin-bottom: 1.25rem;">
-                                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="background: var(--navy-soft); border: 1px solid var(--border-soft); border-radius: 16px; padding: 1.25rem; margin-bottom: 1.25rem;">
+                                <div style="font-size: 0.9rem; font-weight: 700; color: var(--navy); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                                     💳 1. Datos Principales del Cliente y Producto Base
                                 </div>
                                 <div class="form-grid">
                                     <div class="form-group" style="grid-column: 1 / -1;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan);">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: var(--navy);">
                                             📦 Seleccionar Tarjeta / Producto Base a Emitir:
                                         </label>
-                                        <select id="issueProductId" class="form-control" required style="font-size: 0.95rem; font-weight: 700; padding: 0.85rem; border-color: var(--accent-cyan); background: rgba(9,14,26,0.9);" onchange="updateMockupProductDetails()">
+                                        <select id="issueProductId" class="form-control" required style="font-size: 0.95rem; font-weight: 700; padding: 0.85rem; border-color: var(--navy); background: #ffffff;" onchange="updateMockupProductDetails()">
                                             <option value="">Cargando catálogo de tarjetas...</option>
                                         </select>
                                     </div>
@@ -948,7 +954,7 @@
 
                                     <div class="form-group">
                                         <label>📅 Vencimiento (Expiry Date):</label>
-                                        <input type="text" id="issueExpiry" class="form-control" value="12/29" readonly style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:center; background:rgba(255,255,255,0.03);" />
+                                        <input type="text" id="issueExpiry" class="form-control" value="12/29" readonly style="font-family:'JetBrains Mono', monospace; font-weight:700; text-align:center; background:var(--navy-soft);" />
                                     </div>
                                 </div>
                             </div>
@@ -1035,7 +1041,7 @@
                         </div>
 
                         <!-- HSM SECURITY STAMP & KEY SUMMARY BOX -->
-                        <div class="limits-box" style="border-color: rgba(16, 185, 129, 0.35); background: rgba(9, 14, 26, 0.9);">
+                        <div class="limits-box" style="border-color: rgba(16, 185, 129, 0.35);">
                             <div style="font-size: 0.78rem; font-weight: 800; color: var(--accent-emerald); text-transform: uppercase; letter-spacing:0.05em; display:flex; justify-content:space-between; align-items:center;">
                                 <span>🛡️ Estampa Criptográfica HSM</span>
                                 <span class="badge badge-key" style="font-size:0.65rem;">TCP 1500</span>
@@ -1053,12 +1059,12 @@
                         </div>
 
                         <!-- ASSOCIATED PROMOTIONS SUMMARY BOX FOR ISSUANCE -->
-                        <div class="limits-box" style="border-color: rgba(168, 85, 247, 0.35); background: rgba(168, 85, 247, 0.06); width: 100%;">
+                        <div class="limits-box" style="border-color: rgba(168, 85, 247, 0.35); background: #ffffff; width: 100%;">
                             <div style="font-size: 0.78rem; font-weight: 800; color: var(--accent-purple); text-transform: uppercase; letter-spacing:0.05em; display:flex; justify-content:space-between; align-items:center;">
                                 <span>🎁 Promociones Incluidas</span>
                                 <span class="badge badge-purple">BENEFICIOS</span>
                             </div>
-                            <div id="mockupIssuePromoList" style="font-size:0.75rem; color:#e2e8f0; margin-top:0.3rem; display:flex; flex-direction:column; gap:4px;">
+                            <div id="mockupIssuePromoList" style="font-size:0.75rem; color:var(--text-main); margin-top:0.3rem; display:flex; flex-direction:column; gap:4px;">
                                 <span class="badge badge-emerald">🎁 Cashback 5% en Supermercados</span>
                             </div>
                         </div>
@@ -1115,7 +1121,7 @@
                     <div class="card">
                         <div class="card-header">
                             <div>
-                                <span style="font-size: 1.15rem; font-weight: 800; background: linear-gradient(to right, #38bdf8, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                                <span style="font-size: 1.15rem; font-weight: 800; color: var(--navy);">
                                     Paso 4: Crear & Configurar Promociones, Cashbacks y Beneficios
                                 </span>
                                 <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;">
@@ -1190,7 +1196,7 @@
                     </div>
 
                     <!-- INTERACTIVE PROMOTION BENEFIT SIMULATOR WIDGET -->
-                    <div class="card" style="background: rgba(15, 23, 42, 0.85); border-color: rgba(168, 85, 247, 0.35);">
+                    <div class="card" style="border-color: rgba(109, 40, 217, 0.35);">
                         <div class="card-header">
                             <div>
                                 <span style="font-size: 1.05rem; font-weight: 800; color: var(--accent-purple);">🧮 Simulador de Beneficios & Reembolso</span>
@@ -1224,11 +1230,11 @@
                         </form>
 
                         <!-- SIMULATION RESULT BOX -->
-                        <div id="simPromoResultBox" class="limits-box" style="margin-top:1.25rem; border-color:rgba(168, 85, 247, 0.4); background:rgba(9, 14, 26, 0.9); display:none;">
-                            <div style="font-size:0.78rem; font-weight:800; color:var(--accent-purple); text-transform:uppercase;">Resultado de Simulación de Beneficio</div>
+                        <div id="simPromoResultBox" class="limits-box" style="margin-top:1.25rem; border-color:rgba(109, 40, 217, 0.4); display:none;">
+                            <div style="font-size:0.78rem; font-weight:800; color:#c4b5fd; text-transform:uppercase;">Resultado de Simulación de Beneficio</div>
                             <div class="limit-row" style="margin-top:0.4rem;">
                                 <span>Monto Original Compra:</span>
-                                <span class="limit-val" style="color:var(--text-main);" id="simResOrig">$150.00</span>
+                                <span class="limit-val" style="color:#e2e8f0;" id="simResOrig">$150.00</span>
                             </div>
                             <div class="limit-row">
                                 <span>Descuento Directo:</span>
@@ -1288,14 +1294,52 @@
                     <form onsubmit="handleCreateCustomer(event)">
                         <div class="form-grid" style="margin-bottom: 1.25rem;">
                             <div class="form-group">
-                                <label>Nombre Completo:</label>
+                                <label>Tipo de Cliente:</label>
+                                <select id="custType" class="form-control" onchange="toggleCustomerTypeFields()">
+                                    <option value="PERSONA_NATURAL">👤 Persona Natural</option>
+                                    <option value="PERSONA_JURIDICA">🏢 Persona Jurídica (Empresa)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label id="custNameLabel">Nombre Completo:</label>
                                 <input type="text" id="custName" class="form-control" placeholder="Ej: Maria Gutierrez" required />
                             </div>
                             <div class="form-group">
                                 <label>Teléfono de Contacto:</label>
                                 <input type="text" id="custPhone" class="form-control" placeholder="Ej: +58 414 7654321" required />
                             </div>
+                            <div class="form-group">
+                                <label>Correo Electrónico:</label>
+                                <input type="email" id="custEmail" class="form-control" placeholder="Ej: cliente@correo.com" />
+                            </div>
+                            <div class="form-group">
+                                <label id="custTaxIdLabel">RFC / Documento de Identidad:</label>
+                                <input type="text" id="custTaxId" class="form-control" placeholder="Ej: RODC800101H21" />
+                            </div>
+                            <div class="form-group">
+                                <label>Dirección:</label>
+                                <input type="text" id="custAddress" class="form-control" placeholder="Ej: Av. Reforma 123, CDMX" />
+                            </div>
                         </div>
+
+                        <div id="custJuridicaFields" style="display:none; background:var(--navy-soft); border:1px solid var(--border-soft); border-radius:16px; padding:1.25rem; margin-bottom:1.25rem;">
+                            <div style="font-size:0.9rem; font-weight:700; color:var(--navy); margin-bottom:0.85rem;">🏢 Datos de Persona Jurídica</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Razón Social:</label>
+                                    <input type="text" id="custBusinessName" class="form-control" placeholder="Ej: Comercializadora Alodiga S.A. de C.V." />
+                                </div>
+                                <div class="form-group">
+                                    <label>Nombre del Representante Legal:</label>
+                                    <input type="text" id="custLegalRepName" class="form-control" placeholder="Ej: María López Hernández" />
+                                </div>
+                                <div class="form-group">
+                                    <label>RFC del Representante Legal:</label>
+                                    <input type="text" id="custLegalRepTaxId" class="form-control" placeholder="Ej: LOHM750620ABC" />
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-emerald">➕ Crear Cliente</button>
                     </form>
                 </div>
@@ -1310,7 +1354,9 @@
                             <thead>
                                 <tr>
                                     <th>ID Cliente</th>
-                                    <th>Nombre Completo</th>
+                                    <th>Tipo</th>
+                                    <th>Nombre / Razón Social</th>
+                                    <th>RFC</th>
                                     <th>Teléfono</th>
                                     <th>Estado KYC</th>
                                     <th>ID Tarjeta</th>
@@ -1319,7 +1365,7 @@
                                 </tr>
                             </thead>
                             <tbody id="customerTableBody">
-                                <tr><td colspan="7" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
+                                <tr><td colspan="9" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1580,7 +1626,7 @@
                                 <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3); border-radius:14px; padding:1.1rem; display:flex; justify-content:space-between; align-items:center;">
                                     <div>
                                         <div style="font-size:0.75rem; font-weight:700; color:var(--accent-emerald); text-transform:uppercase;">Resultado de Auditoría de Diseño</div>
-                                        <div style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:0.2rem;" id="emvAuditStatusText">✅ APTO PARA FABRICACIÓN & EMISIÓN BANCO (100% CONFORME)</div>
+                                        <div style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin-top:0.2rem;" id="emvAuditStatusText">✅ APTO PARA FABRICACIÓN & EMISIÓN BANCO (100% CONFORME)</div>
                                     </div>
                                     <span class="badge badge-emerald" style="font-size:0.85rem; padding:0.5rem 1rem;">COMPLIANT</span>
                                 </div>
@@ -1588,7 +1634,7 @@
                                 <!-- NORMATIVA RULE CARDS -->
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
                                     
-                                    <div style="background:rgba(9,14,26,0.85); border:1px solid var(--border); border-radius:14px; padding:1rem;">
+                                    <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:14px; padding:1rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <span style="font-weight:700; font-size:0.88rem; color:var(--accent-cyan);">📐 ISO/IEC 7810 ID-1 (Dimensiones)</span>
                                             <span class="badge badge-emerald">✓ PASS</span>
@@ -1598,7 +1644,7 @@
                                         </p>
                                     </div>
 
-                                    <div style="background:rgba(9,14,26,0.85); border:1px solid var(--border); border-radius:14px; padding:1rem;">
+                                    <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:14px; padding:1rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <span style="font-weight:700; font-size:0.88rem; color:var(--accent-cyan);">💳 ISO/IEC 7816-2 (Chip EMV 8-Pin)</span>
                                             <span class="badge badge-emerald">✓ PASS</span>
@@ -1608,7 +1654,7 @@
                                         </p>
                                     </div>
 
-                                    <div style="background:rgba(9,14,26,0.85); border:1px solid var(--border); border-radius:14px; padding:1rem;">
+                                    <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:14px; padding:1rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <span style="font-weight:700; font-size:0.88rem; color:var(--accent-cyan);">📶 EMV Contactless Wave Standard</span>
                                             <span class="badge badge-emerald">✓ PASS</span>
@@ -1618,7 +1664,7 @@
                                         </p>
                                     </div>
 
-                                    <div style="background:rgba(9,14,26,0.85); border:1px solid var(--border); border-radius:14px; padding:1rem;">
+                                    <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:14px; padding:1rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <span style="font-weight:700; font-size:0.88rem; color:var(--accent-cyan);">🛡️ Visa / Mastercard Safety Clear Zone</span>
                                             <span class="badge badge-emerald">✓ PASS</span>
@@ -1628,7 +1674,7 @@
                                         </p>
                                     </div>
 
-                                    <div style="background:rgba(9,14,26,0.85); border:1px solid var(--border); border-radius:14px; padding:1rem;">
+                                    <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:14px; padding:1rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <span style="font-weight:700; font-size:0.88rem; color:var(--accent-cyan);">🔢 PAN 16 Dígitos & Tipografía OCR-B</span>
                                             <span class="badge badge-emerald">✓ PASS</span>
@@ -1638,7 +1684,7 @@
                                         </p>
                                     </div>
 
-                                    <div style="background:rgba(9,14,26,0.85); border:1px solid var(--border); border-radius:14px; padding:1rem;">
+                                    <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:14px; padding:1rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <span style="font-weight:700; font-size:0.88rem; color:var(--accent-cyan);">📼 ISO 7812 Banda magnética & CVV2</span>
                                             <span class="badge badge-emerald">✓ PASS</span>
@@ -1722,6 +1768,110 @@
             </div>
         </div>
 
+        <!-- MODAL: ADMINISTRADOR DE TARJETA (LÍMITES, CONTROLES, PIN, PROMOCIONES) -->
+        <div id="cardAdminModal" class="modal-overlay">
+            <div class="modal-card" style="max-width: 820px;">
+                <div class="modal-header">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <span style="font-size:1.4rem;">⚙️</span>
+                        <div>
+                            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main);" id="caModalTitle">Administrador de Tarjeta</h3>
+                            <p style="font-size:0.78rem; color:var(--text-muted);" id="caModalSubtitle">Cargando datos de la tarjeta...</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-red" onclick="closeCardAdminModal()" style="padding:0.4rem 0.8rem; font-size:0.85rem;">✖ Cerrar</button>
+                </div>
+                <div class="modal-body">
+                    <div style="display:flex; flex-direction:column; gap:1.25rem;">
+
+                        <!-- LÍMITES TRANSACCIONALES -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="font-size:0.9rem; font-weight:800; color:var(--navy); margin-bottom:0.85rem;">💳 Límites Transaccionales (Override por Tarjeta)</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Límite por Transacción ($):</label>
+                                    <input type="number" id="caLimitPerTx" class="form-control" placeholder="Sin límite específico" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Diario ($):</label>
+                                    <input type="number" id="caLimitDaily" class="form-control" placeholder="Usa el del producto" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Semanal ($):</label>
+                                    <input type="number" id="caLimitWeekly" class="form-control" placeholder="Usa el del producto" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Mensual ($):</label>
+                                    <input type="number" id="caLimitMonthly" class="form-control" placeholder="Usa el del producto" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Diario ATM ($):</label>
+                                    <input type="number" id="caLimitAtm" class="form-control" placeholder="Sin límite específico" min="0" step="0.01" />
+                                </div>
+                            </div>
+                            <div style="margin-top:0.85rem; display:flex; justify-content:flex-end;">
+                                <button type="button" class="btn btn-primary" onclick="saveCardLimits()">💾 Guardar Límites</button>
+                            </div>
+                        </div>
+
+                        <!-- CONTROLES POR CANAL -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="font-size:0.9rem; font-weight:800; color:var(--navy); margin-bottom:0.85rem;">🛰️ Controles por Canal</div>
+                            <div class="form-grid">
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlOnline" style="width:18px; height:18px;" /> Compras en Línea (E-commerce)
+                                </label>
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlIntl" style="width:18px; height:18px;" /> Compras Internacionales
+                                </label>
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlContactless" style="width:18px; height:18px;" /> Pago Sin Contacto (Contactless)
+                                </label>
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlAtm" style="width:18px; height:18px;" /> Retiros en Cajero (ATM)
+                                </label>
+                            </div>
+                            <div style="margin-top:0.85rem; display:flex; justify-content:flex-end;">
+                                <button type="button" class="btn btn-primary" onclick="saveCardControls()">💾 Guardar Controles</button>
+                            </div>
+                        </div>
+
+                        <!-- PIN -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
+                                <div style="font-size:0.9rem; font-weight:800; color:var(--navy);">🔐 PIN de la Tarjeta (HSM PayShield 10K)</div>
+                                <span class="badge badge-amber" id="caPinStatusBadge">Cargando...</span>
+                            </div>
+                            <div style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+                                <div class="form-group" style="flex:1; min-width:180px;">
+                                    <label>Nuevo PIN (4 dígitos numéricos):</label>
+                                    <input type="password" id="caPinInput" class="form-control" maxlength="4" placeholder="••••" inputmode="numeric" />
+                                </div>
+                                <button type="button" class="btn btn-emerald" onclick="setCardPin()">🔐 Configurar PIN</button>
+                            </div>
+                            <p style="font-size:0.72rem; color:var(--text-muted); margin-top:0.5rem;">El PIN nunca se almacena en texto plano: se procesa junto con el HSM simulado y solo se guarda el bloque cifrado. No se puede evitar cambiarlo por uno de dígitos repetidos o secuenciales.</p>
+                        </div>
+
+                        <!-- PROMOCIONES ASIGNADAS -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="font-size:0.9rem; font-weight:800; color:var(--navy); margin-bottom:0.85rem;">🎁 Promociones Asignadas a este Cliente/Tarjeta</div>
+                            <div id="caPromoList" style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.85rem;">
+                                <div style="color:var(--text-muted); font-size:0.85rem;">Cargando...</div>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                                <select id="caPromoSelect" class="form-control" style="flex:1; min-width:220px;"></select>
+                                <button type="button" class="btn btn-primary" onclick="assignPromoToCard()">➕ Asignar Promoción</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-amber" onclick="closeCardAdminModal()">Cerrar Ventana</button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL: CATÁLOGO COMPLETO DE TARJETAS CREADAS -->
         <div id="catalogModal" class="modal-overlay">
             <div class="modal-card" style="max-width: 1150px; width: 95%;">
@@ -1762,8 +1912,8 @@
                 </div>
                 <div class="modal-body">
                     <div style="display:grid; grid-template-columns: 320px 1fr; gap:1.25rem;">
-                        <div style="background:rgba(9, 14, 26, 0.8); border:1px solid var(--border); border-radius:14px; padding:1rem; display:flex; flex-direction:column; gap:0.85rem;">
-                            <div style="font-size:0.85rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">⚙️ Parámetros del Lote de Impresión</div>
+                        <div style="background:var(--navy-soft); border:1px solid var(--border-soft); border-radius:14px; padding:1rem; display:flex; flex-direction:column; gap:0.85rem;">
+                            <div style="font-size:0.85rem; font-weight:800; color:var(--navy); text-transform:uppercase;">⚙️ Parámetros del Lote de Impresión</div>
                             
                             <div class="form-group">
                                 <label style="font-size:0.75rem;">Formato de Imprenta / Buró:</label>
@@ -1792,10 +1942,10 @@
 
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                                <div style="font-size:0.85rem; font-weight:800; color:#fff;">📄 Previsualización del Archivo Estándar ISO 7811 / ISO 7816:</div>
+                                <div style="font-size:0.85rem; font-weight:800; color:var(--text-main);">📄 Previsualización del Archivo Estándar ISO 7811 / ISO 7816:</div>
                                 <span class="badge badge-emerald" style="font-size:0.7rem;">READY FOR MANUFACTURING</span>
                             </div>
-                            <textarea id="persoFileContentText" readonly style="width:100%; height:320px; background:#040711; color:#38bdf8; font-family:'JetBrains Mono',monospace; font-size:0.74rem; padding:1rem; border-radius:12px; border:1px solid var(--border); resize:none; line-height:1.45;"></textarea>
+                            <textarea id="persoFileContentText" readonly style="width:100%; height:320px; background:var(--code-bg); color:#93c5fd; font-family:'JetBrains Mono',monospace; font-size:0.74rem; padding:1rem; border-radius:12px; border:1px solid var(--border); resize:none; line-height:1.45;"></textarea>
                         </div>
                     </div>
                 </div>
@@ -2086,7 +2236,7 @@
                             <td><span class="badge badge-cyan">LMK ${k.lmkPairId || '14'} (Var ${k.variant || '00'})</span></td>
                             <td><span class="badge badge-amber">${k.scheme === 'U' ? 'TDES-2KEY (U)' : (k.scheme === 'T' ? 'TDES-3KEY (T)' : 'AES-128 (S)')}</span></td>
                             <td><strong style="color:var(--accent-emerald); font-family:'JetBrains Mono',monospace;">${k.kcv || '8A4F1D'}</strong></td>
-                            <td><code style="font-size:0.72rem; color:#38bdf8;">${(k.keyBlob || 'U0051400...').substring(0, 24)}...</code></td>
+                            <td><code style="font-size:0.72rem; color:var(--navy);">${(k.keyBlob || 'U0051400...').substring(0, 24)}...</code></td>
                             <td><span class="badge badge-emerald">🟢 ACTIVE (PORT 8080)</span></td>
                         </tr>
                     `).join('');
@@ -2111,7 +2261,7 @@
                         <div style="display:flex; flex-direction:column; gap:1.2rem;">
                             <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3); padding:1rem; border-radius:14px;">
                                 <div style="font-size:0.8rem; font-weight:700; color:var(--accent-emerald); text-transform:uppercase;">Estado de Cifrado HSM</div>
-                                <div style="font-size:1.1rem; font-weight:800; color:#fff; margin-top:0.2rem;">${data.status} — ${data.hsmEndpoint}</div>
+                                <div style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin-top:0.2rem;">${data.status} — ${data.hsmEndpoint}</div>
                             </div>
                             <div class="form-grid">
                                 <div class="form-group">
@@ -2604,7 +2754,7 @@
                             <div class="created-card-item">
                                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                                     <div>
-                                        <strong style="font-size:1.05rem; color:#fff;">${p.productName}</strong>
+                                        <strong style="font-size:1.05rem; color:var(--text-main);">${p.productName}</strong>
                                         <div style="font-size:0.75rem; color:var(--accent-cyan); font-weight:600;">Código: ${p.productCode || 'PROD-BASE'}</div>
                                     </div>
                                     <span class="badge badge-emerald">ACTIVA</span>
@@ -2625,9 +2775,9 @@
                                     </div>
                                 </div>
 
-                                <div style="background:rgba(15, 23, 42, 0.95); border:1px solid rgba(56, 189, 248, 0.25); border-radius:12px; padding:0.65rem; font-size:0.73rem;">
-                                    <div style="font-size:0.68rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; margin-bottom:0.25rem;">🔍 Inteligencia BIN (${bInfo.bin}):</div>
-                                    <div style="color:#fff; font-weight:800;">🏛️ ${bInfo.bankName}</div>
+                                <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:12px; padding:0.65rem; font-size:0.73rem;">
+                                    <div style="font-size:0.68rem; font-weight:800; color:var(--navy); text-transform:uppercase; margin-bottom:0.25rem;">🔍 Inteligencia BIN (${bInfo.bin}):</div>
+                                    <div style="color:var(--text-main); font-weight:800;">🏛️ ${bInfo.bankName}</div>
                                     <div style="color:var(--text-muted); font-size:0.68rem; margin-top:1px;">📍 ${bInfo.officeLoc}</div>
                                     <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.68rem;">
                                         <span style="color:var(--accent-emerald);">SWIFT: <code style="font-family:'JetBrains Mono',monospace;">${bInfo.swiftCode}</code></span>
@@ -2635,7 +2785,7 @@
                                     </div>
                                 </div>
 
-                                <div style="background:rgba(9, 14, 26, 0.9); border:1px solid var(--border); border-radius:12px; padding:0.75rem;">
+                                <div style="background:#ffffff; border:1px solid var(--border-soft); border-radius:12px; padding:0.75rem;">
                                     <div style="font-size:0.72rem; font-weight:800; color:var(--accent-purple); text-transform:uppercase; margin-bottom:0.35rem;">🎁 Promociones & Beneficios Incluidos:</div>
                                     <div style="display:flex; flex-direction:column; gap:4px;">
                                         ${promoHtml}
@@ -2844,7 +2994,8 @@
                                 <td><strong style="color: var(--accent-emerald); font-size:0.95rem;">$${Number(card.balance).toLocaleString('es-ES')}</strong></td>
                                 <td>
                                     <div class="btn-group" style="justify-content:center;">
-                                        <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.75rem;" onclick="viewHsmCardDetails(${card.id})">🔍 Detalles HSM</button>
+                                        <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.75rem;" onclick="openCardAdminModal(${card.id})">⚙️ Administrar</button>
+                                        <button class="btn" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="viewHsmCardDetails(${card.id})">🔍 HSM</button>
                                         ${card.status === 'CREATED' || card.status === 'SUSPENDED' ? `<button class="btn btn-emerald" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'ACTIVE')">Activar</button>` : ''}
                                         ${card.status === 'ACTIVE' ? `<button class="btn btn-amber" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'SUSPENDED')">Suspender</button>` : ''}
                                         ${card.status === 'ACTIVE' || card.status === 'SUSPENDED' ? `<button class="btn btn-red" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'BLOCKED')">Bloquear</button>` : ''}
@@ -2863,6 +3014,157 @@
                     body: JSON.stringify({ status: newStatus })
                 });
                 if (res.ok) loadCards();
+            }
+
+            // --- ADMINISTRADOR DE TARJETA (Límites, Controles, PIN, Promociones) ---
+            let currentCardAdminId = null;
+
+            async function openCardAdminModal(cardId) {
+                currentCardAdminId = cardId;
+                document.getElementById('cardAdminModal').classList.add('active');
+                document.getElementById('caModalTitle').textContent = `Administrar Tarjeta #${cardId}`;
+                document.getElementById('caModalSubtitle').textContent = 'Cargando datos de la tarjeta...';
+                await loadCardAdminDetail(cardId);
+            }
+
+            function closeCardAdminModal() {
+                document.getElementById('cardAdminModal').classList.remove('active');
+                currentCardAdminId = null;
+            }
+
+            async function loadCardAdminDetail(cardId) {
+                try {
+                    const res = await fetch(`/api/card-admin/cards/${cardId}`);
+                    if (!res.ok) throw new Error('No se pudo cargar la tarjeta');
+                    const d = await res.json();
+                    renderCardAdminDetail(d);
+                } catch (err) {
+                    document.getElementById('caModalSubtitle').textContent = 'Error: ' + err.message;
+                }
+            }
+
+            function renderCardAdminDetail(d) {
+                const typeLabel = d.customerType === 'PERSONA_JURIDICA' ? '🏢 Persona Jurídica' : '👤 Persona Natural';
+                document.getElementById('caModalTitle').textContent = `Administrar Tarjeta #${d.cardId} — ${d.embossedName}`;
+                document.getElementById('caModalSubtitle').textContent = `${d.customerName || 'Sin cliente'} (${typeLabel}) · ${d.productName} · **** ${d.last4}`;
+
+                document.getElementById('caLimitPerTx').value = d.perTransactionLimit ?? '';
+                document.getElementById('caLimitDaily').value = d.dailyLimit ?? '';
+                document.getElementById('caLimitWeekly').value = d.weeklyLimit ?? '';
+                document.getElementById('caLimitMonthly').value = d.monthlyLimit ?? '';
+                document.getElementById('caLimitAtm').value = d.atmDailyLimit ?? '';
+
+                document.getElementById('caCtrlOnline').checked = !!d.onlinePurchasesEnabled;
+                document.getElementById('caCtrlIntl').checked = !!d.internationalPurchasesEnabled;
+                document.getElementById('caCtrlContactless').checked = !!d.contactlessEnabled;
+                document.getElementById('caCtrlAtm').checked = !!d.atmWithdrawalsEnabled;
+
+                const pinBadge = document.getElementById('caPinStatusBadge');
+                if (d.pinSet) {
+                    pinBadge.textContent = `✅ PIN Configurado${d.failedPinAttempts > 0 ? ` (Intentos fallidos: ${d.failedPinAttempts})` : ''}`;
+                    pinBadge.className = 'badge badge-emerald';
+                } else {
+                    pinBadge.textContent = '⚠️ Sin PIN Configurado';
+                    pinBadge.className = 'badge badge-amber';
+                }
+
+                const promoList = document.getElementById('caPromoList');
+                if (!d.assignedPromotions || d.assignedPromotions.length === 0) {
+                    promoList.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Sin promociones asignadas directamente a esta tarjeta.</div>';
+                } else {
+                    promoList.innerHTML = d.assignedPromotions.map(p => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid var(--border-soft); border-radius:8px; padding:0.5rem 0.75rem;">
+                            <span>🎁 ${p.name}</span>
+                            <button type="button" class="btn btn-red" style="padding:0.25rem 0.6rem; font-size:0.72rem;" onclick="removePromoFromCard(${p.id})">Quitar</button>
+                        </div>
+                    `).join('');
+                }
+
+                populateCaPromoSelect(d.assignedPromotions || []);
+            }
+
+            async function populateCaPromoSelect(assignedPromotions) {
+                const select = document.getElementById('caPromoSelect');
+                if (!globalPromotions || globalPromotions.length === 0) {
+                    try {
+                        const r = await fetch('/api/promotions');
+                        globalPromotions = await r.json();
+                    } catch (e) { globalPromotions = []; }
+                }
+                const assignedIds = new Set(assignedPromotions.map(p => p.id));
+                const available = (globalPromotions || []).filter(p => !assignedIds.has(p.id));
+                select.innerHTML = available.length === 0
+                    ? '<option value="">No hay más promociones disponibles</option>'
+                    : available.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            }
+
+            function caNumberOrNull(id) {
+                const v = document.getElementById(id).value;
+                return v === '' ? null : parseFloat(v);
+            }
+
+            async function saveCardLimits() {
+                if (!currentCardAdminId) return;
+                const payload = {
+                    perTransactionLimit: caNumberOrNull('caLimitPerTx'),
+                    dailyLimit: caNumberOrNull('caLimitDaily'),
+                    weeklyLimit: caNumberOrNull('caLimitWeekly'),
+                    monthlyLimit: caNumberOrNull('caLimitMonthly'),
+                    atmDailyLimit: caNumberOrNull('caLimitAtm'),
+                };
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/limits`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) { alert('Límites actualizados correctamente.'); loadCardAdminDetail(currentCardAdminId); loadCards(); }
+                else { alert('Error al actualizar los límites.'); }
+            }
+
+            async function saveCardControls() {
+                if (!currentCardAdminId) return;
+                const payload = {
+                    onlinePurchasesEnabled: document.getElementById('caCtrlOnline').checked,
+                    internationalPurchasesEnabled: document.getElementById('caCtrlIntl').checked,
+                    contactlessEnabled: document.getElementById('caCtrlContactless').checked,
+                    atmWithdrawalsEnabled: document.getElementById('caCtrlAtm').checked,
+                };
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/controls`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) { alert('Controles de canal actualizados correctamente.'); loadCardAdminDetail(currentCardAdminId); }
+                else { alert('Error al actualizar los controles.'); }
+            }
+
+            async function setCardPin() {
+                if (!currentCardAdminId) return;
+                const pin = document.getElementById('caPinInput').value;
+                if (!/^\d{4}$/.test(pin)) { alert('El PIN debe ser de exactamente 4 dígitos numéricos.'); return; }
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/pin`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin })
+                });
+                const data = await res.json().catch(() => null);
+                if (res.ok) {
+                    alert('PIN configurado correctamente a través del HSM.');
+                    document.getElementById('caPinInput').value = '';
+                    loadCardAdminDetail(currentCardAdminId);
+                } else {
+                    alert('Error: ' + (data && data.message ? data.message : 'No se pudo configurar el PIN.'));
+                }
+            }
+
+            async function assignPromoToCard() {
+                if (!currentCardAdminId) return;
+                const promoId = document.getElementById('caPromoSelect').value;
+                if (!promoId) return;
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/promotions/${promoId}`, { method: 'POST' });
+                if (res.ok) loadCardAdminDetail(currentCardAdminId);
+                else alert('Error al asignar la promoción.');
+            }
+
+            async function removePromoFromCard(promoId) {
+                if (!currentCardAdminId) return;
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/promotions/${promoId}`, { method: 'DELETE' });
+                if (res.ok) loadCardAdminDetail(currentCardAdminId);
+                else alert('Error al quitar la promoción.');
             }
 
             async function handleIssueCard(e) {
@@ -3119,28 +3421,61 @@
             }
 
             // --- OTHER LOADERS ---
+            function toggleCustomerTypeFields() {
+                const isJuridica = document.getElementById('custType').value === 'PERSONA_JURIDICA';
+                document.getElementById('custJuridicaFields').style.display = isJuridica ? 'block' : 'none';
+                document.getElementById('custNameLabel').textContent = isJuridica ? 'Nombre de Contacto:' : 'Nombre Completo:';
+                document.getElementById('custTaxIdLabel').textContent = isJuridica ? 'RFC de la Empresa:' : 'RFC / Documento de Identidad:';
+                document.getElementById('custBusinessName').required = isJuridica;
+                document.getElementById('custLegalRepName').required = isJuridica;
+            }
+
             async function handleCreateCustomer(e) {
                 e.preventDefault();
-                const payload = { fullName: document.getElementById('custName').value, phoneNumber: document.getElementById('custPhone').value };
+                const customerType = document.getElementById('custType').value;
+                const payload = {
+                    customerType: customerType,
+                    fullName: document.getElementById('custName').value,
+                    phoneNumber: document.getElementById('custPhone').value,
+                    email: document.getElementById('custEmail').value || null,
+                    address: document.getElementById('custAddress').value || null,
+                    taxId: document.getElementById('custTaxId').value || null,
+                    businessName: customerType === 'PERSONA_JURIDICA' ? document.getElementById('custBusinessName').value : null,
+                    legalRepresentativeName: customerType === 'PERSONA_JURIDICA' ? document.getElementById('custLegalRepName').value : null,
+                    legalRepresentativeTaxId: customerType === 'PERSONA_JURIDICA' ? document.getElementById('custLegalRepTaxId').value : null,
+                };
                 const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { alert("¡Cliente creado con éxito!"); loadCustomers(); }
+                const data = await res.json().catch(() => null);
+                if (res.ok) {
+                    alert("¡Cliente creado con éxito!");
+                    e.target.reset();
+                    toggleCustomerTypeFields();
+                    loadCustomers();
+                } else {
+                    alert("Error al crear cliente: " + (data && data.message ? data.message : res.statusText));
+                }
             }
 
             async function loadCustomers() {
                 const tbody = document.getElementById('customerTableBody');
                 const res = await fetch('/api/customers');
                 const data = await res.json();
-                tbody.innerHTML = data.map(c => `
+                tbody.innerHTML = data.map(c => {
+                    const isJuridica = c.customerType === 'PERSONA_JURIDICA';
+                    return `
                     <tr>
                         <td><strong>#${c.id}</strong></td>
-                        <td>${c.fullName}</td>
+                        <td><span class="badge ${isJuridica ? 'badge-purple' : 'badge-cyan'}">${isJuridica ? '🏢 Jurídica' : '👤 Natural'}</span></td>
+                        <td>${c.displayName || c.fullName}</td>
+                        <td><code>${c.taxId || '-'}</code></td>
                         <td>${c.phoneNumber}</td>
                         <td><span class="badge badge-emerald">${c.kycStatus}</span></td>
                         <td><strong>Card #${c.cardId || '-'}</strong></td>
                         <td><code>**** ${c.cardLast4}</code></td>
                         <td><strong style="color: var(--accent-emerald);">$${Number(c.balance).toLocaleString()}</strong></td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             }
 
             async function loadAuditLogs() {
@@ -3183,6 +3518,7 @@
             document.addEventListener("DOMContentLoaded", () => {
                 updateCreateFormMockup();
                 loadProducts();
+                toggleCustomerTypeFields();
             });
         </script>
 </body>

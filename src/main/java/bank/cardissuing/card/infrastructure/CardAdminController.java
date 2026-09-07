@@ -2,7 +2,6 @@ package bank.cardissuing.card.infrastructure;
 
 import bank.cardissuing.card.application.CardAdminService;
 import bank.cardissuing.card.domain.Card;
-import bank.cardissuing.card.domain.Promotion;
 import bank.cardissuing.common.exception.ResourceNotFoundException;
 import bank.cardissuing.ledger.infrastructure.LedgerAccountRepository;
 import bank.cardissuing.ledger.infrastructure.LedgerEntryRepository;
@@ -122,7 +121,9 @@ public class CardAdminController {
                 card.isInternationalPurchasesEnabled(),
                 card.isContactlessEnabled(),
                 card.isAtmWithdrawalsEnabled(),
-                card.getAssignedPromotions().stream().map(Promotion::getName).collect(Collectors.toList())
+                card.getAssignedPromotions().stream()
+                        .map(p -> new PromotionSummary(p.getId(), p.getName()))
+                        .collect(Collectors.toList())
         );
     }
 
@@ -180,6 +181,17 @@ public class CardAdminController {
         private final boolean internationalPurchasesEnabled;
         private final boolean contactlessEnabled;
         private final boolean atmWithdrawalsEnabled;
-        private final List<String> assignedPromotions;
+        private final List<PromotionSummary> assignedPromotions;
+    }
+
+    @Data
+    public static class PromotionSummary {
+        private final Long id;
+        private final String name;
+
+        public PromotionSummary(Long id, String name) {
+            this.id = id;
+            this.name = name;
+        }
     }
 }
