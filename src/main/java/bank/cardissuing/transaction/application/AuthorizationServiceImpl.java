@@ -37,7 +37,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthorizationServiceImpl implements AuthorizationService {
 
-    private static final int HOLD_DAYS = 7;
+    /** Days an approved-but-uncaptured authorization keeps funds reserved. */
+    @org.springframework.beans.factory.annotation.Value("${holds.default-days:7}")
+    private int holdDays = 7;
 
     private final CardRepository cardRepository;
     private final FundsRouter router;
@@ -87,7 +89,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
         AuthorizationHold hold = new AuthorizationHold(card, newApprovalCode(), request.getAmount(),
                 request.getMerchantName(), request.getMerchantId(), request.transactionTypeOrDefault(),
-                LocalDateTime.now().plusDays(HOLD_DAYS));
+                LocalDateTime.now().plusDays(holdDays));
         hold.setIdempotencyKey(idempotencyKey);
         port.hold(card, hold);
         holds.save(hold);

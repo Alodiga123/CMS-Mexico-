@@ -1,5 +1,6 @@
 package bank.cardissuing.transaction.infrastructure;
 
+import bank.cardissuing.funds.application.HoldExpiryService;
 import bank.cardissuing.funds.domain.AuthorizationHold;
 import bank.cardissuing.transaction.application.AuthorizationService;
 import bank.cardissuing.transaction.domain.AuthorizationRequest;
@@ -22,6 +23,7 @@ import java.util.Map;
 public class AuthorizationController {
 
     private final AuthorizationService authorizationService;
+    private final HoldExpiryService holdExpiryService;
 
     /** 0100 in, 0110 out. Always 200: the decision is in the body. */
     @PostMapping
@@ -41,6 +43,13 @@ public class AuthorizationController {
     @PostMapping("/{approvalCode}/reverse")
     public ResponseEntity<Map<String, Object>> reverse(@PathVariable String approvalCode) {
         return ResponseEntity.ok(view(authorizationService.reverse(approvalCode)));
+    }
+
+    /** Manual trigger of hold expiry; the scheduled job does the same on its own. */
+    @PostMapping("/expire-due")
+    public ResponseEntity<Map<String, Object>> expireDue() {
+        int expired = holdExpiryService.expireDue();
+        return ResponseEntity.ok(Map.of("expired", expired, "at", LocalDateTime.now()));
     }
 
     @GetMapping("/{approvalCode}")
