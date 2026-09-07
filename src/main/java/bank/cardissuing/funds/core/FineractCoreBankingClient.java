@@ -12,8 +12,11 @@ import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -26,13 +29,21 @@ import java.util.Map;
  *
  * <p>Enabled with {@code core.mode=fineract}. Credentials come from properties and are
  * never logged.
+ *
+ * <h3>Transaction dates</h3>
+ * Fineract rejects any savings transaction dated before the account's last transaction,
+ * and it stamps the operations that take no date (release) with its own server-local
+ * day -- which can be a day ahead of this JVM. The business-date API is not enabled on
+ * the target core, so the operation date is derived from what the core itself reports:
+ * the later of today in UTC and the account's newest transaction date. That never runs
+ * ahead of the server's day and never falls behind its last movement.
  */
 @Slf4j
 @Component
 @ConditionalOnProperty(name = "core.mode", havingValue = "fineract")
 public class FineractCoreBankingClient implements CoreBankingClient {
 
-    private static final DateTimeFormatter FINERACT_DATE = DateTimeFormatter.ofPattern("dd MMMM yyyy", java.util.Locale.ENGLISH);
+    private static final DateTimeFormatter FINERACT_DATE = DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH);
 
     private final RestClient http;
 
@@ -67,7 +78,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     @Override
     public String holdAmount(String accountId, BigDecimal amount, String reference) {
-        Map<String, Object> payload = datedPayload(amount);
+        Map<String, Object> payload = datedPayload(accountId, amount);
         payload.put("reasonForBlock", "Card authorization " + reference);
         Map<String, Object> body = call(() -> http.post()
                 .uri("/savingsaccounts/{id}/transactions?command=holdAmount", accountId)
@@ -78,6 +89,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     @Override
     public void releaseHold(String accountId, String holdRef) {
+        // releaseAmount takes no date: the core stamps it with its own day.
         call(() -> http.post()
                 .uri("/savingsaccounts/{id}/transactions/{tx}?command=releaseAmount", accountId, holdRef)
                 .contentType(MediaType.APPLICATION_JSON).body(Map.of())
@@ -95,7 +107,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
     }
 
     private String transact(String accountId, BigDecimal amount, String reference, String command) {
-        Map<String, Object> payload = datedPayload(amount);
+        Map<String, Object> payload = datedPayload(accountId, amount);
         payload.put("note", reference);
         Map<String, Object> body = call(() -> http.post()
                 .uri("/savingsaccounts/{id}/transactions?command={cmd}", accountId, command)
@@ -104,13 +116,30 @@ public class FineractCoreBankingClient implements CoreBankingClient {
         return String.valueOf(body.get("resourceId"));
     }
 
-    private static Map<String, Object> datedPayload(BigDecimal amount) {
+    private Map<String, Object> datedPayload(String accountId, BigDecimal amount) {
         Map<String, Object> p = new LinkedHashMap<>();
         p.put("locale", "en");
         p.put("dateFormat", "dd MMMM yyyy");
-        p.put("transactionDate", LocalDate.now().format(FINERACT_DATE));
+        p.put("transactionDate", operationDate(accountId).format(FINERACT_DATE));
         p.put("transactionAmount", amount);
         return p;
+    }
+
+    /** The later of today (UTC) and the account's newest transaction date, as Fineract reports it. */
+    @SuppressWarnings("unchecked")
+    LocalDate operationDate(String accountId) {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        Map<String, Object> body = call(() -> http.get()
+                .uri("/savingsaccounts/{id}?associations=transactions", accountId)
+                .retrieve().body(Map.class));
+        List<Map<String, Object>> txs = (List<Map<String, Object>>) body.getOrDefault("transactions", List.of());
+        LocalDate last = txs.stream()
+                .map(t -> (List<Number>) t.get("date"))
+                .filter(d -> d != null && d.size() == 3)
+                .map(d -> LocalDate.of(d.get(0).intValue(), d.get(1).intValue(), d.get(2).intValue()))
+                .max(LocalDate::compareTo)
+                .orElse(today);
+        return last.isAfter(today) ? last : today;
     }
 
     private static <T> T call(java.util.function.Supplier<T> request) {
