@@ -1,5 +1,6 @@
 package bank.cardissuing.card.domain;
 
+import bank.cardissuing.card.exception.InvalidContractStateException;
 import bank.cardissuing.customer.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Table(name = "card_products")
 @Entity
@@ -102,6 +104,35 @@ public class CardProduct extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    // ---- Administrador de Programas: contrato de emisión & publicación ----
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contract_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private CardIssuanceContract contract;
+
+    @Column(nullable = false)
+    private boolean published = false;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    public Long getContractId() {
+        return contract != null ? contract.getId() : null;
+    }
+
+    public void publish() {
+        if (contract == null || contract.getStatus() != ContractStatus.ACTIVE) {
+            throw new InvalidContractStateException(
+                    "Card product must be linked to an ACTIVE contract before it can be published.");
+        }
+        this.published = true;
+        this.publishedAt = LocalDateTime.now();
+    }
+
+    public void unpublish() {
+        this.published = false;
+    }
 
     public CardProduct(String productCode, String productName, CardType cardType, PaymentType paymentType, CardNetwork network, String bin, String currency, BigDecimal creditLimit, boolean active) {
         this.productCode = productCode;

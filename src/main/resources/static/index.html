@@ -393,6 +393,9 @@
         <!-- SIDEBAR NAVIGATION -->
         <aside class="sidebar">
             <div class="sidebar-category">Gestión de Tarjetas</div>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-contracts')">
+                <span class="icon">🏢</span> 0. Empresas & Contratos
+            </button>
             <button class="nav-btn active" onclick="switchTab(event, 'tab-products')">
                 <span class="icon">📦</span> 1. Crear & Editar Tarjetas
             </button>
@@ -454,6 +457,86 @@
                     <div>
                         <div class="step-title">Paso 3: Monitorear & Transaccionar</div>
                         <div class="step-subtitle">Ver tarjetas emitidas y saldo</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 0: EMPRESAS & CONTRATOS DE EMISIÓN -->
+            <div id="tab-contracts" class="tab-content">
+                <div style="display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem;">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>Registrar Empresa/Persona Solicitante & Contrato de Emisión</span>
+                            <span class="icon">🏢</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                            Toda tarjeta (producto) debe estar ligada a un contrato en estado <strong>ACTIVO</strong> antes de poder publicarse y ser emitida a clientes.
+                            El solicitante puede ser una persona natural o una empresa (persona jurídica) ya registrada en <em>Clientes & KYC</em>.
+                        </p>
+                        <form onsubmit="handleCreateContract(event)">
+                            <div class="form-grid" style="margin-bottom: 1.25rem;">
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label>Empresa / Persona Solicitante:</label>
+                                    <select id="contractCustomerId" class="form-control" required>
+                                        <option value="">Cargando clientes registrados...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Número de Contrato (opcional):</label>
+                                    <input type="text" id="contractNumber" class="form-control" placeholder="Ej: CTR-000002" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Fecha de Inicio:</label>
+                                    <input type="date" id="contractStartDate" class="form-control" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Fecha de Fin (opcional):</label>
+                                    <input type="date" id="contractEndDate" class="form-control" />
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label>Términos / Objeto del Contrato:</label>
+                                    <input type="text" id="contractTerms" class="form-control" placeholder="Ej: Programa de tarjetas de nómina para colaboradores" />
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-emerald">➕ Crear Contrato</button>
+                        </form>
+                    </div>
+
+                    <div style="background: var(--navy-soft); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem;">
+                        <div style="font-size: 0.9rem; font-weight: 800; color: var(--navy); margin-bottom: 0.75rem;">📋 Ciclo de Vida del Programa</div>
+                        <div style="display:flex; flex-direction:column; gap:0.6rem; font-size: 0.82rem; color: var(--text-main);">
+                            <div>1️⃣ Se registra la empresa/persona (aquí o en <em>Clientes & KYC</em>) y se crea su contrato.</div>
+                            <div>2️⃣ Se activa el contrato.</div>
+                            <div>3️⃣ En <em>Crear & Editar Tarjetas</em>, se crea el producto de tarjeta ligado a ese contrato.</div>
+                            <div>4️⃣ Se <strong>publica</strong> la tarjeta — solo entonces queda disponible en <em>Emitir Tarjeta a Cliente</em>.</div>
+                            <div>5️⃣ Los clientes reciben tarjetas de ese programa.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <span>Contratos de Emisión Registrados</span>
+                        <button class="btn btn-primary" onclick="loadContracts()">🔄 Actualizar</button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Número</th>
+                                    <th>Empresa / Persona</th>
+                                    <th>Tipo</th>
+                                    <th>Vigencia</th>
+                                    <th>Tarjetas Ligadas</th>
+                                    <th>Estado</th>
+                                    <th style="text-align:center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contractsTableBody">
+                                <tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-muted);">Cargando contratos...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -548,6 +631,12 @@
                                             <option value="🇻🇪 VZN">🇻🇪 Venezuela (VZN)</option>
                                             <option value="🇪🇺 EUR">🇪🇺 Unión Europea (EUR)</option>
                                             <option value="🌎 GLOBAL">🌎 Internacional (GLOBAL)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="grid-column: 1 / -1;">
+                                        <label>🏢 Contrato de Emisión Asociado (requerido para poder publicar):</label>
+                                        <select id="prodContractId" class="form-control">
+                                            <option value="">Sin contrato (producto propio del banco)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -1362,10 +1451,11 @@
                                     <th>ID Tarjeta</th>
                                     <th>Tarjeta (Last 4)</th>
                                     <th>Saldo Total</th>
+                                    <th style="text-align:center;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="customerTableBody">
-                                <tr><td colspan="9" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
+                                <tr><td colspan="10" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1872,6 +1962,28 @@
             </div>
         </div>
 
+        <!-- MODAL: CLIENTE -> SUS TARJETAS, CONTABILIDAD, SALDO Y BLOQUEO -->
+        <div id="customerCardsModal" class="modal-overlay">
+            <div class="modal-card" style="max-width: 780px;">
+                <div class="modal-header">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <span style="font-size:1.4rem;">💳</span>
+                        <div>
+                            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main);">Tarjetas & Contabilidad del Cliente</h3>
+                            <p style="font-size:0.78rem; color:var(--text-muted);" id="customerCardsModalSubtitle">Cargando...</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-red" onclick="closeCustomerCardsModal()" style="padding:0.4rem 0.8rem; font-size:0.85rem;">✖ Cerrar</button>
+                </div>
+                <div class="modal-body" id="customerCardsModalBody">
+                    <div style="text-align:center; padding:2rem; color:var(--text-muted);">Cargando...</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-amber" onclick="closeCustomerCardsModal()">Cerrar Ventana</button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL: CATÁLOGO COMPLETO DE TARJETAS CREADAS -->
         <div id="catalogModal" class="modal-overlay">
             <div class="modal-card" style="max-width: 1150px; width: 95%;">
@@ -1964,6 +2076,7 @@
             let globalCustomers = [];
             let globalPromotions = [];
             let globalHsmKeys = [];
+            let globalContracts = [];
 
             // --- FORM STEPPER & WORKFLOW HELPER FUNCTIONS ---
             let currentFormStep = 1;
@@ -2081,7 +2194,8 @@
 
                 updateWorkflowBanner(tabId);
 
-                if (tabId === 'tab-products') loadProducts();
+                if (tabId === 'tab-contracts') { loadContracts(); populateContractCustomerSelect(); }
+                if (tabId === 'tab-products') { loadProducts(); populateContractSelectForProducts(); }
                 if (tabId === 'tab-issue') { loadCustomersForSelect(); loadProductsForSelect(); updateMockupHsmSecurityBadge(); }
                 if (tabId === 'tab-cards') { loadProductsForCardFilter(); loadCards(); }
                 if (tabId === 'tab-promotions') { loadProductsForPromoSelect(); loadPromotions(); }
@@ -2658,7 +2772,8 @@
                     replacementFee: parseFloat(document.getElementById('prodReplacementFee').value) || 15,
                     inactivityFee: parseFloat(document.getElementById('prodInactivityFee').value) || 5,
                     latePaymentFee: parseFloat(document.getElementById('prodLatePaymentFee').value) || 25,
-                    annualInterestRate: parseFloat(document.getElementById('prodAnnualInterestRate').value) || 18.5
+                    annualInterestRate: parseFloat(document.getElementById('prodAnnualInterestRate').value) || 18.5,
+                    contractId: document.getElementById('prodContractId').value ? parseInt(document.getElementById('prodContractId').value) : null
                 };
 
                 try {
@@ -2757,7 +2872,10 @@
                                         <strong style="font-size:1.05rem; color:var(--text-main);">${p.productName}</strong>
                                         <div style="font-size:0.75rem; color:var(--accent-cyan); font-weight:600;">Código: ${p.productCode || 'PROD-BASE'}</div>
                                     </div>
-                                    <span class="badge badge-emerald">ACTIVA</span>
+                                    <span class="badge ${p.published ? 'badge-emerald' : 'badge-amber'}">${p.published ? '✅ PUBLICADA' : '📝 BORRADOR'}</span>
+                                </div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:-0.4rem;">
+                                    🏢 Contrato: ${p.contractId ? '#' + p.contractId : 'Sin contrato (producto propio del banco)'}
                                 </div>
 
                                 <div class="card-mockup" style="width:100%; height:165px; background:${p.cardColor || 'linear-gradient(135deg, #0f172a, #1e1b4b, #312e81)'}; padding:1rem; border-radius:14px;">
@@ -2802,6 +2920,11 @@
                                     <button class="btn btn-amber" style="flex:1; padding:0.45rem; font-size:0.78rem;" onclick="editProduct(${p.id})">✏️ Editar Tarjeta & Promoción</button>
                                     <button class="btn btn-primary" style="padding:0.45rem 0.65rem; font-size:0.78rem;" onclick="openEmbossingModalForProduct(${p.id})">🖨️ Archivo Imprenta</button>
                                 </div>
+                                <div style="display:flex; gap:0.5rem;">
+                                    ${p.published
+                                        ? `<button class="btn" style="flex:1; padding:0.45rem; font-size:0.78rem;" onclick="togglePublishProduct(${p.id}, false)">🚫 Despublicar</button>`
+                                        : `<button class="btn btn-emerald" style="flex:1; padding:0.45rem; font-size:0.78rem;" onclick="togglePublishProduct(${p.id}, true)">🚀 Publicar Tarjeta</button>`}
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -2813,6 +2936,30 @@
                     if (grid) grid.innerHTML = errHtml;
                     if (modalGrid) modalGrid.innerHTML = errHtml;
                 }
+            }
+
+            async function togglePublishProduct(id, publish) {
+                const res = await fetch(`/api/products/${id}/${publish ? 'publish' : 'unpublish'}`, { method: 'POST' });
+                const data = await res.json().catch(() => null);
+                if (res.ok) {
+                    loadProducts();
+                    loadProductsForCardFilter();
+                } else {
+                    alert('Error: ' + (data && data.message ? data.message : 'La tarjeta necesita un contrato ACTIVO para poder publicarse.'));
+                }
+            }
+
+            async function populateContractSelectForProducts() {
+                const select = document.getElementById('prodContractId');
+                if (!select) return;
+                try {
+                    const res = await fetch('/api/contracts');
+                    globalContracts = await res.json();
+                } catch (e) { globalContracts = []; }
+
+                const activeContracts = (globalContracts || []).filter(c => c.status === 'ACTIVE');
+                select.innerHTML = '<option value="">Sin contrato (producto propio del banco)</option>' +
+                    activeContracts.map(c => `<option value="${c.id}">${c.contractNumber} — ${c.customerName}</option>`).join('');
             }
 
             function editProduct(id) {
@@ -2837,6 +2984,9 @@
                 document.getElementById('prodPvkIndex').value = prod.pvkIndex || 'PVK-01';
                 document.getElementById('prodCvkIndex').value = prod.cvkIndex || 'CVK-A';
                 document.getElementById('prodHsmAlgorithm').value = prod.hsmAlgorithm || 'TDES-2KEY';
+                if (document.getElementById('prodContractId')) {
+                    document.getElementById('prodContractId').value = prod.contractId || '';
+                }
 
                 const attached = (globalPromotions || []).find(pr => pr.targetProduct && pr.targetProduct.id === prod.id);
                 if (attached) {
@@ -2862,6 +3012,36 @@
                 document.getElementById('saveProdBtn').textContent = '💾 Guardar Tarjeta Creada';
                 document.getElementById('cancelEditBtn').style.display = 'none';
                 applyProductPreset('alodiga_debit');
+            }
+
+            async function loadCustomersForSelect() {
+                const select = document.getElementById('issueCustomerId');
+                if (!select) return;
+                try {
+                    const res = await fetch('/api/customers');
+                    globalCustomers = await res.json();
+                    select.innerHTML = globalCustomers.length === 0
+                        ? '<option value="">No hay clientes registrados todavía</option>'
+                        : globalCustomers.map(c => `<option value="${c.id}">${c.displayName || c.fullName} (${c.customerType === 'PERSONA_JURIDICA' ? 'Jurídica' : 'Natural'})</option>`).join('');
+                } catch (e) {
+                    select.innerHTML = '<option value="">Error al cargar clientes</option>';
+                }
+            }
+
+            async function loadProductsForSelect() {
+                const select = document.getElementById('issueProductId');
+                if (!select) return;
+                try {
+                    const res = await fetch('/api/products/published');
+                    const published = await res.json();
+                    if (!globalProducts || globalProducts.length === 0) globalProducts = published;
+                    select.innerHTML = published.length === 0
+                        ? '<option value="">No hay tarjetas publicadas todavía — publícalas en el Paso 1</option>'
+                        : published.map(p => `<option value="${p.id}">${p.productName} (${p.network})</option>`).join('');
+                    if (published.length > 0) updateMockupProductDetails();
+                } catch (e) {
+                    select.innerHTML = '<option value="">Error al cargar tarjetas publicadas</option>';
+                }
             }
 
             function updateMockupNameFromCustomer() {
@@ -3460,6 +3640,7 @@
                 const tbody = document.getElementById('customerTableBody');
                 const res = await fetch('/api/customers');
                 const data = await res.json();
+                globalCustomers = data;
                 tbody.innerHTML = data.map(c => {
                     const isJuridica = c.customerType === 'PERSONA_JURIDICA';
                     return `
@@ -3473,9 +3654,196 @@
                         <td><strong>Card #${c.cardId || '-'}</strong></td>
                         <td><code>**** ${c.cardLast4}</code></td>
                         <td><strong style="color: var(--accent-emerald);">$${Number(c.balance).toLocaleString()}</strong></td>
+                        <td style="text-align:center;">
+                            <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.75rem;" onclick="openCustomerCardsModal(${c.id})">💳 Tarjetas & Contabilidad</button>
+                        </td>
                     </tr>
                 `;
                 }).join('');
+            }
+
+            // Also refresh the contract customer dropdown whenever customers reload
+            async function populateContractCustomerSelect() {
+                const select = document.getElementById('contractCustomerId');
+                if (!select) return;
+                if (!globalCustomers || globalCustomers.length === 0) {
+                    try {
+                        const res = await fetch('/api/customers');
+                        globalCustomers = await res.json();
+                    } catch (e) { globalCustomers = []; }
+                }
+                select.innerHTML = globalCustomers.map(c => `<option value="${c.id}">${c.displayName || c.fullName} (${c.customerType === 'PERSONA_JURIDICA' ? 'Jurídica' : 'Natural'})</option>`).join('')
+                    || '<option value="">No hay clientes registrados</option>';
+            }
+
+            // ---- CONTRATOS DE EMISIÓN ----
+            async function handleCreateContract(e) {
+                e.preventDefault();
+                const payload = {
+                    customerId: parseInt(document.getElementById('contractCustomerId').value),
+                    contractNumber: document.getElementById('contractNumber').value || null,
+                    startDate: document.getElementById('contractStartDate').value || null,
+                    endDate: document.getElementById('contractEndDate').value || null,
+                    terms: document.getElementById('contractTerms').value || null,
+                };
+                const res = await fetch('/api/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json().catch(() => null);
+                if (res.ok) {
+                    alert('Contrato creado en estado BORRADOR. Actívalo desde la tabla para poder ligar tarjetas.');
+                    e.target.reset();
+                    loadContracts();
+                } else {
+                    alert('Error al crear el contrato: ' + (data && data.message ? data.message : res.statusText));
+                }
+            }
+
+            async function loadContracts() {
+                const tbody = document.getElementById('contractsTableBody');
+                if (!tbody) return;
+                try {
+                    const res = await fetch('/api/contracts');
+                    const data = await res.json();
+                    globalContracts = data;
+                    if (!Array.isArray(data) || data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay contratos registrados todavía.</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = data.map(c => {
+                        let badgeClass = 'badge-cyan';
+                        if (c.status === 'ACTIVE') badgeClass = 'badge-emerald';
+                        if (c.status === 'SUSPENDED') badgeClass = 'badge-amber';
+                        if (c.status === 'TERMINATED') badgeClass = 'badge-red';
+                        const isJuridica = c.customerType === 'PERSONA_JURIDICA';
+                        return `
+                            <tr>
+                                <td><strong>#${c.id}</strong></td>
+                                <td><code>${c.contractNumber}</code></td>
+                                <td>${c.customerName || '-'}</td>
+                                <td><span class="badge ${isJuridica ? 'badge-purple' : 'badge-cyan'}">${isJuridica ? '🏢 Jurídica' : '👤 Natural'}</span></td>
+                                <td style="font-size:0.78rem;">${c.startDate || '-'} ${c.endDate ? '→ ' + c.endDate : ''}</td>
+                                <td><span class="badge badge-key">${c.productCount} tarjeta(s)</span></td>
+                                <td><span class="badge ${badgeClass}">${c.status}</span></td>
+                                <td>
+                                    <div class="btn-group" style="justify-content:center;">
+                                        ${(c.status === 'DRAFT' || c.status === 'SUSPENDED') ? `<button class="btn btn-emerald" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeContractStatus(${c.id}, 'activate')">Activar</button>` : ''}
+                                        ${c.status === 'ACTIVE' ? `<button class="btn btn-amber" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeContractStatus(${c.id}, 'suspend')">Suspender</button>` : ''}
+                                        ${c.status !== 'TERMINATED' ? `<button class="btn btn-red" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeContractStatus(${c.id}, 'terminate')">Terminar</button>` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } catch (err) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: #ef4444;">Error: ${err.message}</td></tr>`;
+                }
+            }
+
+            async function changeContractStatus(id, action) {
+                const res = await fetch(`/api/contracts/${id}/${action}`, { method: 'PATCH' });
+                const data = await res.json().catch(() => null);
+                if (res.ok) {
+                    loadContracts();
+                    populateContractSelectForProducts();
+                } else {
+                    alert('Error: ' + (data && data.message ? data.message : 'No se pudo cambiar el estado del contrato.'));
+                }
+            }
+
+            // ---- CLIENTE -> TARJETAS & CONTABILIDAD ----
+            let currentCustomerCardsId = null;
+
+            async function openCustomerCardsModal(customerId) {
+                currentCustomerCardsId = customerId;
+                document.getElementById('customerCardsModal').classList.add('active');
+                await loadCustomerCardsDetail(customerId);
+            }
+
+            function closeCustomerCardsModal() {
+                document.getElementById('customerCardsModal').classList.remove('active');
+                currentCustomerCardsId = null;
+            }
+
+            async function loadCustomerCardsDetail(customerId) {
+                const container = document.getElementById('customerCardsModalBody');
+                container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">Cargando tarjetas y contabilidad del cliente...</div>';
+
+                const customer = (globalCustomers || []).find(c => c.id === customerId);
+                document.getElementById('customerCardsModalSubtitle').textContent = customer
+                    ? `${customer.displayName || customer.fullName} · ${customer.customerType === 'PERSONA_JURIDICA' ? 'Persona Jurídica' : 'Persona Natural'}`
+                    : `Cliente #${customerId}`;
+
+                try {
+                    const cardsRes = await fetch(`/api/cards?customerId=${customerId}`);
+                    const cards = await cardsRes.json();
+
+                    if (!Array.isArray(cards) || cards.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">Este cliente todavía no tiene tarjetas emitidas.</div>';
+                        return;
+                    }
+
+                    const blocks = await Promise.all(cards.map(async (card) => {
+                        let movementsHtml = '<div style="color:var(--text-muted); font-size:0.78rem;">Sin movimientos registrados.</div>';
+                        try {
+                            const stRes = await fetch(`/api/accounting/statement?cardId=${card.id}`);
+                            const st = await stRes.json();
+                            if (st.movements && st.movements.length > 0) {
+                                movementsHtml = st.movements.slice(0, 5).map(m => `
+                                    <div style="display:flex; justify-content:space-between; font-size:0.78rem; padding:4px 0; border-bottom:1px dashed var(--border-soft);">
+                                        <span>${m.reference || m.type}</span>
+                                        <strong style="color:${m.type === 'CREDIT' ? 'var(--accent-emerald)' : 'var(--accent-red)'};">${m.type === 'CREDIT' ? '+' : '-'}$${Number(m.amount).toLocaleString()}</strong>
+                                    </div>
+                                `).join('');
+                            }
+                        } catch (e) { /* keep default message */ }
+
+                        let badgeClass = 'badge-cyan';
+                        if (card.status === 'SUSPENDED') badgeClass = 'badge-amber';
+                        if (card.status === 'BLOCKED' || card.status === 'CLOSED') badgeClass = 'badge-red';
+
+                        return `
+                            <div style="background:#ffffff; border:1px solid var(--border); border-radius:14px; padding:1.1rem; margin-bottom:1rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
+                                    <div>
+                                        <strong style="font-size:1rem;">${card.productName}</strong>
+                                        <div style="font-size:0.78rem; color:var(--text-muted);">**** ${card.last4} · ${card.network} · ${card.embossedName}</div>
+                                    </div>
+                                    <span class="badge ${badgeClass}">${card.status}</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; background:var(--navy-soft); border-radius:10px; padding:0.6rem 0.85rem;">
+                                    <span style="font-size:0.8rem; color:var(--text-muted);">Saldo Disponible</span>
+                                    <strong style="color:var(--accent-emerald); font-size:1.05rem;">$${Number(card.balance).toLocaleString()}</strong>
+                                </div>
+                                <div style="margin-top:0.75rem;">
+                                    <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem;">Movimientos Recientes</div>
+                                    ${movementsHtml}
+                                </div>
+                                <div class="btn-group" style="margin-top:0.85rem;">
+                                    ${(card.status === 'CREATED' || card.status === 'SUSPENDED') ? `<button class="btn btn-emerald" style="padding:0.35rem 0.75rem; font-size:0.78rem;" onclick="changeCardStatusFromCustomerModal(${card.id}, 'ACTIVE')">Activar</button>` : ''}
+                                    ${card.status === 'ACTIVE' ? `<button class="btn btn-amber" style="padding:0.35rem 0.75rem; font-size:0.78rem;" onclick="changeCardStatusFromCustomerModal(${card.id}, 'SUSPENDED')">Suspender</button>` : ''}
+                                    ${(card.status === 'ACTIVE' || card.status === 'SUSPENDED') ? `<button class="btn btn-red" style="padding:0.35rem 0.75rem; font-size:0.78rem;" onclick="changeCardStatusFromCustomerModal(${card.id}, 'BLOCKED')">🔒 Bloquear Tarjeta</button>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }));
+
+                    container.innerHTML = blocks.join('');
+                } catch (err) {
+                    container.innerHTML = `<div style="text-align:center; padding:2rem; color:#ef4444;">Error: ${err.message}</div>`;
+                }
+            }
+
+            async function changeCardStatusFromCustomerModal(cardId, newStatus) {
+                const res = await fetch(`/api/cards/${cardId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (res.ok && currentCustomerCardsId) {
+                    loadCustomerCardsDetail(currentCustomerCardsId);
+                    loadCustomers();
+                } else if (!res.ok) {
+                    alert('No se pudo actualizar el estado de la tarjeta.');
+                }
             }
 
             async function loadAuditLogs() {
@@ -3518,6 +3886,7 @@
             document.addEventListener("DOMContentLoaded", () => {
                 updateCreateFormMockup();
                 loadProducts();
+                populateContractSelectForProducts();
                 toggleCustomerTypeFields();
             });
         </script>
