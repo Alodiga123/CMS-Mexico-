@@ -52,8 +52,9 @@ public class CardController {
             return new CardResponse(
                     card.getId(),
                     customer != null ? customer.getId() : null,
-                    customer != null ? customer.getFullName() : "N/A",
-                    card.getEmbossedName() != null ? card.getEmbossedName() : (customer != null ? customer.getFullName().toUpperCase() : "CARDHOLDER"),
+                    customer != null ? customer.getDisplayName() : "N/A",
+                    customer != null ? customer.getCustomerType().name() : "N/A",
+                    card.getEmbossedName() != null ? card.getEmbossedName() : (customer != null ? customer.getDisplayName().toUpperCase() : "CARDHOLDER"),
                     product != null ? product.getProductName() : "Standard Card",
                     product != null ? product.getCardType().name() : "DEBIT",
                     product != null ? product.getPaymentType().name() : "PREPAID",
@@ -65,9 +66,14 @@ public class CardController {
                     balance,
                     product != null ? product.getCurrency() : "USD",
                     product != null && product.getCountry() != null ? product.getCountry() : "USA",
-                    product != null && product.getDailyLimit() != null ? product.getDailyLimit() : new BigDecimal("1000"),
-                    product != null && product.getWeeklyLimit() != null ? product.getWeeklyLimit() : new BigDecimal("5000"),
-                    product != null && product.getMonthlyLimit() != null ? product.getMonthlyLimit() : new BigDecimal("20000")
+                    card.getEffectiveDailyLimit() != null ? card.getEffectiveDailyLimit() : new BigDecimal("1000"),
+                    card.getEffectiveWeeklyLimit() != null ? card.getEffectiveWeeklyLimit() : new BigDecimal("5000"),
+                    card.getEffectiveMonthlyLimit() != null ? card.getEffectiveMonthlyLimit() : new BigDecimal("20000"),
+                    card.isPinSet(),
+                    card.isOnlinePurchasesEnabled(),
+                    card.isInternationalPurchasesEnabled(),
+                    card.isContactlessEnabled(),
+                    card.isAtmWithdrawalsEnabled()
             );
         }).collect(Collectors.toList());
 
@@ -129,7 +135,8 @@ public class CardController {
         CardResponse response = new CardResponse(
                 card.getId(),
                 customer.getId(),
-                customer.getFullName(),
+                customer.getDisplayName(),
+                customer.getCustomerType().name(),
                 card.getEmbossedName(),
                 product != null ? product.getProductName() : "Standard Card",
                 product != null ? product.getCardType().name() : "DEBIT",
@@ -142,9 +149,14 @@ public class CardController {
                 balance,
                 product != null ? product.getCurrency() : "USD",
                 product != null && product.getCountry() != null ? product.getCountry() : "USA",
-                product != null && product.getDailyLimit() != null ? product.getDailyLimit() : new BigDecimal("1000"),
-                product != null && product.getWeeklyLimit() != null ? product.getWeeklyLimit() : new BigDecimal("5000"),
-                product != null && product.getMonthlyLimit() != null ? product.getMonthlyLimit() : new BigDecimal("20000")
+                card.getEffectiveDailyLimit() != null ? card.getEffectiveDailyLimit() : new BigDecimal("1000"),
+                card.getEffectiveWeeklyLimit() != null ? card.getEffectiveWeeklyLimit() : new BigDecimal("5000"),
+                card.getEffectiveMonthlyLimit() != null ? card.getEffectiveMonthlyLimit() : new BigDecimal("20000"),
+                card.isPinSet(),
+                card.isOnlinePurchasesEnabled(),
+                card.isInternationalPurchasesEnabled(),
+                card.isContactlessEnabled(),
+                card.isAtmWithdrawalsEnabled()
         );
 
         return ResponseEntity.ok(response);
@@ -223,6 +235,7 @@ public class CardController {
         private final Long id;
         private final Long customerId;
         private final String customerName;
+        private final String customerType;
         private final String embossedName;
         private final String productName;
         private final String cardType;
@@ -238,5 +251,10 @@ public class CardController {
         private final BigDecimal dailyLimit;
         private final BigDecimal weeklyLimit;
         private final BigDecimal monthlyLimit;
+        private final boolean pinSet;
+        private final boolean onlinePurchasesEnabled;
+        private final boolean internationalPurchasesEnabled;
+        private final boolean contactlessEnabled;
+        private final boolean atmWithdrawalsEnabled;
     }
 }

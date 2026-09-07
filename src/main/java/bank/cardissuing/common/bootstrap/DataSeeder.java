@@ -4,6 +4,7 @@ import bank.cardissuing.card.domain.*;
 import bank.cardissuing.card.infrastructure.CardProductRepository;
 import bank.cardissuing.card.infrastructure.CardRepository;
 import bank.cardissuing.customer.domain.Customer;
+import bank.cardissuing.customer.domain.CustomerType;
 import bank.cardissuing.customer.domain.KYC;
 import bank.cardissuing.customer.domain.KYCStatus;
 import bank.cardissuing.customer.infrastructure.CustomerRepository;
@@ -38,6 +39,9 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        Promotion cashbackSupermercados = null;
+        Promotion bonoVipCredito = null;
+
         // Seed Products if none exist
         if (cardProductRepository.count() == 0) {
             log.info("Seeding realistic default Card Products...");
@@ -50,11 +54,22 @@ public class DataSeeder implements CommandLineRunner {
             cardProductRepository.save(creditProd);
 
             // Seed Promotions
-            promotionRepository.save(new Promotion("Cashback 5% en Supermercados", "5% de reembolso automático en compras de supermercados e hipermercados", new BigDecimal("5.00"), BigDecimal.ZERO, true, debitProd));
+            cashbackSupermercados = promotionRepository.save(new Promotion("Cashback 5% en Supermercados", "5% de reembolso automático en compras de supermercados e hipermercados", new BigDecimal("5.00"), BigDecimal.ZERO, true, debitProd));
             promotionRepository.save(new Promotion("Descuento 10% en Remesas Alodiga", "10% de descuento en la comisión de envío de dinero con Alocash Pay", BigDecimal.ZERO, new BigDecimal("10.00"), true, prepaidProd));
-            promotionRepository.save(new Promotion("Bono Bienvenida VIP Crédito", "0% interés en los primeros 30 días de consumo rotativo", new BigDecimal("2.00"), new BigDecimal("100.00"), true, creditProd));
+            bonoVipCredito = promotionRepository.save(new Promotion("Bono Bienvenida VIP Crédito", "0% interés en los primeros 30 días de consumo rotativo", new BigDecimal("2.00"), new BigDecimal("100.00"), true, creditProd));
 
             log.info("Default Card Products & Promotions seeded successfully!");
+        }
+
+        if (cashbackSupermercados == null) {
+            cashbackSupermercados = promotionRepository.findAll().stream()
+                    .filter(p -> p.getName().startsWith("Cashback 5%"))
+                    .findFirst().orElse(null);
+        }
+        if (bonoVipCredito == null) {
+            bonoVipCredito = promotionRepository.findAll().stream()
+                    .filter(p -> p.getName().startsWith("Bono Bienvenida"))
+                    .findFirst().orElse(null);
         }
 
         if (customerRepository.count() > 0) {
@@ -64,27 +79,56 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Starting initial customer seeding...");
 
-        // 1. Customer 1: Carlos Rodríguez
+        // 1. Customer 1: Carlos Rodríguez (Persona Natural)
         Customer c1 = new Customer();
+        c1.setCustomerType(CustomerType.PERSONA_NATURAL);
         c1.setFullName("Carlos Rodriguez");
         c1.setPhoneNumber("+584141234567");
+        c1.setEmail("carlos.rodriguez@example.com");
+        c1.setTaxId("RODC800101H21");
         c1 = customerRepository.save(c1);
 
         KYC kyc1 = new KYC();
         kyc1.setCustomer(c1);
         kyc1.setStatus(KYCStatus.VERIFIED);
+        kyc1.setDocumentType("INE_RFC");
+        kyc1.setDocumentNumber(c1.getTaxId());
         kycRepository.save(kyc1);
 
-        // 2. Customer 2: Nguyen Van A
+        // 2. Customer 2: Nguyen Van A (Persona Natural)
         Customer c2 = new Customer();
+        c2.setCustomerType(CustomerType.PERSONA_NATURAL);
         c2.setFullName("Nguyen Van A");
         c2.setPhoneNumber("+84987654321");
+        c2.setEmail("nguyen.vana@example.com");
+        c2.setTaxId("NGVA850315M45");
         c2 = customerRepository.save(c2);
 
         KYC kyc2 = new KYC();
         kyc2.setCustomer(c2);
         kyc2.setStatus(KYCStatus.VERIFIED);
+        kyc2.setDocumentType("INE_RFC");
+        kyc2.setDocumentNumber(c2.getTaxId());
         kycRepository.save(kyc2);
+
+        // 3. Customer 3: Comercializadora Alodiga S.A. de C.V. (Persona Jurídica)
+        Customer c3 = new Customer();
+        c3.setCustomerType(CustomerType.PERSONA_JURIDICA);
+        c3.setFullName("Comercializadora Alodiga S.A. de C.V.");
+        c3.setBusinessName("Comercializadora Alodiga S.A. de C.V.");
+        c3.setPhoneNumber("+525512345678");
+        c3.setEmail("tesoreria@alodiga.com.mx");
+        c3.setTaxId("CAL120101AB9");
+        c3.setLegalRepresentativeName("Maria Lopez Hernandez");
+        c3.setLegalRepresentativeTaxId("LOHM750620ABC");
+        c3 = customerRepository.save(c3);
+
+        KYC kyc3 = new KYC();
+        kyc3.setCustomer(c3);
+        kyc3.setStatus(KYCStatus.VERIFIED);
+        kyc3.setDocumentType("ACTA_CONSTITUTIVA_RFC_MORAL");
+        kyc3.setDocumentNumber(c3.getTaxId());
+        kycRepository.save(kyc3);
 
         // Fetch products
         CardProduct debitProd = cardProductRepository.findByProductCode("PROD-ALODIGA-DEB").orElse(cardProductRepository.findAll().get(0));
@@ -101,6 +145,12 @@ public class DataSeeder implements CommandLineRunner {
         card1.setCardCategory(CardCategory.PHYSICAL);
         card1.setExpiryDate(LocalDate.now().plusYears(3));
         card1 = cardRepository.save(card1);
+
+        // Administrador de Tarjetas: promoción asignada específicamente al cliente/tarjeta
+        if (cashbackSupermercados != null) {
+            card1.assignPromotion(cashbackSupermercados);
+            card1 = cardRepository.save(card1);
+        }
 
         LedgerAccount acc1 = new LedgerAccount();
         acc1.setCard(card1);
@@ -152,6 +202,13 @@ public class DataSeeder implements CommandLineRunner {
         card4.setCardCategory(CardCategory.PHYSICAL);
         card4.setExpiryDate(LocalDate.now().plusYears(4));
         card4.setCreditLimit(new BigDecimal("5000"));
+        // Administrador de Tarjetas: límites transaccionales personalizados (override del producto)
+        card4.setPerTransactionLimit(new BigDecimal("1500"));
+        card4.setDailyLimitOverride(new BigDecimal("4000"));
+        card4.setInternationalPurchasesEnabled(true);
+        if (bonoVipCredito != null) {
+            card4.assignPromotion(bonoVipCredito);
+        }
         card4 = cardRepository.save(card4);
 
         LedgerAccount acc4 = new LedgerAccount();
@@ -159,6 +216,29 @@ public class DataSeeder implements CommandLineRunner {
         acc4.setCurrency("USD");
         acc4 = ledgerAccountRepository.save(acc4);
         ledgerEntryRepository.save(new LedgerEntry(acc4, EntryType.CREDIT, new BigDecimal("5000"), "Límite de Crédito Aprobado"));
+
+        // Issue Card 5: Comercializadora Alodiga S.A. de C.V. -> Tarjeta empresarial (Persona Jurídica)
+        Card card5 = new Card();
+        card5.setCustomer(c3);
+        card5.setProduct(debitProd);
+        card5.setEmbossedName("COMERCIALIZADORA ALODIGA SA DE CV");
+        card5.setLast4("4321");
+        card5.setStatus(CardStatus.ACTIVE);
+        card5.setCardCategory(CardCategory.PHYSICAL);
+        card5.setExpiryDate(LocalDate.now().plusYears(3));
+        // Administrador de Tarjetas: límites y controles ajustados para uso empresarial
+        card5.setPerTransactionLimit(new BigDecimal("3000"));
+        card5.setDailyLimitOverride(new BigDecimal("10000"));
+        card5.setWeeklyLimitOverride(new BigDecimal("40000"));
+        card5.setMonthlyLimitOverride(new BigDecimal("120000"));
+        card5.setAtmWithdrawalsEnabled(false);
+        card5 = cardRepository.save(card5);
+
+        LedgerAccount acc5 = new LedgerAccount();
+        acc5.setCard(card5);
+        acc5.setCurrency("USD");
+        acc5 = ledgerAccountRepository.save(acc5);
+        ledgerEntryRepository.save(new LedgerEntry(acc5, EntryType.CREDIT, new BigDecimal("15000"), "Apertura Cuenta Empresarial Alodiga"));
 
         log.info("Data seeding with realistic products & cards completed successfully!");
     }

@@ -13,8 +13,14 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class CustomerResponse {
     private Long id;
+    private String customerType;
+    private String displayName;
     private String fullName;
+    private String businessName;
     private String phoneNumber;
+    private String email;
+    private String taxId;
+    private String legalRepresentativeName;
     private String kycStatus;
     private Long cardId;
     private String cardLast4;

@@ -9,11 +9,28 @@ import java.math.BigDecimal;
 @Data
 public class CustomerCreateRequest {
 
+    // PERSONA_NATURAL (default) o PERSONA_JURIDICA
+    private String customerType;
+
     @NotBlank(message = "Full name is required")
     private String fullName;
 
     @NotBlank(message = "Phone number is required")
     private String phoneNumber;
+
+    private String email;
+
+    private String address;
+
+    // RFC: persona física u homoclave de persona moral
+    private String taxId;
+
+    // --- Solo requerido cuando customerType = PERSONA_JURIDICA ---
+    private String businessName; // Razón social
+
+    private String legalRepresentativeName;
+
+    private String legalRepresentativeTaxId;
 
     private String cardLast4;
 
