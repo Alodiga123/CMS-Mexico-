@@ -63,6 +63,23 @@ public class CardIssuanceContractController {
         return ResponseEntity.ok(toResponse(contract));
     }
 
+    @PutMapping("/{id}")
+    @Transactional
+    public ResponseEntity<ContractResponse> updateContract(@PathVariable Long id, @RequestBody ContractCreateRequest request) {
+        CardIssuanceContract contract = getContract(id);
+
+        if (request.getContractNumber() != null && !request.getContractNumber().isBlank()) {
+            contract.setContractNumber(request.getContractNumber());
+        }
+        if (request.getStartDate() != null) contract.setStartDate(request.getStartDate());
+        contract.setEndDate(request.getEndDate());
+        if (request.getTerms() != null) contract.setTerms(request.getTerms());
+
+        contract = contractRepository.save(contract);
+        auditService.log("UPDATE_CONTRACT", "CardIssuanceContract", contract.getId().toString(), "SYSTEM");
+        return ResponseEntity.ok(toResponse(contract));
+    }
+
     @PatchMapping("/{id}/activate")
     @Transactional
     public ResponseEntity<ContractResponse> activateContract(@PathVariable Long id) {

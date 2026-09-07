@@ -63,20 +63,20 @@ public class Card extends BaseEntity {
     private BigDecimal atmDailyLimit;
 
     // ---- Administrador de Tarjetas: controles por canal ----
-    @Column(name = "online_purchases_enabled", nullable = false)
+    @Column(name = "online_purchases_enabled", nullable = false, columnDefinition = "boolean default true")
     private boolean onlinePurchasesEnabled = true;
 
-    @Column(name = "international_purchases_enabled", nullable = false)
+    @Column(name = "international_purchases_enabled", nullable = false, columnDefinition = "boolean default false")
     private boolean internationalPurchasesEnabled = false;
 
-    @Column(name = "contactless_enabled", nullable = false)
+    @Column(name = "contactless_enabled", nullable = false, columnDefinition = "boolean default true")
     private boolean contactlessEnabled = true;
 
-    @Column(name = "atm_withdrawals_enabled", nullable = false)
+    @Column(name = "atm_withdrawals_enabled", nullable = false, columnDefinition = "boolean default true")
     private boolean atmWithdrawalsEnabled = true;
 
     // ---- Configuración de PIN (bloque generado vía HSM) ----
-    @Column(name = "pin_set", nullable = false)
+    @Column(name = "pin_set", nullable = false, columnDefinition = "boolean default false")
     private boolean pinSet = false;
 
     @Column(name = "pin_block")
@@ -88,7 +88,7 @@ public class Card extends BaseEntity {
     @Column(name = "pin_hash")
     private String pinHash;
 
-    @Column(name = "failed_pin_attempts", nullable = false)
+    @Column(name = "failed_pin_attempts", nullable = false, columnDefinition = "integer default 0")
     private int failedPinAttempts = 0;
 
     @Column(name = "pin_set_at")

@@ -111,7 +111,7 @@ public class CardProduct extends BaseEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private CardIssuanceContract contract;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean published = false;
 
     @Column(name = "published_at")

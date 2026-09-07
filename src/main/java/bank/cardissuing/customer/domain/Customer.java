@@ -15,7 +15,7 @@ import lombok.Setter;
 public class Customer extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "customer_type", nullable = false)
+    @Column(name = "customer_type", nullable = false, columnDefinition = "varchar(32) default 'PERSONA_NATURAL'")
     private CustomerType customerType = CustomerType.PERSONA_NATURAL;
 
     private String fullName;
