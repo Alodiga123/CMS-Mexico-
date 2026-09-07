@@ -1294,14 +1294,52 @@
                     <form onsubmit="handleCreateCustomer(event)">
                         <div class="form-grid" style="margin-bottom: 1.25rem;">
                             <div class="form-group">
-                                <label>Nombre Completo:</label>
+                                <label>Tipo de Cliente:</label>
+                                <select id="custType" class="form-control" onchange="toggleCustomerTypeFields()">
+                                    <option value="PERSONA_NATURAL">👤 Persona Natural</option>
+                                    <option value="PERSONA_JURIDICA">🏢 Persona Jurídica (Empresa)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label id="custNameLabel">Nombre Completo:</label>
                                 <input type="text" id="custName" class="form-control" placeholder="Ej: Maria Gutierrez" required />
                             </div>
                             <div class="form-group">
                                 <label>Teléfono de Contacto:</label>
                                 <input type="text" id="custPhone" class="form-control" placeholder="Ej: +58 414 7654321" required />
                             </div>
+                            <div class="form-group">
+                                <label>Correo Electrónico:</label>
+                                <input type="email" id="custEmail" class="form-control" placeholder="Ej: cliente@correo.com" />
+                            </div>
+                            <div class="form-group">
+                                <label id="custTaxIdLabel">RFC / Documento de Identidad:</label>
+                                <input type="text" id="custTaxId" class="form-control" placeholder="Ej: RODC800101H21" />
+                            </div>
+                            <div class="form-group">
+                                <label>Dirección:</label>
+                                <input type="text" id="custAddress" class="form-control" placeholder="Ej: Av. Reforma 123, CDMX" />
+                            </div>
                         </div>
+
+                        <div id="custJuridicaFields" style="display:none; background:var(--navy-soft); border:1px solid var(--border-soft); border-radius:16px; padding:1.25rem; margin-bottom:1.25rem;">
+                            <div style="font-size:0.9rem; font-weight:700; color:var(--navy); margin-bottom:0.85rem;">🏢 Datos de Persona Jurídica</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Razón Social:</label>
+                                    <input type="text" id="custBusinessName" class="form-control" placeholder="Ej: Comercializadora Alodiga S.A. de C.V." />
+                                </div>
+                                <div class="form-group">
+                                    <label>Nombre del Representante Legal:</label>
+                                    <input type="text" id="custLegalRepName" class="form-control" placeholder="Ej: María López Hernández" />
+                                </div>
+                                <div class="form-group">
+                                    <label>RFC del Representante Legal:</label>
+                                    <input type="text" id="custLegalRepTaxId" class="form-control" placeholder="Ej: LOHM750620ABC" />
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-emerald">➕ Crear Cliente</button>
                     </form>
                 </div>
@@ -1316,7 +1354,9 @@
                             <thead>
                                 <tr>
                                     <th>ID Cliente</th>
-                                    <th>Nombre Completo</th>
+                                    <th>Tipo</th>
+                                    <th>Nombre / Razón Social</th>
+                                    <th>RFC</th>
                                     <th>Teléfono</th>
                                     <th>Estado KYC</th>
                                     <th>ID Tarjeta</th>
@@ -1325,7 +1365,7 @@
                                 </tr>
                             </thead>
                             <tbody id="customerTableBody">
-                                <tr><td colspan="7" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
+                                <tr><td colspan="9" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1724,6 +1764,110 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-emerald" onclick="closeHsmDetailsModal()">Aceptar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: ADMINISTRADOR DE TARJETA (LÍMITES, CONTROLES, PIN, PROMOCIONES) -->
+        <div id="cardAdminModal" class="modal-overlay">
+            <div class="modal-card" style="max-width: 820px;">
+                <div class="modal-header">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <span style="font-size:1.4rem;">⚙️</span>
+                        <div>
+                            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main);" id="caModalTitle">Administrador de Tarjeta</h3>
+                            <p style="font-size:0.78rem; color:var(--text-muted);" id="caModalSubtitle">Cargando datos de la tarjeta...</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-red" onclick="closeCardAdminModal()" style="padding:0.4rem 0.8rem; font-size:0.85rem;">✖ Cerrar</button>
+                </div>
+                <div class="modal-body">
+                    <div style="display:flex; flex-direction:column; gap:1.25rem;">
+
+                        <!-- LÍMITES TRANSACCIONALES -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="font-size:0.9rem; font-weight:800; color:var(--navy); margin-bottom:0.85rem;">💳 Límites Transaccionales (Override por Tarjeta)</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Límite por Transacción ($):</label>
+                                    <input type="number" id="caLimitPerTx" class="form-control" placeholder="Sin límite específico" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Diario ($):</label>
+                                    <input type="number" id="caLimitDaily" class="form-control" placeholder="Usa el del producto" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Semanal ($):</label>
+                                    <input type="number" id="caLimitWeekly" class="form-control" placeholder="Usa el del producto" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Mensual ($):</label>
+                                    <input type="number" id="caLimitMonthly" class="form-control" placeholder="Usa el del producto" min="0" step="0.01" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Límite Diario ATM ($):</label>
+                                    <input type="number" id="caLimitAtm" class="form-control" placeholder="Sin límite específico" min="0" step="0.01" />
+                                </div>
+                            </div>
+                            <div style="margin-top:0.85rem; display:flex; justify-content:flex-end;">
+                                <button type="button" class="btn btn-primary" onclick="saveCardLimits()">💾 Guardar Límites</button>
+                            </div>
+                        </div>
+
+                        <!-- CONTROLES POR CANAL -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="font-size:0.9rem; font-weight:800; color:var(--navy); margin-bottom:0.85rem;">🛰️ Controles por Canal</div>
+                            <div class="form-grid">
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlOnline" style="width:18px; height:18px;" /> Compras en Línea (E-commerce)
+                                </label>
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlIntl" style="width:18px; height:18px;" /> Compras Internacionales
+                                </label>
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlContactless" style="width:18px; height:18px;" /> Pago Sin Contacto (Contactless)
+                                </label>
+                                <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+                                    <input type="checkbox" id="caCtrlAtm" style="width:18px; height:18px;" /> Retiros en Cajero (ATM)
+                                </label>
+                            </div>
+                            <div style="margin-top:0.85rem; display:flex; justify-content:flex-end;">
+                                <button type="button" class="btn btn-primary" onclick="saveCardControls()">💾 Guardar Controles</button>
+                            </div>
+                        </div>
+
+                        <!-- PIN -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
+                                <div style="font-size:0.9rem; font-weight:800; color:var(--navy);">🔐 PIN de la Tarjeta (HSM PayShield 10K)</div>
+                                <span class="badge badge-amber" id="caPinStatusBadge">Cargando...</span>
+                            </div>
+                            <div style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+                                <div class="form-group" style="flex:1; min-width:180px;">
+                                    <label>Nuevo PIN (4 dígitos numéricos):</label>
+                                    <input type="password" id="caPinInput" class="form-control" maxlength="4" placeholder="••••" inputmode="numeric" />
+                                </div>
+                                <button type="button" class="btn btn-emerald" onclick="setCardPin()">🔐 Configurar PIN</button>
+                            </div>
+                            <p style="font-size:0.72rem; color:var(--text-muted); margin-top:0.5rem;">El PIN nunca se almacena en texto plano: se procesa junto con el HSM simulado y solo se guarda el bloque cifrado. No se puede evitar cambiarlo por uno de dígitos repetidos o secuenciales.</p>
+                        </div>
+
+                        <!-- PROMOCIONES ASIGNADAS -->
+                        <div style="background:var(--bg-card-hover); border:1px solid var(--border-soft); border-radius:14px; padding:1.1rem;">
+                            <div style="font-size:0.9rem; font-weight:800; color:var(--navy); margin-bottom:0.85rem;">🎁 Promociones Asignadas a este Cliente/Tarjeta</div>
+                            <div id="caPromoList" style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.85rem;">
+                                <div style="color:var(--text-muted); font-size:0.85rem;">Cargando...</div>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                                <select id="caPromoSelect" class="form-control" style="flex:1; min-width:220px;"></select>
+                                <button type="button" class="btn btn-primary" onclick="assignPromoToCard()">➕ Asignar Promoción</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-amber" onclick="closeCardAdminModal()">Cerrar Ventana</button>
                 </div>
             </div>
         </div>
@@ -2850,7 +2994,8 @@
                                 <td><strong style="color: var(--accent-emerald); font-size:0.95rem;">$${Number(card.balance).toLocaleString('es-ES')}</strong></td>
                                 <td>
                                     <div class="btn-group" style="justify-content:center;">
-                                        <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.75rem;" onclick="viewHsmCardDetails(${card.id})">🔍 Detalles HSM</button>
+                                        <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.75rem;" onclick="openCardAdminModal(${card.id})">⚙️ Administrar</button>
+                                        <button class="btn" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="viewHsmCardDetails(${card.id})">🔍 HSM</button>
                                         ${card.status === 'CREATED' || card.status === 'SUSPENDED' ? `<button class="btn btn-emerald" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'ACTIVE')">Activar</button>` : ''}
                                         ${card.status === 'ACTIVE' ? `<button class="btn btn-amber" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'SUSPENDED')">Suspender</button>` : ''}
                                         ${card.status === 'ACTIVE' || card.status === 'SUSPENDED' ? `<button class="btn btn-red" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'BLOCKED')">Bloquear</button>` : ''}
@@ -2869,6 +3014,157 @@
                     body: JSON.stringify({ status: newStatus })
                 });
                 if (res.ok) loadCards();
+            }
+
+            // --- ADMINISTRADOR DE TARJETA (Límites, Controles, PIN, Promociones) ---
+            let currentCardAdminId = null;
+
+            async function openCardAdminModal(cardId) {
+                currentCardAdminId = cardId;
+                document.getElementById('cardAdminModal').classList.add('active');
+                document.getElementById('caModalTitle').textContent = `Administrar Tarjeta #${cardId}`;
+                document.getElementById('caModalSubtitle').textContent = 'Cargando datos de la tarjeta...';
+                await loadCardAdminDetail(cardId);
+            }
+
+            function closeCardAdminModal() {
+                document.getElementById('cardAdminModal').classList.remove('active');
+                currentCardAdminId = null;
+            }
+
+            async function loadCardAdminDetail(cardId) {
+                try {
+                    const res = await fetch(`/api/card-admin/cards/${cardId}`);
+                    if (!res.ok) throw new Error('No se pudo cargar la tarjeta');
+                    const d = await res.json();
+                    renderCardAdminDetail(d);
+                } catch (err) {
+                    document.getElementById('caModalSubtitle').textContent = 'Error: ' + err.message;
+                }
+            }
+
+            function renderCardAdminDetail(d) {
+                const typeLabel = d.customerType === 'PERSONA_JURIDICA' ? '🏢 Persona Jurídica' : '👤 Persona Natural';
+                document.getElementById('caModalTitle').textContent = `Administrar Tarjeta #${d.cardId} — ${d.embossedName}`;
+                document.getElementById('caModalSubtitle').textContent = `${d.customerName || 'Sin cliente'} (${typeLabel}) · ${d.productName} · **** ${d.last4}`;
+
+                document.getElementById('caLimitPerTx').value = d.perTransactionLimit ?? '';
+                document.getElementById('caLimitDaily').value = d.dailyLimit ?? '';
+                document.getElementById('caLimitWeekly').value = d.weeklyLimit ?? '';
+                document.getElementById('caLimitMonthly').value = d.monthlyLimit ?? '';
+                document.getElementById('caLimitAtm').value = d.atmDailyLimit ?? '';
+
+                document.getElementById('caCtrlOnline').checked = !!d.onlinePurchasesEnabled;
+                document.getElementById('caCtrlIntl').checked = !!d.internationalPurchasesEnabled;
+                document.getElementById('caCtrlContactless').checked = !!d.contactlessEnabled;
+                document.getElementById('caCtrlAtm').checked = !!d.atmWithdrawalsEnabled;
+
+                const pinBadge = document.getElementById('caPinStatusBadge');
+                if (d.pinSet) {
+                    pinBadge.textContent = `✅ PIN Configurado${d.failedPinAttempts > 0 ? ` (Intentos fallidos: ${d.failedPinAttempts})` : ''}`;
+                    pinBadge.className = 'badge badge-emerald';
+                } else {
+                    pinBadge.textContent = '⚠️ Sin PIN Configurado';
+                    pinBadge.className = 'badge badge-amber';
+                }
+
+                const promoList = document.getElementById('caPromoList');
+                if (!d.assignedPromotions || d.assignedPromotions.length === 0) {
+                    promoList.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Sin promociones asignadas directamente a esta tarjeta.</div>';
+                } else {
+                    promoList.innerHTML = d.assignedPromotions.map(p => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid var(--border-soft); border-radius:8px; padding:0.5rem 0.75rem;">
+                            <span>🎁 ${p.name}</span>
+                            <button type="button" class="btn btn-red" style="padding:0.25rem 0.6rem; font-size:0.72rem;" onclick="removePromoFromCard(${p.id})">Quitar</button>
+                        </div>
+                    `).join('');
+                }
+
+                populateCaPromoSelect(d.assignedPromotions || []);
+            }
+
+            async function populateCaPromoSelect(assignedPromotions) {
+                const select = document.getElementById('caPromoSelect');
+                if (!globalPromotions || globalPromotions.length === 0) {
+                    try {
+                        const r = await fetch('/api/promotions');
+                        globalPromotions = await r.json();
+                    } catch (e) { globalPromotions = []; }
+                }
+                const assignedIds = new Set(assignedPromotions.map(p => p.id));
+                const available = (globalPromotions || []).filter(p => !assignedIds.has(p.id));
+                select.innerHTML = available.length === 0
+                    ? '<option value="">No hay más promociones disponibles</option>'
+                    : available.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            }
+
+            function caNumberOrNull(id) {
+                const v = document.getElementById(id).value;
+                return v === '' ? null : parseFloat(v);
+            }
+
+            async function saveCardLimits() {
+                if (!currentCardAdminId) return;
+                const payload = {
+                    perTransactionLimit: caNumberOrNull('caLimitPerTx'),
+                    dailyLimit: caNumberOrNull('caLimitDaily'),
+                    weeklyLimit: caNumberOrNull('caLimitWeekly'),
+                    monthlyLimit: caNumberOrNull('caLimitMonthly'),
+                    atmDailyLimit: caNumberOrNull('caLimitAtm'),
+                };
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/limits`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) { alert('Límites actualizados correctamente.'); loadCardAdminDetail(currentCardAdminId); loadCards(); }
+                else { alert('Error al actualizar los límites.'); }
+            }
+
+            async function saveCardControls() {
+                if (!currentCardAdminId) return;
+                const payload = {
+                    onlinePurchasesEnabled: document.getElementById('caCtrlOnline').checked,
+                    internationalPurchasesEnabled: document.getElementById('caCtrlIntl').checked,
+                    contactlessEnabled: document.getElementById('caCtrlContactless').checked,
+                    atmWithdrawalsEnabled: document.getElementById('caCtrlAtm').checked,
+                };
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/controls`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (res.ok) { alert('Controles de canal actualizados correctamente.'); loadCardAdminDetail(currentCardAdminId); }
+                else { alert('Error al actualizar los controles.'); }
+            }
+
+            async function setCardPin() {
+                if (!currentCardAdminId) return;
+                const pin = document.getElementById('caPinInput').value;
+                if (!/^\d{4}$/.test(pin)) { alert('El PIN debe ser de exactamente 4 dígitos numéricos.'); return; }
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/pin`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin })
+                });
+                const data = await res.json().catch(() => null);
+                if (res.ok) {
+                    alert('PIN configurado correctamente a través del HSM.');
+                    document.getElementById('caPinInput').value = '';
+                    loadCardAdminDetail(currentCardAdminId);
+                } else {
+                    alert('Error: ' + (data && data.message ? data.message : 'No se pudo configurar el PIN.'));
+                }
+            }
+
+            async function assignPromoToCard() {
+                if (!currentCardAdminId) return;
+                const promoId = document.getElementById('caPromoSelect').value;
+                if (!promoId) return;
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/promotions/${promoId}`, { method: 'POST' });
+                if (res.ok) loadCardAdminDetail(currentCardAdminId);
+                else alert('Error al asignar la promoción.');
+            }
+
+            async function removePromoFromCard(promoId) {
+                if (!currentCardAdminId) return;
+                const res = await fetch(`/api/card-admin/cards/${currentCardAdminId}/promotions/${promoId}`, { method: 'DELETE' });
+                if (res.ok) loadCardAdminDetail(currentCardAdminId);
+                else alert('Error al quitar la promoción.');
             }
 
             async function handleIssueCard(e) {
@@ -3125,28 +3421,61 @@
             }
 
             // --- OTHER LOADERS ---
+            function toggleCustomerTypeFields() {
+                const isJuridica = document.getElementById('custType').value === 'PERSONA_JURIDICA';
+                document.getElementById('custJuridicaFields').style.display = isJuridica ? 'block' : 'none';
+                document.getElementById('custNameLabel').textContent = isJuridica ? 'Nombre de Contacto:' : 'Nombre Completo:';
+                document.getElementById('custTaxIdLabel').textContent = isJuridica ? 'RFC de la Empresa:' : 'RFC / Documento de Identidad:';
+                document.getElementById('custBusinessName').required = isJuridica;
+                document.getElementById('custLegalRepName').required = isJuridica;
+            }
+
             async function handleCreateCustomer(e) {
                 e.preventDefault();
-                const payload = { fullName: document.getElementById('custName').value, phoneNumber: document.getElementById('custPhone').value };
+                const customerType = document.getElementById('custType').value;
+                const payload = {
+                    customerType: customerType,
+                    fullName: document.getElementById('custName').value,
+                    phoneNumber: document.getElementById('custPhone').value,
+                    email: document.getElementById('custEmail').value || null,
+                    address: document.getElementById('custAddress').value || null,
+                    taxId: document.getElementById('custTaxId').value || null,
+                    businessName: customerType === 'PERSONA_JURIDICA' ? document.getElementById('custBusinessName').value : null,
+                    legalRepresentativeName: customerType === 'PERSONA_JURIDICA' ? document.getElementById('custLegalRepName').value : null,
+                    legalRepresentativeTaxId: customerType === 'PERSONA_JURIDICA' ? document.getElementById('custLegalRepTaxId').value : null,
+                };
                 const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { alert("¡Cliente creado con éxito!"); loadCustomers(); }
+                const data = await res.json().catch(() => null);
+                if (res.ok) {
+                    alert("¡Cliente creado con éxito!");
+                    e.target.reset();
+                    toggleCustomerTypeFields();
+                    loadCustomers();
+                } else {
+                    alert("Error al crear cliente: " + (data && data.message ? data.message : res.statusText));
+                }
             }
 
             async function loadCustomers() {
                 const tbody = document.getElementById('customerTableBody');
                 const res = await fetch('/api/customers');
                 const data = await res.json();
-                tbody.innerHTML = data.map(c => `
+                tbody.innerHTML = data.map(c => {
+                    const isJuridica = c.customerType === 'PERSONA_JURIDICA';
+                    return `
                     <tr>
                         <td><strong>#${c.id}</strong></td>
-                        <td>${c.fullName}</td>
+                        <td><span class="badge ${isJuridica ? 'badge-purple' : 'badge-cyan'}">${isJuridica ? '🏢 Jurídica' : '👤 Natural'}</span></td>
+                        <td>${c.displayName || c.fullName}</td>
+                        <td><code>${c.taxId || '-'}</code></td>
                         <td>${c.phoneNumber}</td>
                         <td><span class="badge badge-emerald">${c.kycStatus}</span></td>
                         <td><strong>Card #${c.cardId || '-'}</strong></td>
                         <td><code>**** ${c.cardLast4}</code></td>
                         <td><strong style="color: var(--accent-emerald);">$${Number(c.balance).toLocaleString()}</strong></td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             }
 
             async function loadAuditLogs() {
@@ -3189,6 +3518,7 @@
             document.addEventListener("DOMContentLoaded", () => {
                 updateCreateFormMockup();
                 loadProducts();
+                toggleCustomerTypeFields();
             });
         </script>
 </body>
