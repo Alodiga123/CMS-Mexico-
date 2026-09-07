@@ -39,8 +39,13 @@ public class CardController {
     private final bank.cardissuing.hsm.infrastructure.HsmService hsmService;
 
     @GetMapping
-    public ResponseEntity<List<CardResponse>> getAllCards() {
+    public ResponseEntity<List<CardResponse>> getAllCards(@RequestParam(required = false) Long customerId) {
         List<Card> cards = cardRepository.findAll();
+        if (customerId != null) {
+            cards = cards.stream()
+                    .filter(c -> c.getCustomer() != null && customerId.equals(c.getCustomer().getId()))
+                    .collect(Collectors.toList());
+        }
         List<CardResponse> responses = cards.stream().map(card -> {
             Customer customer = card.getCustomer();
             CardProduct product = card.getProduct();
@@ -91,6 +96,9 @@ public class CardController {
         CardProduct product = null;
         if (request.getProductId() != null) {
             product = cardProductRepository.findById(request.getProductId()).orElse(null);
+            if (product != null && !product.isPublished()) {
+                throw new bank.cardissuing.card.exception.ProductNotPublishedException(product.getId());
+            }
         }
 
         String last4 = (request.getLast4() != null && request.getLast4().length() == 4)
@@ -111,7 +119,7 @@ public class CardController {
         card.setProduct(product);
         card.setEmbossedName(request.getEmbossedName() != null && !request.getEmbossedName().isBlank()
                 ? request.getEmbossedName().toUpperCase()
-                : customer.getFullName().toUpperCase());
+                : customer.getDisplayName().toUpperCase());
         card.setLast4(last4);
         card.setStatus(CardStatus.ACTIVE);
         card.setCardCategory(request.getCardCategory() != null ? CardCategory.valueOf(request.getCardCategory().toUpperCase()) : CardCategory.PHYSICAL);

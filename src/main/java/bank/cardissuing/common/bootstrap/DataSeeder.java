@@ -1,6 +1,7 @@
 package bank.cardissuing.common.bootstrap;
 
 import bank.cardissuing.card.domain.*;
+import bank.cardissuing.card.infrastructure.CardIssuanceContractRepository;
 import bank.cardissuing.card.infrastructure.CardProductRepository;
 import bank.cardissuing.card.infrastructure.CardRepository;
 import bank.cardissuing.customer.domain.Customer;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Component
@@ -36,6 +38,7 @@ public class DataSeeder implements CommandLineRunner {
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final bank.cardissuing.card.infrastructure.PromotionRepository promotionRepository;
+    private final CardIssuanceContractRepository contractRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -48,6 +51,14 @@ public class DataSeeder implements CommandLineRunner {
             CardProduct debitProd = new CardProduct("PROD-ALODIGA-DEB", "Tarjeta Alodiga Débito Core", CardType.DEBIT, PaymentType.POSTPAID, CardNetwork.VISA, "453211", "USD", BigDecimal.ZERO, new BigDecimal("1500"), new BigDecimal("7000"), new BigDecimal("25000"), "🇺🇸 USA", true);
             CardProduct prepaidProd = new CardProduct("PROD-ALOCASH-PRE", "Tarjeta Alocash Prepago USD", CardType.PREPAID, PaymentType.PREPAID, CardNetwork.ALODIGA_PRIVATE, "601100", "USD", BigDecimal.ZERO, new BigDecimal("500"), new BigDecimal("2500"), new BigDecimal("10000"), "🇻🇪 VZN", true);
             CardProduct creditProd = new CardProduct("PROD-ALOCAS-CRE", "Tarjeta Alocas Crédito Gold", CardType.CREDIT, PaymentType.POSTPAID, CardNetwork.MASTERCARD, "541234", "USD", new BigDecimal("5000"), new BigDecimal("3000"), new BigDecimal("15000"), new BigDecimal("50000"), "🇪🇺 EUR", true);
+
+            // Productos propios del banco (Alodiga Core): publicados desde el inicio, sin contrato externo
+            debitProd.setPublished(true);
+            debitProd.setPublishedAt(LocalDateTime.now());
+            prepaidProd.setPublished(true);
+            prepaidProd.setPublishedAt(LocalDateTime.now());
+            creditProd.setPublished(true);
+            creditProd.setPublishedAt(LocalDateTime.now());
 
             cardProductRepository.save(debitProd);
             cardProductRepository.save(prepaidProd);
@@ -129,6 +140,21 @@ public class DataSeeder implements CommandLineRunner {
         kyc3.setDocumentType("ACTA_CONSTITUTIVA_RFC_MORAL");
         kyc3.setDocumentNumber(c3.getTaxId());
         kycRepository.save(kyc3);
+
+        // Contrato de emisión: Comercializadora Alodiga solicita lanzar su propio programa de tarjetas
+        CardIssuanceContract contract = new CardIssuanceContract();
+        contract.setContractNumber("CTR-000001");
+        contract.setCustomer(c3);
+        contract.setStartDate(LocalDate.now());
+        contract.setTerms("Programa de tarjetas de nómina corporativa para colaboradores de Comercializadora Alodiga S.A. de C.V.");
+        contract.activate();
+        contract = contractRepository.save(contract);
+
+        CardProduct businessProd = new CardProduct("PROD-COMERC-BUS", "Tarjeta Nómina Comercializadora Alodiga", CardType.DEBIT, PaymentType.PREPAID, CardNetwork.VISA, "453299", "USD", BigDecimal.ZERO, new BigDecimal("800"), new BigDecimal("3500"), new BigDecimal("12000"), "🇲🇽 MEX", true);
+        businessProd.setContract(contract);
+        businessProd = cardProductRepository.save(businessProd);
+        businessProd.publish();
+        businessProd = cardProductRepository.save(businessProd);
 
         // Fetch products
         CardProduct debitProd = cardProductRepository.findByProductCode("PROD-ALODIGA-DEB").orElse(cardProductRepository.findAll().get(0));
@@ -220,7 +246,7 @@ public class DataSeeder implements CommandLineRunner {
         // Issue Card 5: Comercializadora Alodiga S.A. de C.V. -> Tarjeta empresarial (Persona Jurídica)
         Card card5 = new Card();
         card5.setCustomer(c3);
-        card5.setProduct(debitProd);
+        card5.setProduct(businessProd);
         card5.setEmbossedName("COMERCIALIZADORA ALODIGA SA DE CV");
         card5.setLast4("4321");
         card5.setStatus(CardStatus.ACTIVE);

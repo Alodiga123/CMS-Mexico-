@@ -1,9 +1,12 @@
 package bank.cardissuing.card.infrastructure;
 
+import bank.cardissuing.audit.application.AuditService;
+import bank.cardissuing.card.domain.CardIssuanceContract;
 import bank.cardissuing.card.domain.CardNetwork;
 import bank.cardissuing.card.domain.CardProduct;
 import bank.cardissuing.card.domain.CardType;
 import bank.cardissuing.card.domain.PaymentType;
+import bank.cardissuing.common.exception.ResourceNotFoundException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.Data;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -22,10 +26,20 @@ import java.util.List;
 public class CardProductController {
 
     private final CardProductRepository cardProductRepository;
+    private final CardIssuanceContractRepository contractRepository;
+    private final AuditService auditService;
 
     @GetMapping
     public ResponseEntity<List<CardProduct>> getAllProducts() {
         return ResponseEntity.ok(cardProductRepository.findAll());
+    }
+
+    @GetMapping("/published")
+    public ResponseEntity<List<CardProduct>> getPublishedProducts() {
+        List<CardProduct> published = cardProductRepository.findAll().stream()
+                .filter(CardProduct::isPublished)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(published);
     }
 
     @GetMapping("/{id}")
@@ -70,7 +84,36 @@ public class CardProductController {
         if (request.getAnnualInterestRate() != null) product.setAnnualInterestRate(request.getAnnualInterestRate());
         product.setActive(true);
 
+        if (request.getContractId() != null) {
+            CardIssuanceContract contract = contractRepository.findById(request.getContractId())
+                    .orElseThrow(() -> new ResourceNotFoundException("CardIssuanceContract", "id", request.getContractId()));
+            product.setContract(contract);
+        }
+
         product = cardProductRepository.save(product);
+        return ResponseEntity.ok(product);
+    }
+
+    @PostMapping("/{id}/publish")
+    @Transactional
+    public ResponseEntity<CardProduct> publishProduct(@PathVariable Long id) {
+        CardProduct product = cardProductRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("CardProduct", "id", id));
+        product.publish();
+        product = cardProductRepository.save(product);
+        auditService.log("PUBLISH_PRODUCT", "CardProduct", product.getId().toString(), "SYSTEM");
+        log.info("Card product published: id={}, contractId={}", product.getId(), product.getContractId());
+        return ResponseEntity.ok(product);
+    }
+
+    @PostMapping("/{id}/unpublish")
+    @Transactional
+    public ResponseEntity<CardProduct> unpublishProduct(@PathVariable Long id) {
+        CardProduct product = cardProductRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("CardProduct", "id", id));
+        product.unpublish();
+        product = cardProductRepository.save(product);
+        auditService.log("UNPUBLISH_PRODUCT", "CardProduct", product.getId().toString(), "SYSTEM");
         return ResponseEntity.ok(product);
     }
 
@@ -107,6 +150,11 @@ public class CardProductController {
         if (request.getInactivityFee() != null) product.setInactivityFee(request.getInactivityFee());
         if (request.getLatePaymentFee() != null) product.setLatePaymentFee(request.getLatePaymentFee());
         if (request.getAnnualInterestRate() != null) product.setAnnualInterestRate(request.getAnnualInterestRate());
+        if (request.getContractId() != null) {
+            CardIssuanceContract contract = contractRepository.findById(request.getContractId())
+                    .orElseThrow(() -> new ResourceNotFoundException("CardIssuanceContract", "id", request.getContractId()));
+            product.setContract(contract);
+        }
 
         product = cardProductRepository.save(product);
         return ResponseEntity.ok(product);
@@ -140,5 +188,6 @@ public class CardProductController {
         private BigDecimal inactivityFee;
         private BigDecimal latePaymentFee;
         private BigDecimal annualInterestRate;
+        private Long contractId;
     }
 }
