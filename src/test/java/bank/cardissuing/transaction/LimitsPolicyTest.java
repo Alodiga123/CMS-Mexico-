@@ -19,6 +19,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,7 +40,8 @@ class LimitsPolicyTest {
                 null, new BigDecimal("1000"), new BigDecimal("5000"), new BigDecimal("20000"), "MX", true));
         controls = new CardControls(card);
         when(controlsService.forCard(card)).thenReturn(controls);
-        when(holds.sumSince(eq(card), any(), any())).thenReturn(new BigDecimal("900"));
+        // Not every case reaches the repository (a zero limit short-circuits), so keep this stub lenient.
+        lenient().when(holds.sumSince(eq(card), any(), any())).thenReturn(new BigDecimal("900"));
     }
 
     @Test
