@@ -1,5 +1,7 @@
 package bank.cardissuing.transaction.domain;
 
+import bank.cardissuing.card.domain.Channel;
+import bank.cardissuing.common.exception.BusinessException;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,6 +11,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 
@@ -37,7 +40,31 @@ public class AuthorizationRequest {
     @Size(max = 30)
     private String transactionType;
 
+    /** POS, ATM, ECOMMERCE or CONTACTLESS. Derived from transactionType when absent. */
+    @Size(max = 20)
+    private String channel;
+
+    /** Merchant country (ISO code or the product's own convention). Absent means domestic. */
+    @Size(max = 3)
+    private String countryCode;
+
     public String transactionTypeOrDefault() {
         return transactionType == null || transactionType.isBlank() ? "PURCHASE" : transactionType;
+    }
+
+    /** An unknown channel is rejected, never silently treated as POS: that would bypass a control. */
+    public Channel channelOrDefault() {
+        if (channel != null && !channel.isBlank()) {
+            try {
+                return Channel.valueOf(channel.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException("INVALID_CHANNEL", "Unknown channel '" + channel + "'", HttpStatus.BAD_REQUEST);
+            }
+        }
+        return switch (transactionTypeOrDefault().toUpperCase()) {
+            case "ATM_WITHDRAWAL" -> Channel.ATM;
+            case "ECOMMERCE" -> Channel.ECOMMERCE;
+            default -> Channel.POS;
+        };
     }
 }

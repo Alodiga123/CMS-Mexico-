@@ -9,6 +9,7 @@ public enum ResponseCode {
     INVALID_CARD("14", "Invalid card number"),
     INSUFFICIENT_FUNDS("51", "Insufficient funds"),
     EXPIRED_CARD("54", "Expired card"),
+    NOT_PERMITTED("57", "Transaction not permitted to cardholder"),
     EXCEEDS_LIMIT("61", "Exceeds withdrawal amount limit"),
     RESTRICTED_CARD("62", "Restricted card"),
     DUPLICATE("94", "Duplicate transmission"),

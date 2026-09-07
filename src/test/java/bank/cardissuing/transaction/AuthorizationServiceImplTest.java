@@ -12,6 +12,8 @@ import bank.cardissuing.funds.domain.HoldStatus;
 import bank.cardissuing.funds.infrastructure.AuthorizationHoldRepository;
 import bank.cardissuing.idempotency.application.IdempotencyService;
 import bank.cardissuing.transaction.application.AuthorizationServiceImpl;
+import bank.cardissuing.transaction.application.Breach;
+import bank.cardissuing.transaction.application.ControlsPolicy;
 import bank.cardissuing.transaction.application.LimitsPolicy;
 import bank.cardissuing.transaction.domain.AuthorizationRequest;
 import bank.cardissuing.transaction.domain.AuthorizationResponse;
@@ -40,6 +42,7 @@ class AuthorizationServiceImplTest {
 
     @Mock CardRepository cardRepository;
     @Mock FundsRouter router;
+    @Mock ControlsPolicy controls;
     @Mock LimitsPolicy limits;
     @Mock AuthorizationHoldRepository holds;
     @Mock IdempotencyService idempotency;
@@ -50,7 +53,7 @@ class AuthorizationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new AuthorizationServiceImpl(cardRepository, router, limits, holds, idempotency, new ObjectMapper());
+        service = new AuthorizationServiceImpl(cardRepository, router, controls, limits, holds, idempotency, new ObjectMapper());
         CardProduct product = new CardProduct("PRE-01", "Prepago", CardType.PREPAID, PaymentType.PREPAID,
                 CardNetwork.VISA, "453211", "MXN", null, true);
         card = new Card(new Customer(), "4321", CardStatus.ACTIVE, LocalDate.now().plusYears(2));
@@ -66,7 +69,8 @@ class AuthorizationServiceImplTest {
         when(cardRepository.findById(7L)).thenReturn(Optional.of(card));
     }
 
-    private void routed() {
+    private void allowed() {
+        when(controls.check(eq(card), any())).thenReturn(Optional.empty());
         when(router.forCard(card)).thenReturn(port);
         when(limits.check(eq(card), any())).thenReturn(Optional.empty());
     }
@@ -85,32 +89,42 @@ class AuthorizationServiceImplTest {
         AuthorizationResponse r = service.authorize(req("100"), null);
         assertFalse(r.isApproved());
         assertEquals(ResponseCode.RESTRICTED_CARD.getCode(), r.getResponseCode());
-        verifyNoInteractions(router);
+        verifyNoInteractions(controls, router);
     }
 
     @Test
     void authorize_whenCardExpired_shouldDecline54() {
         card.setExpiryDate(LocalDate.now().minusDays(1));
         cardFound();
+        assertEquals("54", service.authorize(req("100"), null).getResponseCode());
+    }
+
+    @Test
+    void authorize_whenControlBlocks_shouldDecline57_beforeRoutingOrLimits() {
+        cardFound();
+        when(controls.check(eq(card), any()))
+                .thenReturn(Optional.of(new Breach(ResponseCode.NOT_PERMITTED, "ECOMMERCE is disabled on this card")));
         AuthorizationResponse r = service.authorize(req("100"), null);
-        assertEquals("54", r.getResponseCode());
+        assertEquals("57", r.getResponseCode());
+        assertTrue(r.getMessage().contains("ECOMMERCE"));
+        verifyNoInteractions(router, limits, holds);
     }
 
     @Test
     void authorize_whenLimitExceeded_shouldDecline61_withoutTouchingFunds() {
         cardFound();
+        when(controls.check(eq(card), any())).thenReturn(Optional.empty());
         when(router.forCard(card)).thenReturn(port);
         when(limits.check(eq(card), any()))
-                .thenReturn(Optional.of(new LimitsPolicy.Breach(ResponseCode.EXCEEDS_LIMIT, "daily")));
-        AuthorizationResponse r = service.authorize(req("100"), null);
-        assertEquals("61", r.getResponseCode());
+                .thenReturn(Optional.of(new Breach(ResponseCode.EXCEEDS_LIMIT, "daily")));
+        assertEquals("61", service.authorize(req("100"), null).getResponseCode());
         verify(port, never()).available(any());
         verify(holds, never()).save(any());
     }
 
     @Test
     void authorize_whenInsufficientFunds_shouldDecline51() {
-        cardFound(); routed();
+        cardFound(); allowed();
         when(port.available(card)).thenReturn(new BigDecimal("50"));
         AuthorizationResponse r = service.authorize(req("100"), null);
         assertFalse(r.isApproved());
@@ -120,7 +134,7 @@ class AuthorizationServiceImplTest {
 
     @Test
     void authorize_whenSuccess_shouldHoldAndReturnAvailableAfter() {
-        cardFound(); routed();
+        cardFound(); allowed();
         when(port.available(card)).thenReturn(new BigDecimal("500"));
         when(holds.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -147,13 +161,13 @@ class AuthorizationServiceImplTest {
         AuthorizationResponse r = service.authorize(req("120"), "k1");
 
         assertEquals("AUTH-CACHED", r.getApprovalCode());
-        verifyNoInteractions(cardRepository, router, holds);
+        verifyNoInteractions(cardRepository, controls, router, holds);
     }
 
     @Test
     void authorize_withIdempotencyKey_shouldRememberDecision() {
         when(idempotency.getExistingResponse("k2")).thenReturn(Optional.empty());
-        cardFound(); routed();
+        cardFound(); allowed();
         when(port.available(card)).thenReturn(new BigDecimal("500"));
         when(holds.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -183,8 +197,7 @@ class AuthorizationServiceImplTest {
         when(router.forCard(card)).thenReturn(port);
         when(holds.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        AuthorizationHold out = service.capture("AUTH-2", new BigDecimal("95.50"));
-        assertEquals(new BigDecimal("95.50"), out.getCapturedAmount());
+        assertEquals(new BigDecimal("95.50"), service.capture("AUTH-2", new BigDecimal("95.50")).getCapturedAmount());
     }
 
     @Test
@@ -205,8 +218,7 @@ class AuthorizationServiceImplTest {
         when(router.forCard(card)).thenReturn(port);
         when(holds.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        AuthorizationHold out = service.reverse("AUTH-4");
-        assertEquals(HoldStatus.RELEASED, out.getStatus());
+        assertEquals(HoldStatus.RELEASED, service.reverse("AUTH-4").getStatus());
         verify(port).release(card, h);
     }
 }

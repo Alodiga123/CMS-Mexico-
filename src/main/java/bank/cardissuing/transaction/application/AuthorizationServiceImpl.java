@@ -16,6 +16,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,11 @@ import java.util.UUID;
  * The authorizer. Two questions per operation — what card is this (CMS) and are there
  * funds (the port the router picks) — then a decision that reserves but never debits.
  *
+ * <p>Order of checks, cheapest and most local first: card state → card controls
+ * (channel, international, per-transaction cap) → velocity limits → funds. A decline
+ * at any step answers without touching the steps after it, so a switched-off channel
+ * never reaches the core.
+ *
  * <p>Declines are answers with an ISO code, not HTTP errors: a switch expects a 0110
  * for every 0100. Only "card does not exist" and infrastructure failures throw.
  */
@@ -38,11 +44,12 @@ import java.util.UUID;
 public class AuthorizationServiceImpl implements AuthorizationService {
 
     /** Days an approved-but-uncaptured authorization keeps funds reserved. */
-    @org.springframework.beans.factory.annotation.Value("${holds.default-days:7}")
+    @Value("${holds.default-days:7}")
     private int holdDays = 7;
 
     private final CardRepository cardRepository;
     private final FundsRouter router;
+    private final ControlsPolicy controls;
     private final LimitsPolicy limits;
     private final AuthorizationHoldRepository holds;
     private final IdempotencyService idempotency;
@@ -60,9 +67,9 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
         AuthorizationResponse response = decide(card, request, idempotencyKey, cardType);
         remember(idempotencyKey, response);
-        log.info("Authorization {} card={} amount={} code={} merchant={}",
+        log.info("Authorization {} card={} amount={} channel={} code={} merchant={}",
                 response.isApproved() ? "APPROVED" : "DECLINED", card.getId(), request.getAmount(),
-                response.getResponseCode(), request.getMerchantName());
+                request.channelOrDefault(), response.getResponseCode(), request.getMerchantName());
         return response;
     }
 
@@ -74,11 +81,16 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             return AuthorizationResponse.decline(ResponseCode.EXPIRED_CARD, "expired " + card.getExpiryDate(), cardType);
         }
 
+        Optional<Breach> control = controls.check(card, request);
+        if (control.isPresent()) {
+            return AuthorizationResponse.decline(control.get().code(), control.get().detail(), cardType);
+        }
+
         FundsPort port = router.forCard(card);
 
-        Optional<LimitsPolicy.Breach> breach = limits.check(card, request.getAmount());
-        if (breach.isPresent()) {
-            return AuthorizationResponse.decline(breach.get().code(), breach.get().detail(), cardType);
+        Optional<Breach> limit = limits.check(card, request.getAmount());
+        if (limit.isPresent()) {
+            return AuthorizationResponse.decline(limit.get().code(), limit.get().detail(), cardType);
         }
 
         BigDecimal available = port.available(card);
