@@ -32,7 +32,7 @@ import java.util.Map;
 @ConditionalOnProperty(name = "core.mode", havingValue = "fineract")
 public class FineractCoreBankingClient implements CoreBankingClient {
 
-    private static final DateTimeFormatter FINERACT_DATE = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    private static final DateTimeFormatter FINERACT_DATE = DateTimeFormatter.ofPattern("dd MMMM yyyy", java.util.Locale.ENGLISH);
 
     private final RestClient http;
 
