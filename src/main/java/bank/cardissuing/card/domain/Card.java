@@ -42,6 +42,13 @@ public class Card extends BaseEntity {
     @Column(precision = 19, scale = 2)
     private BigDecimal creditLimit;
 
+    /**
+     * Account id in the core banking system (for Mifos, the savings account id).
+     * Only meaningful for products whose funds live in the core; null otherwise.
+     */
+    @Column(name = "external_account_id", length = 80)
+    private String externalAccountId;
+
     public Card(Customer customer, String last4, CardStatus status, LocalDate expiryDate) {
         this.customer = customer;
         this.last4 = last4;

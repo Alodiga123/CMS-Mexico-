@@ -1,59 +1,151 @@
 package bank.cardissuing.transaction.application;
 
 import bank.cardissuing.card.domain.Card;
-import bank.cardissuing.card.exception.InvalidStateTransactionException;
+import bank.cardissuing.card.domain.CardStatus;
 import bank.cardissuing.card.infrastructure.CardRepository;
-import bank.cardissuing.ledger.application.LedgerService;
-import bank.cardissuing.ledger.domain.LedgerAccount;
+import bank.cardissuing.common.exception.ResourceNotFoundException;
+import bank.cardissuing.funds.application.FundsRouter;
+import bank.cardissuing.funds.domain.AuthorizationHold;
+import bank.cardissuing.funds.domain.FundsPort;
+import bank.cardissuing.funds.infrastructure.AuthorizationHoldRepository;
+import bank.cardissuing.idempotency.application.IdempotencyService;
 import bank.cardissuing.transaction.domain.AuthorizationRequest;
 import bank.cardissuing.transaction.domain.AuthorizationResponse;
-import bank.cardissuing.common.exception.ResourceNotFoundException;
-import jakarta.transaction.Transactional;
+import bank.cardissuing.transaction.domain.ResponseCode;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
+/**
+ * The authorizer. Two questions per operation — what card is this (CMS) and are there
+ * funds (the port the router picks) — then a decision that reserves but never debits.
+ *
+ * <p>Declines are answers with an ISO code, not HTTP errors: a switch expects a 0110
+ * for every 0100. Only "card does not exist" and infrastructure failures throw.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthorizationServiceImpl implements AuthorizationService {
 
-    private final LedgerService ledgerService;
+    private static final int HOLD_DAYS = 7;
+
     private final CardRepository cardRepository;
+    private final FundsRouter router;
+    private final LimitsPolicy limits;
+    private final AuthorizationHoldRepository holds;
+    private final IdempotencyService idempotency;
+    private final ObjectMapper json;
 
+    @Override
     @Transactional
-    public AuthorizationResponse authorize(AuthorizationRequest request) {
-        log.info("Processing authorization: cardId={}, amount={}, merchant={}",
-                request.getCardId(), request.getAmount(), request.getMerchantName());
+    public AuthorizationResponse authorize(AuthorizationRequest request, String idempotencyKey) {
+        Optional<AuthorizationResponse> replay = replay(idempotencyKey);
+        if (replay.isPresent()) return replay.get();
 
-        // B1 đi tìm card
         Card card = cardRepository.findById(request.getCardId())
                 .orElseThrow(() -> new ResourceNotFoundException("Card", "id", request.getCardId()));
+        String cardType = card.getProduct() != null ? card.getProduct().getCardType().name() : null;
 
-        // Note: card.validateForAuthorization() might throw IllegalStateException.
-        // Ideally we should refactor Card.java to throw InvalidCardStateException
-        // (extends BusinessException)
-        // allowing GlobalExceptionHandler to catch it properly (409 Conflict).
-        card.validateForAuthorization();
-
-        LedgerAccount ledgerAccount = ledgerService.getLedgerAccountByCardId(card);
-        Long ledgerAccountId = ledgerAccount.getId();
-
-        // B2 tim tien tru
-        ledgerService.debit(ledgerAccountId, request.getAmount(),
-                request.getMerchantName(), "Authorization Debit");
-
-        // Get updated balance
-        BigDecimal newBalance = ledgerService.getBalance(ledgerAccountId);
-
-        AuthorizationResponse response = AuthorizationResponse.approve("AUTH-" + System.currentTimeMillis(),
-                newBalance);
-
-        log.info("Authorization approved: cardId={}, approvalCode={}, newBalance={}",
-                card.getId(), response.getApprovalCode(), response.getAmount());
-
+        AuthorizationResponse response = decide(card, request, idempotencyKey, cardType);
+        remember(idempotencyKey, response);
+        log.info("Authorization {} card={} amount={} code={} merchant={}",
+                response.isApproved() ? "APPROVED" : "DECLINED", card.getId(), request.getAmount(),
+                response.getResponseCode(), request.getMerchantName());
         return response;
+    }
+
+    private AuthorizationResponse decide(Card card, AuthorizationRequest request, String idempotencyKey, String cardType) {
+        if (card.getStatus() != CardStatus.ACTIVE) {
+            return AuthorizationResponse.decline(ResponseCode.RESTRICTED_CARD, "card is " + card.getStatus(), cardType);
+        }
+        if (card.getExpiryDate() != null && card.getExpiryDate().isBefore(LocalDate.now())) {
+            return AuthorizationResponse.decline(ResponseCode.EXPIRED_CARD, "expired " + card.getExpiryDate(), cardType);
+        }
+
+        FundsPort port = router.forCard(card);
+
+        Optional<LimitsPolicy.Breach> breach = limits.check(card, request.getAmount());
+        if (breach.isPresent()) {
+            return AuthorizationResponse.decline(breach.get().code(), breach.get().detail(), cardType);
+        }
+
+        BigDecimal available = port.available(card);
+        if (available.compareTo(request.getAmount()) < 0) {
+            return AuthorizationResponse.decline(ResponseCode.INSUFFICIENT_FUNDS,
+                    "requested " + request.getAmount() + ", available " + available, cardType);
+        }
+
+        AuthorizationHold hold = new AuthorizationHold(card, newApprovalCode(), request.getAmount(),
+                request.getMerchantName(), request.getMerchantId(), request.transactionTypeOrDefault(),
+                LocalDateTime.now().plusDays(HOLD_DAYS));
+        hold.setIdempotencyKey(idempotencyKey);
+        port.hold(card, hold);
+        holds.save(hold);
+
+        return AuthorizationResponse.approve(hold.getApprovalCode(), available.subtract(request.getAmount()), cardType);
+    }
+
+    @Override
+    @Transactional
+    public AuthorizationHold capture(String approvalCode, BigDecimal amount) {
+        AuthorizationHold hold = get(approvalCode);
+        Card card = hold.getCard();
+        hold.capture(amount != null ? amount : hold.getAmount());
+        router.forCard(card).capture(card, hold);
+        log.info("Captured {} of {} on {}", hold.getCapturedAmount(), hold.getAmount(), approvalCode);
+        return holds.save(hold);
+    }
+
+    @Override
+    @Transactional
+    public AuthorizationHold reverse(String approvalCode) {
+        AuthorizationHold hold = get(approvalCode);
+        Card card = hold.getCard();
+        hold.release();
+        router.forCard(card).release(card, hold);
+        log.info("Reversed {} on {}", hold.getAmount(), approvalCode);
+        return holds.save(hold);
+    }
+
+    @Override
+    public AuthorizationHold get(String approvalCode) {
+        return holds.findByApprovalCode(approvalCode)
+                .orElseThrow(() -> new ResourceNotFoundException("AuthorizationHold", "approvalCode", approvalCode));
+    }
+
+    private Optional<AuthorizationResponse> replay(String key) {
+        if (key == null || key.isBlank()) return Optional.empty();
+        return idempotency.getExistingResponse(key).map(cached -> {
+            try {
+                log.info("Idempotent replay for key={}", key);
+                return json.readValue(cached, AuthorizationResponse.class);
+            } catch (JsonProcessingException e) {
+                log.error("Cached authorization for key={} is unreadable; re-authorizing", key, e);
+                return null;
+            }
+        });
+    }
+
+    private void remember(String key, AuthorizationResponse response) {
+        if (key == null || key.isBlank()) return;
+        try {
+            idempotency.saveResponse(key, json.writeValueAsString(response));
+        } catch (JsonProcessingException e) {
+            log.error("Could not cache authorization for key={}", key, e);
+        }
+    }
+
+    private static String newApprovalCode() {
+        return "AUTH-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 }
