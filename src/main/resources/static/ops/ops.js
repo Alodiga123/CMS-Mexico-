@@ -607,7 +607,7 @@
             try {
                 const rows = await api('GET', '/api/reports/runs');
                 if (!rows.length) return empty(tbody, 9, 'Todavía no hay corridas.');
-                tbody.innerHTML = rows.map(r => `<tr><td>#${r.id}</td><td>${esc(r.title)}</td><td>${esc(r.from)} → ${esc(r.to)}</td><td class="ops-muted">${esc(r.params)}</td><td>${r.rowCount}</td><td>${esc(r.generatedBy)}</td><td class="ops-mono">${dt(r.generatedAt)}</td><td class="ops-mono" title="${esc(r.sha256)}">${esc(r.sha256.slice(0, 12))}…</td>
+                tbody.innerHTML = rows.map(r => `<tr><td>#${r.id}</td><td>${esc(r.title)}</td><td>${esc(r.from)} → ${esc(r.to)}</td><td class="ops-muted ops-mono" style="white-space:normal;max-width:240px;word-break:break-all;font-size:11px">${esc((r.params || "").replace(/;/g, "; "))}</td><td>${r.rowCount}</td><td>${esc(r.generatedBy)}</td><td class="ops-mono">${dt(r.generatedAt)}</td><td class="ops-mono" title="${esc(r.sha256)}">${esc(r.sha256.slice(0, 12))}…</td>
                     <td class="ops-actions"><a class="btn btn-primary" href="/api/reports/runs/${r.id}/csv">⬇ CSV</a><button class="btn btn-emerald" onclick="ops.reports.verify(${r.id})">Verificar sello</button></td></tr>`).join('');
             } catch (e) { errRow(tbody, 9, e); }
         },
