@@ -56,4 +56,18 @@ public class PrepaidLedgerFunds implements FundsPort {
     public void release(Card card, AuthorizationHold hold) {
         // Nothing moved, nothing to give back.
     }
+
+    @Override
+    public String credit(Card card, BigDecimal amount, String reference) {
+        LedgerAccount account = ledgerService.getLedgerAccountByCardId(card);
+        ledgerService.credit(account.getId(), amount, reference, "Credit outside authorization");
+        return reference;
+    }
+
+    @Override
+    public String debit(Card card, BigDecimal amount, String reference) {
+        LedgerAccount account = ledgerService.getLedgerAccountByCardId(card);
+        ledgerService.debit(account.getId(), amount, reference, "Debit outside authorization");
+        return reference;
+    }
 }

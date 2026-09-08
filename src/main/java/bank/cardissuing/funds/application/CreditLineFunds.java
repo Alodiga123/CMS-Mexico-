@@ -3,11 +3,13 @@ package bank.cardissuing.funds.application;
 import bank.cardissuing.card.domain.Card;
 import bank.cardissuing.card.domain.CardProduct;
 import bank.cardissuing.card.domain.CardType;
+import bank.cardissuing.common.exception.BusinessException;
 import bank.cardissuing.funds.domain.AuthorizationHold;
 import bank.cardissuing.funds.domain.FundsPort;
 import bank.cardissuing.funds.domain.HoldStatus;
 import bank.cardissuing.funds.infrastructure.AuthorizationHoldRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -18,6 +20,8 @@ import java.math.BigDecimal;
  * <p>The card's own limit wins over the product's. Repayments are not modelled yet:
  * captured amounts count as used until a statement/payment module reduces them, so
  * this is a revolving line without the "revolving" part. Good enough to authorize.
+ * Credits and debits outside an authorization (refunds, provisional credits) need
+ * that statement module and are refused until it exists.
  */
 @Component
 @RequiredArgsConstructor
@@ -48,4 +52,20 @@ public class CreditLineFunds implements FundsPort {
 
     @Override
     public void release(Card card, AuthorizationHold hold) { }
+
+    @Override
+    public String credit(Card card, BigDecimal amount, String reference) {
+        throw unsupported("credit");
+    }
+
+    @Override
+    public String debit(Card card, BigDecimal amount, String reference) {
+        throw unsupported("debit");
+    }
+
+    private static BusinessException unsupported(String op) {
+        return new BusinessException("NOT_SUPPORTED_FOR_CREDIT",
+                "A " + op + " outside an authorization needs the credit statement module, not built yet",
+                HttpStatus.UNPROCESSABLE_ENTITY);
+    }
 }

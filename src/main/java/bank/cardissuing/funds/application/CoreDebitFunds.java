@@ -82,6 +82,16 @@ public class CoreDebitFunds implements FundsPort {
         }
     }
 
+    @Override
+    public String credit(Card card, BigDecimal amount, String reference) {
+        return core.deposit(accountOf(card), amount, reference);
+    }
+
+    @Override
+    public String debit(Card card, BigDecimal amount, String reference) {
+        return core.withdraw(accountOf(card), amount, reference);
+    }
+
     private static String accountOf(Card card) {
         String id = card.getExternalAccountId();
         if (id == null || id.isBlank()) {

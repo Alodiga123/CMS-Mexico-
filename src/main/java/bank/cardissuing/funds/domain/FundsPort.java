@@ -6,7 +6,7 @@ import bank.cardissuing.card.domain.CardProduct;
 import java.math.BigDecimal;
 
 /**
- * Where the money of a card lives, and the four things the authorizer can ask of it.
+ * Where the money of a card lives, and what the CMS can ask of it.
  *
  * <p>One implementation per product family. The authorizer never knows whether funds
  * are in the internal ledger, in the core banking system or in a credit line: it asks
@@ -27,4 +27,10 @@ public interface FundsPort {
 
     /** Give the reservation back without moving money. */
     void release(Card card, AuthorizationHold hold);
+
+    /** Put money back on the card outside an authorization: a refund or a provisional credit. Returns a reference. */
+    String credit(Card card, BigDecimal amount, String reference);
+
+    /** Take money off the card outside an authorization: undoing a provisional credit. Returns a reference. */
+    String debit(Card card, BigDecimal amount, String reference);
 }
