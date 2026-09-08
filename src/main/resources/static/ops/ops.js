@@ -520,15 +520,22 @@
     // ------------------------------------------------------------------ PLÁSTICOS
     const plastics = {
         actions(p, refresh) {
-            const call = (action, extra) => `ops.plastics.act(${p.id},'${action}',${extra ? 'true' : 'false'},'${refresh}')`;
-            const b = (label, cls, action, extra) => `<button class="btn ${cls}" onclick="${call(action, extra)}">${label}</button>`;
+            // one selector per row: the options are the moves the plastic can make from its state
+            const o = (label, action, extra) => `<option value="${action}:${extra ? 1 : 0}">${label}</option>`;
             let out = '';
-            if (p.status === 'PRODUCED') out += b('Enviar', 'btn-primary', 'ship', true);
-            if (p.status === 'SHIPPED') out += b('Entregado', 'btn-primary', 'deliver') + b('Devuelto', 'btn-amber', 'return', true);
-            if (p.status === 'DELIVERED') out += b('Activar', 'btn-emerald', 'activate');
-            if (['REQUESTED', 'PRODUCED', 'SHIPPED', 'DELIVERED', 'RETURNED'].includes(p.status)) out += b('Destruir', 'btn-red', 'destroy', true);
-            if (['ACTIVATED', 'DELIVERED', 'SHIPPED', 'PRODUCED'].includes(p.status)) out += `<button class="btn btn-amber" onclick="ops.plastics.replace(${p.id},'${refresh}')">Reponer</button>`;
-            return out;
+            if (p.status === 'PRODUCED') out += o('Enviar (mensajería y guía)', 'ship', true);
+            if (p.status === 'SHIPPED') out += o('Marcar entregado', 'deliver') + o('Devuelto', 'return', true);
+            if (p.status === 'DELIVERED') out += o('Activar', 'activate');
+            if (['ACTIVATED', 'DELIVERED', 'SHIPPED', 'PRODUCED'].includes(p.status)) out += o('Reponer', 'replace');
+            if (['REQUESTED', 'PRODUCED', 'SHIPPED', 'DELIVERED', 'RETURNED'].includes(p.status)) out += o('Destruir', 'destroy', true);
+            if (!out) return '';
+            return `<select class="form-control" style="min-width:150px;padding:4px 8px;font-size:12px" onchange="ops.plastics.pick(this, ${p.id}, '${refresh}')"><option value="">Acción…</option>${out}</select>`;
+        },
+        async pick(sel, id, refresh) {
+            const v = sel.value; sel.value = ''; if (!v) return;
+            const [action, extra] = v.split(':');
+            if (action === 'replace') return this.replace(id, refresh);
+            return this.act(id, action, extra === '1', refresh);
         },
         async act(id, action, extra, refresh) {
             let body = { by: who() };
@@ -553,7 +560,7 @@
                 const count = (s) => rows.filter(p => p.status === s).length;
                 if (!st) $('plKpis').innerHTML = kpi('Pedidos', count('REQUESTED'), count('REQUESTED') ? 'warn' : '') + kpi('En lote', count('IN_BATCH')) + kpi('En fabricante', count('SENT_TO_MANUFACTURER')) + kpi('Producidos', count('PRODUCED')) + kpi('Enviados', count('SHIPPED')) + kpi('Entregados', count('DELIVERED')) + kpi('Activados', count('ACTIVATED'), 'ok');
                 if (!rows.length) return empty(tbody, 10, 'Sin plásticos.');
-                tbody.innerHTML = rows.map(p => `<tr><td>#${p.id}</td><td><a href="#" onclick="ops.card360.open(${p.cardId});return false">#${p.cardId}</a></td><td>${p.sequence}</td><td>${esc(p.reason)}</td><td>${badge(p.status)}</td><td>${esc(p.embossedName)}</td><td>${esc(p.expiry)}</td><td class="ops-mono">${esc(p.batchNumber)}</td><td>${esc(p.carrier)} ${esc(p.trackingNumber)}</td><td class="ops-actions">${this.actions(p, 'ops.plastics.load()')}</td></tr>`).join('');
+                tbody.innerHTML = rows.map(p => `<tr><td>#${p.id}</td><td><a href="#" onclick="ops.card360.open(${p.cardId});return false">#${p.cardId}</a></td><td>${p.sequence}</td><td>${esc(p.reason)}</td><td>${badge(p.status)}</td><td>${esc(p.embossedName)}</td><td class="ops-mono">${esc(p.expiry)}</td><td class="ops-mono">${esc(p.batchNumber)}</td><td style="white-space:nowrap">${esc(p.carrier || '')} <span class="ops-mono">${esc(p.trackingNumber || '')}</span></td><td class="ops-actions">${this.actions(p, 'ops.plastics.load()')}</td></tr>`).join('');
             } catch (e) { errRow(tbody, 10, e); }
         },
         async renewals() { try { const r = await api('POST', `/api/plastics/renewals?withinDays=${$('plRenewDays').value || 60}&by=${encodeURIComponent(who())}`); toast('Renovaciones pedidas: ' + r.length, 'ok'); await this.load(); } catch (e) { fail(e); } },
