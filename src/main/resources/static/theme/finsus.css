@@ -188,3 +188,9 @@ label, .form-group label { display: block; }
 .main-content { min-width: 0; overflow-x: hidden; }
 .form-step-nav { flex-wrap: wrap; gap: 6px; }
 .form-step-btn { white-space: nowrap; }
+
+/* ── formularios heredados: filas alineadas y botones auxiliares compactos ── */
+.form-group label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.form-group div[style*="display:flex"], .form-group div[style*="display: flex"] { align-items: stretch; }
+.form-group div[style*="display:flex"] > .form-control, .form-group div[style*="display: flex"] > .form-control { min-width: 0; flex: 1 1 auto; }
+.form-group div[style*="display:flex"] > .btn, .form-group div[style*="display: flex"] > .btn { flex: 0 0 auto; padding: 6px 12px !important; font-size: 12px !important; }
