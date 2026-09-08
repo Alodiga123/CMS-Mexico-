@@ -46,7 +46,7 @@
     const rc = (code, approved) => `<span class="badge ${approved ? 'badge-emerald' : (code === '1A' ? 'badge-amber' : 'badge-red')} ops-mono">${esc(code)}</span>`;
     const empty = (tbody, cols, text) => { tbody.innerHTML = `<tr><td colspan="${cols}" class="ops-empty">${esc(text || 'Sin registros.')}</td></tr>`; };
     const errRow = (tbody, cols, e) => { tbody.innerHTML = `<tr><td colspan="${cols}" class="ops-error">${esc(e.message)}</td></tr>`; };
-    const kpi = (label, value, cls) => `<div class="ops-kpi ${cls || ''}"><div class="l">${esc(label)}</div><div class="v">${esc(value)}</div></div>`;
+    const kpi = (label, value, cls) => `<div class="ops-kpi ${cls || ''}"><div class="l">${esc(label)}</div><div class="v${String(value ?? '').length > 9 ? ' txt' : ''}">${esc(value)}</div></div>`;
     const kv = (pairs) => `<div class="ops-kv">${pairs.map(([k, v]) => `<div class="k">${esc(k)}</div><div>${v == null || v === '' ? '—' : v}</div>`).join('')}</div>`;
     const ask = (label, dflt) => { const v = prompt(label, dflt || ''); return v === null ? null : v; };
     const who = () => (window.auth && auth.session() && auth.session().username) || localStorage.getItem('ops.operator') || 'mesa.control';
