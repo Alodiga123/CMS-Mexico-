@@ -27,6 +27,31 @@ def sql(q):
                           capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123")).stdout.strip()
 
 
+
+def purge_customers(names):
+    """The test customers and every card they got (the auto-issued one included) leave with the run."""
+    lst = ",".join("'%s'" % n.replace("'", "''") for n in names)
+    subprocess.run([PSQL, "-h", "localhost", "-U", "postgres", "-d", "cms_mexico", "-c", """
+with cu as (select id from customers where full_name in (%s)),
+ c as (select id from cards where customer_id in (select id from cu)),
+ m0 as (delete from outbound_messages where card_id in (select id from c)),
+ d1 as (delete from ledger_entries where ledger_account_id in (select id from ledger_accounts where card_id in (select id from c))),
+ d2 as (delete from ledger_accounts where card_id in (select id from c)),
+ d3 as (delete from card_controls where card_id in (select id from c)),
+ d4 as (delete from authorization_attempts where card_id in (select id from c)),
+ d5 as (delete from fraud_alerts where card_id in (select id from c)),
+ d6 as (delete from step_up_challenges where card_id in (select id from c)),
+ d7 as (delete from plastics where card_id in (select id from c)),
+ d8 as (delete from dispute_events where dispute_id in (select id from disputes where card_id in (select id from c))),
+ d8b as (delete from dispute_evidences where dispute_id in (select id from disputes where card_id in (select id from c))),
+ d8c as (delete from disputes where card_id in (select id from c)),
+ d9 as (delete from guild_alerts where card_id in (select id from c)),
+ d10 as (delete from reconciliation_items where card_id in (select id from c)),
+ d11 as (delete from authorization_holds where card_id in (select id from c)),
+ d12 as (delete from cards where id in (select id from c)),
+ d13 as (delete from kyc where customer_id in (select id from cu))
+delete from customers where id in (select id from cu)""" % lst], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
+
 ok = bad = 0
 
 
@@ -144,6 +169,7 @@ with c as (select unnest(array[%d, %d]) as id),
  d10 as (delete from reconciliation_items where card_id in (select id from c)),
  d11 as (delete from authorization_holds where card_id in (select id from c))
 delete from cards where id in (select id from c)""" % (C, C2)], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
+purge_customers(["Terceros " + RUN, "Terceros B " + RUN])
 check("datos de prueba borrados", sql("select count(*) from cards where id in (%d,%d)" % (C, C2)) == "0" and sql("select count(*) from outbound_messages where card_id in (%d,%d)" % (C, C2)) == "0", "")
 
 print(f"\nRESULTADO: {ok} OK, {bad} FAIL")

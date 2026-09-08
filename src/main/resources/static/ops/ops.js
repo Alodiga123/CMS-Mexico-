@@ -116,7 +116,7 @@
             const c = card;
             $('c360Summary').innerHTML = `
                 <div class="ops-grid-3">
-                    <div>${kv([['Tarjeta', `<strong>#${c.id}</strong> **** ${esc(c.last4)}`], ['Titular', esc(c.embossedName) + ' <span class="ops-muted">' + esc(c.customerName) + '</span>'], ['Producto', `${esc(c.productName)} · ${badge(c.cardType)} ${badge(c.paymentType)} ${badge(c.network)}`], ['Categoría', esc(c.cardCategory)]])}</div>
+                    <div>${kv([['Tarjeta', `<strong>#${c.id}</strong> **** ${esc(c.last4)}`], ['Titular', esc(c.embossedName) + ' <span class="ops-muted">' + esc(c.customerName) + '</span>'], ['Producto', `${esc(c.productName)} · ${badge(c.cardType)} ${c.paymentType && c.paymentType !== c.cardType ? badge(c.paymentType) : ''} ${badge(c.network)}`], ['Categoría', esc(c.cardCategory)]])}</div>
                     <div>${kv([['Estado', badge(c.status)], ['Vence', esc(c.expiryDate)], ['Moneda / País', `${esc(c.currency)} · ${esc(c.country)}`], ['Saldo ledger', `<strong style="color:var(--accent-emerald)">${money(c.balance, c.currency)}</strong>`]])}</div>
                     <div>${kv([['Límites producto', `día ${money(c.dailyLimit)} · semana ${money(c.weeklyLimit)} · mes ${money(c.monthlyLimit)}`], ['Acciones', `<div class="ops-actions">
                         ${c.status === 'CREATED' || c.status === 'SUSPENDED' ? `<button class="btn btn-emerald" onclick="ops.card360.status('ACTIVE')">Activar</button>` : ''}
