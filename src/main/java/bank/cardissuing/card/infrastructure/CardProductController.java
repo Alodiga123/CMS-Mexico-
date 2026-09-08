@@ -1,125 +1,53 @@
 package bank.cardissuing.card.infrastructure;
 
-import bank.cardissuing.card.domain.CardNetwork;
+import bank.cardissuing.card.application.CardProductService;
+import bank.cardissuing.card.application.CardProductService.ProductInput;
 import bank.cardissuing.card.domain.CardProduct;
-import bank.cardissuing.card.domain.CardType;
-import bank.cardissuing.card.domain.PaymentType;
-import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-@Slf4j
+/** Card products: list, get by id or code, create (201) and update. */
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class CardProductController {
 
-    private final CardProductRepository cardProductRepository;
+    private final CardProductService service;
 
     @GetMapping
-    public ResponseEntity<List<CardProduct>> getAllProducts() {
-        return ResponseEntity.ok(cardProductRepository.findAll());
-    }
+    public ResponseEntity<List<CardProduct>> getAllProducts() { return ResponseEntity.ok(service.all()); }
+
+    @GetMapping("/by-code/{code}")
+    public ResponseEntity<CardProduct> getByCode(@PathVariable String code) { return ResponseEntity.ok(service.byCode(code)); }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CardProduct> getProductById(@PathVariable Long id) {
-        return cardProductRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
+    public ResponseEntity<CardProduct> getProductById(@PathVariable Long id) { return ResponseEntity.ok(service.get(id)); }
 
     @PostMapping
-    @Transactional
-    public ResponseEntity<CardProduct> createProduct(@Valid @RequestBody ProductCreateRequest request) {
-        log.info("Creating new Card Product: {}", request.getProductName());
-
-        CardProduct product = new CardProduct();
-        product.setProductCode("PROD-" + System.currentTimeMillis() % 100000);
-        product.setProductName(request.getProductName());
-        product.setCardType(CardType.valueOf(request.getCardType().toUpperCase()));
-        product.setPaymentType(PaymentType.valueOf(request.getPaymentType().toUpperCase()));
-        product.setNetwork(CardNetwork.valueOf(request.getNetwork().toUpperCase()));
-        product.setBin(request.getBin());
-        product.setCurrency(request.getCurrency() != null ? request.getCurrency() : "USD");
-        product.setCreditLimit(request.getCreditLimit() != null ? request.getCreditLimit() : BigDecimal.ZERO);
-        product.setDailyLimit(request.getDailyLimit() != null ? request.getDailyLimit() : new BigDecimal("1000"));
-        product.setWeeklyLimit(request.getWeeklyLimit() != null ? request.getWeeklyLimit() : new BigDecimal("5000"));
-        product.setMonthlyLimit(request.getMonthlyLimit() != null ? request.getMonthlyLimit() : new BigDecimal("20000"));
-        product.setCountry(request.getCountry() != null && !request.getCountry().isBlank() ? request.getCountry() : "USA");
-        product.setCardColor(request.getCardColor() != null && !request.getCardColor().isBlank() ? request.getCardColor() : "linear-gradient(135deg, #0f172a, #1e1b4b, #312e81)");
-        product.setLogoUrl(request.getLogoUrl() != null && !request.getLogoUrl().isBlank() ? request.getLogoUrl() : "DEFAULT");
-        product.setPinBlockFormat(request.getPinBlockFormat() != null && !request.getPinBlockFormat().isBlank() ? request.getPinBlockFormat() : "ISO-0");
-        product.setPvkIndex(request.getPvkIndex() != null && !request.getPvkIndex().isBlank() ? request.getPvkIndex() : "PVK-01");
-        product.setCvkIndex(request.getCvkIndex() != null && !request.getCvkIndex().isBlank() ? request.getCvkIndex() : "CVK-A");
-        product.setHsmAlgorithm(request.getHsmAlgorithm() != null && !request.getHsmAlgorithm().isBlank() ? request.getHsmAlgorithm() : "TDES-2KEY");
-        if (request.getIssuanceFee() != null) product.setIssuanceFee(request.getIssuanceFee());
-        if (request.getMonthlyMaintenanceFee() != null) product.setMonthlyMaintenanceFee(request.getMonthlyMaintenanceFee());
-        if (request.getAtmWithdrawalFeeFixed() != null) product.setAtmWithdrawalFeeFixed(request.getAtmWithdrawalFeeFixed());
-        if (request.getAtmWithdrawalFeePercent() != null) product.setAtmWithdrawalFeePercent(request.getAtmWithdrawalFeePercent());
-        if (request.getInternationalTxFeePercent() != null) product.setInternationalTxFeePercent(request.getInternationalTxFeePercent());
-        if (request.getReplacementFee() != null) product.setReplacementFee(request.getReplacementFee());
-        if (request.getInactivityFee() != null) product.setInactivityFee(request.getInactivityFee());
-        if (request.getLatePaymentFee() != null) product.setLatePaymentFee(request.getLatePaymentFee());
-        if (request.getAnnualInterestRate() != null) product.setAnnualInterestRate(request.getAnnualInterestRate());
-        product.setActive(true);
-
-        product = cardProductRepository.save(product);
-        return ResponseEntity.ok(product);
+    public ResponseEntity<CardProduct> createProduct(@RequestBody ProductCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request.toInput(), request.getBy()));
     }
 
     @PutMapping("/{id}")
-    @Transactional
-    public ResponseEntity<CardProduct> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductCreateRequest request) {
-        log.info("Updating Card Product ID: {}", id);
-        CardProduct product = cardProductRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + id));
-
-        if (request.getProductName() != null) product.setProductName(request.getProductName());
-        if (request.getCardType() != null) product.setCardType(CardType.valueOf(request.getCardType().toUpperCase()));
-        if (request.getPaymentType() != null) product.setPaymentType(PaymentType.valueOf(request.getPaymentType().toUpperCase()));
-        if (request.getNetwork() != null) product.setNetwork(CardNetwork.valueOf(request.getNetwork().toUpperCase()));
-        if (request.getBin() != null) product.setBin(request.getBin());
-        if (request.getCurrency() != null) product.setCurrency(request.getCurrency());
-        if (request.getCountry() != null) product.setCountry(request.getCountry());
-        if (request.getDailyLimit() != null) product.setDailyLimit(request.getDailyLimit());
-        if (request.getWeeklyLimit() != null) product.setWeeklyLimit(request.getWeeklyLimit());
-        if (request.getMonthlyLimit() != null) product.setMonthlyLimit(request.getMonthlyLimit());
-        if (request.getCreditLimit() != null) product.setCreditLimit(request.getCreditLimit());
-        if (request.getCardColor() != null) product.setCardColor(request.getCardColor());
-        if (request.getLogoUrl() != null) product.setLogoUrl(request.getLogoUrl());
-        if (request.getPinBlockFormat() != null) product.setPinBlockFormat(request.getPinBlockFormat());
-        if (request.getPvkIndex() != null) product.setPvkIndex(request.getPvkIndex());
-        if (request.getCvkIndex() != null) product.setCvkIndex(request.getCvkIndex());
-        if (request.getHsmAlgorithm() != null) product.setHsmAlgorithm(request.getHsmAlgorithm());
-        if (request.getIssuanceFee() != null) product.setIssuanceFee(request.getIssuanceFee());
-        if (request.getMonthlyMaintenanceFee() != null) product.setMonthlyMaintenanceFee(request.getMonthlyMaintenanceFee());
-        if (request.getAtmWithdrawalFeeFixed() != null) product.setAtmWithdrawalFeeFixed(request.getAtmWithdrawalFeeFixed());
-        if (request.getAtmWithdrawalFeePercent() != null) product.setAtmWithdrawalFeePercent(request.getAtmWithdrawalFeePercent());
-        if (request.getInternationalTxFeePercent() != null) product.setInternationalTxFeePercent(request.getInternationalTxFeePercent());
-        if (request.getReplacementFee() != null) product.setReplacementFee(request.getReplacementFee());
-        if (request.getInactivityFee() != null) product.setInactivityFee(request.getInactivityFee());
-        if (request.getLatePaymentFee() != null) product.setLatePaymentFee(request.getLatePaymentFee());
-        if (request.getAnnualInterestRate() != null) product.setAnnualInterestRate(request.getAnnualInterestRate());
-
-        product = cardProductRepository.save(product);
-        return ResponseEntity.ok(product);
+    public ResponseEntity<CardProduct> updateProduct(@PathVariable Long id, @RequestBody ProductCreateRequest request) {
+        return ResponseEntity.ok(service.update(id, request.toInput(), request.getBy()));
     }
 
     @Data
     public static class ProductCreateRequest {
+        private String productCode;  // honoured when given; generated (DEB-MX-001) when not
         private String productName;
         private String cardType;     // DEBIT, CREDIT, PREPAID
         private String paymentType;  // PREPAID, POSTPAID
         private String network;      // VISA, MASTERCARD, ALODIGA_PRIVATE
-        private String bin;          // e.g. 453211
-        private String currency;     // USD, VES, VND
+        private String bin;          // 6 to 8 digits
+        private String currency;     // USD, MXN, VES, VND
         private BigDecimal creditLimit;
         private BigDecimal dailyLimit;
         private BigDecimal weeklyLimit;
@@ -140,5 +68,14 @@ public class CardProductController {
         private BigDecimal inactivityFee;
         private BigDecimal latePaymentFee;
         private BigDecimal annualInterestRate;
+        private Boolean active;
+        private String by;             // who is asking, for the audit trail
+
+        ProductInput toInput() {
+            return new ProductInput(productCode, productName, cardType, paymentType, network, bin, currency, creditLimit,
+                    dailyLimit, weeklyLimit, monthlyLimit, country, cardColor, logoUrl, pinBlockFormat, pvkIndex, cvkIndex,
+                    hsmAlgorithm, issuanceFee, monthlyMaintenanceFee, atmWithdrawalFeeFixed, atmWithdrawalFeePercent,
+                    internationalTxFeePercent, replacementFee, inactivityFee, latePaymentFee, annualInterestRate, active);
+        }
     }
 }

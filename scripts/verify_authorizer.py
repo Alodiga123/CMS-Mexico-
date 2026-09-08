@@ -32,22 +32,15 @@ def check(label, cond, detail=""):
     else:    bad += 1; print(f"  FAIL {label}  {detail}")
 
 def product(code, name, ctype, ptype, credit=None, daily=None):
-    body = {"productCode": code, "productName": name, "cardType": ctype, "paymentType": ptype,
-            "network": "VISA", "bin": "453212", "currency": "MXN", "creditLimit": credit,
-            "dailyLimit": daily, "weeklyLimit": None, "monthlyLimit": None, "country": "MX", "active": True}
-    st, r = http("POST", "/products", body)
-    if st in (200, 201) and r and r.get("id"):
-        set_limits(r["id"], daily); return r["id"]
-    # no POST endpoint: fall back to SQL
-    pid = sql(f"select id from card_products where product_code='{code}'")
-    if pid: return int(pid)
-    sql(f"insert into card_products (product_code,product_name,card_type,payment_type,network,bin,currency,"
-        f"credit_limit,daily_limit,weekly_limit,monthly_limit,country,active,pin_block_format,pvk_index,cvk_index,"
-        f"hsm_algorithm,issuance_fee,monthly_maintenance_fee,atm_withdrawal_fee_fixed,atm_withdrawal_fee_percent,"
-        f"international_tx_fee_percent,replacement_fee,inactivity_fee,late_payment_fee,annual_interest_rate,created_at,updated_at)"
-        f" values ('{code}','{name}','{ctype}','{ptype}','VISA','453212','MXN',{credit or 'NULL'},{daily or 'NULL'},NULL,NULL,'MX',true,"
-        f"'ISO-0','PVK-01','CVK-A','TDES-2KEY',10,2.5,2,1.5,2.5,15,5,25,18.5,now(),now())")
-    return int(sql(f"select id from card_products where product_code='{code}'"))
+    """Find the product by its code, or create it (POST honours productCode; a repeat is a 409)."""
+    st, r = http("GET", f"/products/by-code/{code}")
+    if st != 200:
+        st, r = http("POST", "/products", {"productCode": code, "productName": name, "cardType": ctype, "paymentType": ptype,
+                                            "network": "VISA", "bin": "453212", "currency": "MXN", "creditLimit": credit,
+                                            "dailyLimit": daily, "country": "MX", "by": "verify_authorizer"})
+        assert st == 201 and r.get("productCode") == code, (st, r)
+    set_limits(r["id"], daily)
+    return r["id"]
 
 def set_limits(pid, daily=None, weekly=None, monthly=None):
     sql(f"update card_products set daily_limit={daily or 'NULL'}, weekly_limit={weekly or 'NULL'}, monthly_limit={monthly or 'NULL'} where id={pid}")
