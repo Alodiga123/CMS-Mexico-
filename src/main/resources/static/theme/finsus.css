@@ -207,3 +207,24 @@ label, .form-group label { display: block; }
 .pager-gap { padding: 0 4px; color: var(--muted); }
 .pager-size { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px !important; white-space: nowrap; }
 .pager-size select { padding: 4px 28px 4px 10px !important; border-radius: 999px !important; font-size: 12px !important; width: auto; }
+
+/* ── toda pantalla cabe en el ancho disponible: las columnas no crecen mas que su espacio
+      y una tabla ancha se desplaza dentro de su tarjeta, nunca la pagina ── */
+html, body { max-width: 100%; overflow-x: hidden; }
+.app-layout { max-width: 100%; }
+.app-layout > * { min-width: 0; }
+.main-content, .tab-content, .card, .ops-grid-2, .ops-grid-3, .ops-grid-2 > *, .ops-grid-3 > *, .console-split > *, .ops-pane { min-width: 0; max-width: 100%; }
+.table-container { overflow-x: auto; max-width: 100%; }
+.table-container table { min-width: 100%; }
+.ops-toolbar { min-width: 0; }
+.ops-toolbar .form-control { max-width: 100%; }
+.ops-grid-2[style*="2fr 1fr"] { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important; }
+@media (max-width: 1500px) { .ops-grid-2[style*="2fr 1fr"] { grid-template-columns: minmax(0, 1fr) !important; } }
+@media (max-width: 1280px) { .ops-grid-2, .ops-grid-3 { grid-template-columns: minmax(0, 1fr) !important; } }
+header { flex-wrap: wrap; row-gap: 10px; }
+.telemetry-bar { flex-wrap: wrap; }
+.card-header { flex-wrap: wrap; gap: 10px; }
+.ops-kpis { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+th { white-space: nowrap; }
+td { white-space: normal; overflow-wrap: normal; }
+td:first-child, td.ops-mono, td .badge, td .ops-mono, td code, td .btn { white-space: nowrap; }
