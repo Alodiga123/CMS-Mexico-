@@ -1240,20 +1240,17 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Titular Estampado & KYC</th>
-                                    <th>Producto Base / BIN</th>
-                                    <th>País & Moneda</th>
-                                    <th>Tipo & Red</th>
-                                    <th>Límite Diario</th>
-                                    <th>Seguridad HSM & Keys</th>
-                                    <th>Last 4</th>
+                                    <th>Titular</th>
+                                    <th>Producto · BIN · moneda</th>
+                                    <th>Tipo · red</th>
+                                    <th>Últimos 4</th>
                                     <th>Estado</th>
-                                    <th>Saldo Disponible</th>
-                                    <th style="text-align:center;">Acciones</th>
+                                    <th>Saldo disponible</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="cardsTableBody">
-                                <tr><td colspan="11" style="text-align:center; padding: 2.5rem; color: var(--text-muted);">Cargando tarjetas emitidas...</td></tr>
+                                <tr><td colspan="8" style="text-align:center; padding: 2.5rem; color: var(--text-muted);">Cargando tarjetas emitidas...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -3014,62 +3011,60 @@
             // Tarjetas emitidas: paginadas en el servidor (GET /api/cards?page&size&productId)
             async function loadCards() {
                 const tbody = document.getElementById('cardsTableBody');
-                if (!window.pager || !pager.server) { tbody.innerHTML = '<tr><td colspan="11" class="ops-empty">Cargando...</td></tr>'; setTimeout(loadCards, 200); return; }
+                if (!window.pager || !pager.server) { tbody.innerHTML = '<tr><td colspan="8" class="ops-empty">Cargando...</td></tr>'; setTimeout(loadCards, 200); return; }
                 if (tbody.__pager && tbody.__pager.server && tbody.__pager.reload) return tbody.__pager.reload(true);
                 await pager.server(tbody, async (page, size) => {
                     const productId = document.getElementById('cardFilterProduct').value;
                     const q = new URLSearchParams({ page, size }); if (productId) q.set('productId', productId);
                     const res = await fetch('/api/cards?' + q.toString());
-                    if (!res.ok) { tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 2rem; color: #ef4444;">Error HTTP ${res.status}</td></tr>`; return { total: 0 }; }
+                    if (!res.ok) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: #ef4444;">Error HTTP ${res.status}</td></tr>`; return { total: 0 }; }
                     const p = await res.json();
                     const data = p.content || [];
-                    if (!data.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 2rem;">No hay tarjetas emitidas registradas.</td></tr>'; return { total: 0 }; }
+                    if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">No hay tarjetas emitidas registradas.</td></tr>'; return { total: 0 }; }
                     tbody.innerHTML = data.map(rowOf).join('');
                     return { total: p.totalElements, page: p.page, size: p.size };
                 });
             }
 
+            window.cardRowAction = (id, sel) => {
+                const v = sel.value; sel.value = '';
+                if (v === '360') { if (window.ops && ops.card360) ops.card360.open(id); else location.hash = '#tab-card360/' + id; }
+                else if (v === 'HSM') viewHsmCardDetails(id);
+                else if (v) changeCardStatus(id, v);
+            };
             const rowOf = (card) => {
                         let badgeClass = 'badge-cyan';
                         if (card.status === 'SUSPENDED') badgeClass = 'badge-amber';
                         if (card.status === 'BLOCKED' || card.status === 'CLOSED') badgeClass = 'badge-red';
+                        const money = (v) => Number(v || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const opts = [`<option value="">Acción…</option>`, `<option value="360">Ver tarjeta 360</option>`, `<option value="HSM">Detalles HSM</option>`];
+                        if (card.status === 'CREATED' || card.status === 'SUSPENDED') opts.push(`<option value="ACTIVE">Activar</option>`);
+                        if (card.status === 'ACTIVE') opts.push(`<option value="SUSPENDED">Suspender</option>`);
+                        if (card.status === 'ACTIVE' || card.status === 'SUSPENDED') opts.push(`<option value="BLOCKED">Bloquear</option>`);
 
                         return `
                             <tr>
                                 <td><strong>#${card.id}</strong></td>
-                                <td>
+                                <td style="min-width:140px;">
                                     <strong style="color:var(--text-main);">${card.embossedName}</strong>
                                     <div style="font-size:0.78rem; color:var(--text-muted);">${card.customerName || 'Cliente Titular'}</div>
                                 </td>
-                                <td>
+                                <td style="min-width:150px;">
                                     <span class="badge badge-purple">${card.productName}</span>
-                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">BIN: ${card.bin || '453211'}</div>
+                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">BIN ${card.bin || '453211'} · ${card.country || 'MX'} · ${card.currency || 'MXN'}</div>
                                 </td>
-                                <td>
-                                    <span class="badge badge-emerald">${card.country || '🇺🇸 USA'}</span>
-                                    <strong>${card.currency || 'USD'}</strong>
-                                </td>
-                                <td>
-                                    <span class="badge badge-cyan">${card.cardType || 'DÉBITO'}</span>
+                                <td style="white-space:nowrap;">
+                                    <span class="badge badge-cyan">${card.cardType || 'DEBIT'}</span>
                                     <span class="badge badge-pink">${card.network || 'VISA'}</span>
-                                </td>
-                                <td><strong style="color:var(--accent-emerald);">$${Number(card.dailyLimit || 1000).toLocaleString()}</strong></td>
-                                <td>
-                                    <div style="display:flex; flex-direction:column; gap:2px;">
-                                        <span class="badge badge-key" style="font-size:0.7rem;">PVK-01 (8A4F1D)</span>
-                                        <span class="badge badge-cyan" style="font-size:0.68rem;">ISO-0 | CVK-01</span>
-                                    </div>
                                 </td>
                                 <td><code style="font-weight:700;">**** ${card.last4}</code></td>
                                 <td><span class="badge ${badgeClass}">${card.status}</span></td>
-                                <td><strong style="color: var(--accent-emerald); font-size:0.95rem;">$${Number(card.balance).toLocaleString('es-ES')}</strong></td>
+                                <td style="white-space:nowrap;">
+                                    <strong style="color: var(--accent-emerald); font-size:0.95rem;">$${money(card.balance)}</strong>
+                                    <div style="font-size:0.72rem; color:var(--text-muted);">límite diario $${money(card.dailyLimit || 1000)}</div>
+                                </td>
                                 <td>
-                                    <div class="btn-group" style="justify-content:center;">
-                                        <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.75rem;" onclick="viewHsmCardDetails(${card.id})">🔍 Detalles HSM</button>
-                                        ${card.status === 'CREATED' || card.status === 'SUSPENDED' ? `<button class="btn btn-emerald" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'ACTIVE')">Activar</button>` : ''}
-                                        ${card.status === 'ACTIVE' ? `<button class="btn btn-amber" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'SUSPENDED')">Suspender</button>` : ''}
-                                        ${card.status === 'ACTIVE' || card.status === 'SUSPENDED' ? `<button class="btn btn-red" style="padding:0.35rem 0.65rem; font-size:0.75rem;" onclick="changeCardStatus(${card.id}, 'BLOCKED')">Bloquear</button>` : ''}
-                                    </div>
+                                    <select class="form-control" style="min-width:125px; padding:4px 6px; font-size:12px;" onchange="cardRowAction(${card.id}, this)">${opts.join('')}</select>
                                 </td>
                             </tr>
                         `;
