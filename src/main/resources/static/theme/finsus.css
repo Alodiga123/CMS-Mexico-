@@ -267,3 +267,9 @@ select.form-control { max-width: 100%; text-overflow: ellipsis; }
 
 /* catálogo en ventana modal: los títulos de producto en tinta, como en el panel desplegable (la tarjeta de muestra conserva su texto blanco) */
 .modal-card .created-card-item > div > div > strong[style*="color:#fff"], .modal-card .created-card-item > div > strong[style*="color:#fff"] { color: var(--ink) !important; }
+
+/* ventanas modales: cabecera y pie claros, títulos en tinta; los textos escritos en blanco en línea pasan a tinta (salvo dentro de la tarjeta de muestra) */
+.modal-header { background: var(--surface) !important; color: var(--ink) !important; border-bottom: 1px solid var(--line) !important; }
+.modal-header h3, .modal-header h2 { color: var(--ink) !important; }
+.modal-footer { background: var(--surface-2) !important; border-top: 1px solid var(--line) !important; }
+.modal-card [style*="color:#fff"]:not(.card-mockup *), .modal-card [style*="color: #fff"]:not(.card-mockup *), .modal-card [style*="color:#e2e8f0"]:not(.card-mockup *) { color: var(--ink) !important; }
