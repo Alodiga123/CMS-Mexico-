@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 
 public interface AuthorizationAttemptRepository extends JpaRepository<AuthorizationAttempt, Long> {
@@ -27,4 +29,8 @@ public interface AuthorizationAttemptRepository extends JpaRepository<Authorizat
     @Query("SELECT COUNT(DISTINCT a.card.id) FROM AuthorizationAttempt a " +
            "WHERE a.merchantId = :merchantId AND a.approved = false AND a.createdAt >= :since")
     long countDistinctCardsDeclinedAtMerchant(@Param("merchantId") String merchantId, @Param("since") LocalDateTime since);
+
+    Page<AuthorizationAttempt> findByCardOrderByCreatedAtDesc(Card card, Pageable pageable);
+
+    Page<AuthorizationAttempt> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

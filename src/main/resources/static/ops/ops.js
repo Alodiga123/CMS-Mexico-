@@ -366,15 +366,24 @@
     const fraud = {
         async init() { await Promise.all([this.loadAlerts(), this.loadBlocklist()]); },
         async loadAlerts() {
-            const st = $('frStatus').value; const tbody = $('frRows');
-            try {
-                const rows = await api('GET', '/api/fraud/alerts' + (st ? '?status=' + st : ''));
-                const open = rows.filter(a => a.status === 'OPEN');
-                $('frKpis').innerHTML = kpi('Abiertas', open.length, open.length ? 'warn' : 'ok') + kpi('Enumeración', open.filter(a => a.type === 'ENUMERATION').length, 'bad') + kpi('Declinadas', open.filter(a => a.type === 'DECLINED').length) + kpi('Verificación reforzada', open.filter(a => a.type === 'STEP_UP').length);
-                if (!rows.length) return empty(tbody, 10, 'Sin alertas.');
-                tbody.innerHTML = rows.map(a => `<tr><td>#${a.id}</td><td class="ops-mono">${dt(a.at || a.createdAt)}</td><td>${badge(a.type)}</td><td>${a.cardId ? `<a href="#" onclick="ops.card360.open(${a.cardId});return false">#${a.cardId}</a>` : '—'}</td><td>${esc(a.merchantName)}<div class="ops-muted">${esc(a.merchantId)}</div></td><td>${money(a.amount)}</td><td><strong>${a.riskScore}</strong></td><td class="ops-muted">${esc(a.reasons)}</td><td>${badge(a.status)}${a.actionTaken ? '<div class="ops-muted">' + esc(a.actionTaken) + ' · ' + esc(a.reviewedBy) + '</div>' : ''}</td>
-                    <td class="ops-actions">${a.status === 'OPEN' ? `<button class="btn btn-primary" onclick="ops.fraud.review(${a.id},'REVIEWED')">Revisada</button><button class="btn btn-purple" style="background:rgba(168,85,247,0.2)" onclick="ops.fraud.review(${a.id},'DISMISS')">Descartar</button>${a.merchantId ? `<button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_MERCHANT')">Bloquear comercio</button>` : ''}${a.cardId ? `<button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_CARD')">Bloquear tarjeta</button>` : ''}` : ''}</td></tr>`).join('');
-            } catch (e) { errRow(tbody, 10, e); }
+            const tbody = $('frRows');
+            const first = !(tbody.__pager && tbody.__pager.server);
+            const load = async (page, size) => {
+                const st = $('frStatus').value || 'ALL';
+                try {
+                    const p = await api('GET', `/api/fraud/alerts?status=${st}&page=${page}&size=${size}`);
+                    const rows = p.content || [];
+                    if (page === 0) {
+                        const open = st === 'OPEN' ? p.totalElements : rows.filter(a => a.status === 'OPEN').length;
+                        $('frKpis').innerHTML = kpi(st === 'OPEN' ? 'Abiertas' : 'Alertas (' + st.toLowerCase() + ')', p.totalElements, open ? 'warn' : 'ok') + kpi('Enumeración en la página', rows.filter(a => a.type === 'ENUMERATION').length, 'bad') + kpi('Declinadas en la página', rows.filter(a => a.type === 'DECLINED').length) + kpi('Verificación reforzada en la página', rows.filter(a => a.type === 'STEP_UP').length);
+                    }
+                    if (!rows.length) { empty(tbody, 10, 'Sin alertas.'); return { total: 0 }; }
+                    tbody.innerHTML = rows.map(a => `<tr><td>#${a.id}</td><td class="ops-mono">${dt(a.at || a.createdAt)}</td><td>${badge(a.type)}</td><td>${a.cardId ? `<a href="#" onclick="ops.card360.open(${a.cardId});return false">#${a.cardId}</a>` : '—'}</td><td>${esc(a.merchantName)}<div class="ops-muted">${esc(a.merchantId)}</div></td><td>${money(a.amount)}</td><td><strong>${a.riskScore}</strong></td><td class="ops-muted">${esc(a.reasons)}</td><td>${badge(a.status)}${a.actionTaken ? '<div class="ops-muted">' + esc(a.actionTaken) + ' · ' + esc(a.reviewedBy) + '</div>' : ''}</td>
+                        <td class="ops-actions">${a.status === 'OPEN' ? `<button class="btn btn-primary" onclick="ops.fraud.review(${a.id},'REVIEWED')">Revisada</button><button class="btn btn-purple" style="background:rgba(168,85,247,0.2)" onclick="ops.fraud.review(${a.id},'DISMISS')">Descartar</button>${a.merchantId ? `<button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_MERCHANT')">Bloquear comercio</button>` : ''}${a.cardId ? `<button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_CARD')">Bloquear tarjeta</button>` : ''}` : ''}</td></tr>`).join('');
+                    return { total: p.totalElements, page: p.page, size: p.size };
+                } catch (e) { errRow(tbody, 10, e); return { total: 0 }; }
+            };
+            if (first) await pager.server(tbody, load); else await tbody.__pager.reload(true);
         },
         async review(id, action) {
             const note = ask('Nota del analista'); if (note === null) return;

@@ -25,6 +25,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -250,11 +252,31 @@ public class FraudService {
         return attempts.findFirst100ByCardOrderByCreatedAtDesc(card);
     }
 
+    /** A page of attempts: one card's, or everyone's when cardId is null. */
+    public Page<AuthorizationAttempt> history(Long cardId, Pageable pageable) {
+        if (cardId == null) return attempts.findAllByOrderByCreatedAtDesc(pageable);
+        Card card = cards.findById(cardId).orElseThrow(() -> new ResourceNotFoundException("Card", "id", cardId));
+        return attempts.findByCardOrderByCreatedAtDesc(card, pageable);
+    }
+
     // ------------------------------------------------------------ analyst
 
     public List<FraudAlert> alerts(String status) {
         if (status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)) return alerts.findAllByOrderByCreatedAtDesc();
-        return alerts.findByStatusOrderByCreatedAtDesc(FraudAlert.Status.valueOf(status.toUpperCase()));
+        return alerts.findByStatusOrderByCreatedAtDesc(parseStatus(status));
+    }
+
+    public Page<FraudAlert> alerts(String status, Pageable pageable) {
+        if (status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)) return alerts.findAllByOrderByCreatedAtDesc(pageable);
+        return alerts.findByStatusOrderByCreatedAtDesc(parseStatus(status), pageable);
+    }
+
+    private static FraudAlert.Status parseStatus(String status) {
+        try { return FraudAlert.Status.valueOf(status.trim().toUpperCase()); }
+        catch (IllegalArgumentException e) {
+            throw new bank.cardissuing.common.exception.BusinessException("FRAUD_BAD_STATUS",
+                    "status must be OPEN, REVIEWED, DISMISSED or ALL", org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
     }
 
     /** DISMISS, REVIEWED, BLOCK_MERCHANT or BLOCK_CARD. */

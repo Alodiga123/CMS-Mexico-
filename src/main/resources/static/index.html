@@ -2852,26 +2852,28 @@
                 const res = await fetch('/api/products');
                 const data = await res.json();
                 select.innerHTML = '<option value="">Filtrar por Todas las Tarjetas</option>' + 
-                    data.map(p => `<option value="${p.productName}">${p.productName}</option>`).join('');
+                    data.map(p => `<option value="${p.id}">${p.productName} · ${p.productCode}</option>`).join('');
             }
 
+            // Tarjetas emitidas: paginadas en el servidor (GET /api/cards?page&size&productId)
             async function loadCards() {
-                const filterProd = document.getElementById('cardFilterProduct').value;
                 const tbody = document.getElementById('cardsTableBody');
-                try {
-                    const res = await fetch('/api/cards');
-                    let data = await res.json();
+                if (!window.pager || !pager.server) { tbody.innerHTML = '<tr><td colspan="11" class="ops-empty">Cargando...</td></tr>'; setTimeout(loadCards, 200); return; }
+                if (tbody.__pager && tbody.__pager.server && tbody.__pager.reload) return tbody.__pager.reload(true);
+                await pager.server(tbody, async (page, size) => {
+                    const productId = document.getElementById('cardFilterProduct').value;
+                    const q = new URLSearchParams({ page, size }); if (productId) q.set('productId', productId);
+                    const res = await fetch('/api/cards?' + q.toString());
+                    if (!res.ok) { tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 2rem; color: #ef4444;">Error HTTP ${res.status}</td></tr>`; return { total: 0 }; }
+                    const p = await res.json();
+                    const data = p.content || [];
+                    if (!data.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 2rem;">No hay tarjetas emitidas registradas.</td></tr>'; return { total: 0 }; }
+                    tbody.innerHTML = data.map(rowOf).join('');
+                    return { total: p.totalElements, page: p.page, size: p.size };
+                });
+            }
 
-                    if (filterProd) {
-                        data = data.filter(c => c.productName === filterProd);
-                    }
-
-                    if (!Array.isArray(data) || data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 2rem;">No hay tarjetas emitidas registradas.</td></tr>';
-                        return;
-                    }
-
-                    tbody.innerHTML = data.map(card => {
+            const rowOf = (card) => {
                         let badgeClass = 'badge-cyan';
                         if (card.status === 'SUSPENDED') badgeClass = 'badge-amber';
                         if (card.status === 'BLOCKED' || card.status === 'CLOSED') badgeClass = 'badge-red';
@@ -2915,9 +2917,7 @@
                                 </td>
                             </tr>
                         `;
-                    }).join('');
-                } catch (err) { tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 2rem; color: #ef4444;">Error: ${err.message}</td></tr>`; }
-            }
+                    };
 
             async function changeCardStatus(cardId, newStatus) {
                 const res = await fetch(`/api/cards/${cardId}/status`, {

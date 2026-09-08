@@ -6,7 +6,9 @@ import bank.cardissuing.fraud.domain.AuthorizationAttempt;
 import bank.cardissuing.fraud.domain.BlockedEntity;
 import bank.cardissuing.fraud.domain.FraudAlert;
 import bank.cardissuing.fraud.domain.StepUpChallenge;
+import bank.cardissuing.common.api.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,13 +31,22 @@ public class FraudController {
 
     /** Every decision on a card, newest first. */
     @GetMapping("/attempts")
-    public ResponseEntity<List<Map<String, Object>>> attempts(@RequestParam Long cardId) {
-        return ResponseEntity.ok(service.history(cardId).stream().map(FraudController::view).toList());
+    public ResponseEntity<?> attempts(@RequestParam(required = false) Long cardId,
+                                      @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
+        Pageable pageable = PageResponse.pageable(page, size);
+        if (pageable == null) {
+            if (cardId != null) return ResponseEntity.ok(service.history(cardId).stream().map(FraudController::view).toList());
+            pageable = PageResponse.pageable(0, 100); // no card and no page: the newest hundred, paged shape
+        }
+        return ResponseEntity.ok(PageResponse.of(service.history(cardId, pageable), FraudController::view));
     }
 
     @GetMapping("/alerts")
-    public ResponseEntity<List<Map<String, Object>>> alerts(@RequestParam(defaultValue = "OPEN") String status) {
-        return ResponseEntity.ok(service.alerts(status).stream().map(FraudController::view).toList());
+    public ResponseEntity<?> alerts(@RequestParam(defaultValue = "OPEN") String status,
+                                    @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
+        Pageable pageable = PageResponse.pageable(page, size);
+        if (pageable == null) return ResponseEntity.ok(service.alerts(status).stream().map(FraudController::view).toList());
+        return ResponseEntity.ok(PageResponse.of(service.alerts(status, pageable), FraudController::view));
     }
 
     @PostMapping("/alerts/{id}/review")

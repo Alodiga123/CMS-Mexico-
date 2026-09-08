@@ -98,5 +98,49 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => attachAll());
     else attachAll();
 
-    window.pager = { attachAll, attach };
+    /* Server mode: the screen gives a loader(page, size) that fills the tbody itself and resolves
+       { total, page, size }; the pager only draws the controls and asks for the next page. */
+    function server(tbody, loader) {
+        let st = tbody.__pager;
+        if (!st) { st = { rows: [], page: 1, size: defaultSize(), applying: true, server: true }; tbody.__pager = st; }
+        st.server = true; st.applying = true; st.loader = loader;
+        const bar = controlsFor(tbody);
+        const go = async () => {
+            let res;
+            try { res = await loader(st.page - 1, st.size); } catch (e) { bar.style.display = 'none'; return; }
+            const total = res && res.total != null ? res.total : 0;
+            const pages = Math.max(1, Math.ceil(total / st.size));
+            if (st.page > pages) { st.page = pages; return go(); }
+            const from = (st.page - 1) * st.size;
+            if (total === 0) { bar.innerHTML = ''; bar.style.display = 'none'; return; }
+            const win = new Set([1, pages, st.page - 1, st.page, st.page + 1].filter(p => p >= 1 && p <= pages));
+            const btns = []; let prev = 0;
+            [...win].sort((a, b) => a - b).forEach(p => {
+                if (p - prev > 1) btns.push('<span class="pager-gap">…</span>');
+                btns.push(`<button type="button" class="pager-btn ${p === st.page ? 'on' : ''}" data-page="${p}">${p}</button>`);
+                prev = p;
+            });
+            bar.style.display = '';
+            bar.innerHTML = `
+                <span class="pager-info">Mostrando <strong>${from + 1}–${Math.min(from + st.size, total)}</strong> de <strong>${total}</strong> <span class="pager-server" title="Paginado en el servidor">· servidor</span></span>
+                <span class="pager-nav">
+                    <button type="button" class="pager-btn" data-page="${st.page - 1}" ${st.page <= 1 ? 'disabled' : ''} title="Anterior">‹</button>
+                    ${btns.join('')}
+                    <button type="button" class="pager-btn" data-page="${st.page + 1}" ${st.page >= pages ? 'disabled' : ''} title="Siguiente">›</button>
+                </span>
+                <label class="pager-size">Filas por página
+                    <select>${SIZES.map(x => `<option value="${x}" ${x === st.size ? 'selected' : ''}>${x}</option>`).join('')}</select>
+                </label>`;
+            bar.querySelectorAll('.pager-btn[data-page]').forEach(b => b.addEventListener('click', () => { st.page = Number(b.dataset.page); go(); }));
+            bar.querySelector('select').addEventListener('change', (e) => {
+                st.size = Number(e.target.value); st.page = 1;
+                try { localStorage.setItem(KEY, String(st.size)); } catch (err) { /* sin almacenamiento */ }
+                go();
+            });
+        };
+        st.reload = (resetPage) => { if (resetPage) st.page = 1; return go(); };
+        return go();
+    }
+
+    window.pager = { attachAll, attach, server };
 })();

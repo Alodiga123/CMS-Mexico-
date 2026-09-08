@@ -20,7 +20,9 @@ import bank.cardissuing.plastics.domain.Plastic;
 import bank.cardissuing.audit.application.AuditService;
 import bank.cardissuing.common.exception.BusinessException;
 import org.springframework.http.HttpStatus;
+import bank.cardissuing.common.api.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -50,11 +52,18 @@ public class CardController {
     private final CoreBankingClient coreBankingClient;
 
     @GetMapping
-    public ResponseEntity<List<CardResponse>> getAllCards() {
-        List<Card> cards = cardRepository.findAll();
-        List<CardResponse> responses = cards.stream().map(this::toResponse).collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<?> getAllCards(@RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
+                                         @RequestParam(required = false) String status, @RequestParam(required = false) String last4,
+                                         @RequestParam(required = false) Long productId) {
+        Pageable pageable = PageResponse.pageable(page, size);
+        if (pageable == null && status == null && last4 == null && productId == null) {
+            List<Card> cards = cardRepository.findAll();
+            return ResponseEntity.ok(cards.stream().map(this::toResponse).collect(Collectors.toList()));
+        }
+        if (pageable == null) pageable = PageResponse.pageable(0, PageResponse.MAX_SIZE);
+        CardStatus st = status != null && !status.isBlank() ? CardStatus.valueOf(status.toUpperCase()) : null;
+        String l4 = last4 != null && !last4.isBlank() ? last4.trim() : null;
+        return ResponseEntity.ok(PageResponse.of(cardRepository.search(st, l4, productId, pageable), this::toResponse));
     }
 
     /** One card, same shape as the list. */

@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface FraudAlertRepository extends JpaRepository<FraudAlert, Long> {
 
@@ -14,4 +16,8 @@ public interface FraudAlertRepository extends JpaRepository<FraudAlert, Long> {
 
     boolean existsByMerchantIdAndTypeAndStatusAndCreatedAtAfter(String merchantId, FraudAlert.Type type,
                                                                 FraudAlert.Status status, LocalDateTime since);
+
+    Page<FraudAlert> findByStatusOrderByCreatedAtDesc(FraudAlert.Status status, Pageable pageable);
+
+    Page<FraudAlert> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }
