@@ -1441,11 +1441,11 @@
                         <div class="form-grid" style="margin-bottom: 1.25rem;">
                             <div class="form-group">
                                 <label>Nombre Completo:</label>
-                                <input type="text" id="custName" class="form-control" placeholder="Ej: Maria Gutierrez" required />
+                                <input type="text" id="custName" class="form-control" placeholder="Ej: María Gutiérrez" required />
                             </div>
                             <div class="form-group">
                                 <label>Teléfono de Contacto:</label>
-                                <input type="text" id="custPhone" class="form-control" placeholder="Ej: +58 414 7654321" required />
+                                <input type="text" id="custPhone" class="form-control" placeholder="Ej: 55 1234 5678" required />
                             </div>
                         </div>
                         <button type="submit" class="btn btn-emerald">➕ Crear Cliente</button>
@@ -3359,10 +3359,10 @@
                         <td><strong>#${c.id}</strong></td>
                         <td>${c.fullName}</td>
                         <td>${c.phoneNumber}</td>
-                        <td><span class="badge badge-emerald">${c.kycStatus}</span></td>
-                        <td><strong>Card #${c.cardId || '-'}</strong></td>
-                        <td><code>**** ${c.cardLast4}</code></td>
-                        <td><strong style="color: var(--accent-emerald);">$${Number(c.balance).toLocaleString()}</strong></td>
+                        <td><span class="badge ${c.kycStatus === 'VERIFIED' ? 'badge-emerald' : 'badge-amber'}">${c.kycStatus || 'PENDING'}</span></td>
+                        <td><strong>${c.cardId ? 'Card #' + c.cardId : '—'}</strong></td>
+                        <td><code>**** ${c.cardLast4 || '----'}</code></td>
+                        <td><strong style="color: var(--accent-emerald);">$${Number(c.balance || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
                     </tr>
                 `).join('');
             }
