@@ -1,0 +1,51 @@
+/* Consola de operación: módulos nuevos del CMS. Reusa las variables y clases de index.html. */
+.ops-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.ops-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 1rem; }
+.ops-kpi .l { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.ops-kpi .v { font-size: 1.45rem; font-weight: 800; margin-top: 0.15rem; font-family: 'JetBrains Mono', monospace; }
+.ops-kpi.ok .v { color: var(--accent-emerald); }
+.ops-kpi.warn .v { color: var(--accent-amber); }
+.ops-kpi.bad .v { color: var(--accent-red); }
+.ops-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.ops-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+@media (max-width: 1100px) { .ops-grid-2, .ops-grid-3 { grid-template-columns: 1fr; } }
+.ops-toolbar { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.ops-toolbar .form-control { padding: 0.5rem 0.8rem; font-size: 0.86rem; }
+.ops-toolbar .btn { padding: 0.5rem 0.9rem; font-size: 0.82rem; }
+.ops-muted { color: var(--text-muted); font-size: 0.8rem; }
+.ops-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+.ops-empty { text-align: center; padding: 1.8rem; color: var(--text-muted); }
+.ops-error { color: var(--accent-red); padding: 1rem; font-size: 0.85rem; }
+.ops-response { border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.25rem; background: var(--code-bg); min-height: 120px; }
+.ops-response .code { font-family: 'JetBrains Mono', monospace; font-size: 2.4rem; font-weight: 800; line-height: 1; }
+.ops-response.approved .code { color: var(--accent-emerald); }
+.ops-response.declined .code { color: var(--accent-red); }
+.ops-response.review .code { color: var(--accent-amber); }
+.ops-response .msg { font-size: 1.05rem; margin-top: 0.4rem; }
+.ops-timeline { list-style: none; padding: 0; margin: 0; }
+.ops-timeline li { display: flex; gap: 0.7rem; padding: 0.45rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+.ops-timeline li .t { color: var(--text-muted); min-width: 130px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+.ops-switch { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; font-size: 0.86rem; }
+.ops-switch input { width: 18px; height: 18px; accent-color: var(--accent-cyan); }
+.ops-tabs { display: flex; gap: 0.35rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+.ops-tabs button { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 999px; padding: 0.35rem 0.85rem; cursor: pointer; font-size: 0.8rem; font-family: inherit; }
+.ops-tabs button.on { color: var(--text-main); border-color: var(--accent-cyan); background: rgba(6, 182, 212, 0.12); }
+.ops-pane { display: none; }
+.ops-pane.on { display: block; }
+.ops-detail { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-top: 1rem; }
+.ops-detail h4 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.ops-kv { display: grid; grid-template-columns: 170px 1fr; gap: 0.25rem 0.8rem; font-size: 0.84rem; }
+.ops-kv .k { color: var(--text-muted); }
+.ops-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.ops-actions .btn { padding: 0.32rem 0.6rem; font-size: 0.72rem; }
+.ops-card-title { font-size: 1.2rem; font-weight: 800; }
+.ops-card-sub { font-size: 0.82rem; color: var(--text-muted); font-weight: 400; margin-top: 0.2rem; }
+.ops-report-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.9rem; }
+.ops-report { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.ops-report h4 { margin: 0.2rem 0 0; font-size: 1rem; }
+.ops-report p { margin: 0; font-size: 0.8rem; color: var(--text-muted); min-height: 2.4em; }
+.ops-toast { position: fixed; right: 1.2rem; bottom: 1.2rem; background: #0f172a; border: 1px solid var(--accent-cyan); color: var(--text-main); padding: 0.7rem 1rem; border-radius: 10px; font-size: 0.85rem; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 460px; }
+.ops-toast.err { border-color: var(--accent-red); }
+.ops-toast.ok { border-color: var(--accent-emerald); }
+.ops-scroll { max-height: 420px; overflow: auto; }
+table.ops-compact th, table.ops-compact td { padding: 0.45rem 0.6rem; font-size: 0.8rem; }

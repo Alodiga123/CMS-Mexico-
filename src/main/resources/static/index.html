@@ -6,6 +6,7 @@
     <title>CMS Alodiga Core - Plataforma Bancaria de Tarjetas</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="/ops/ops.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -419,6 +420,34 @@
             </button>
             <button class="nav-btn" onclick="switchTab(event, 'tab-design-compliance')">
                 <span class="icon">🎨</span> 9. Normativa EMV & Marcas
+            </button>
+
+            <div class="sidebar-category">Operación del Autorizador</div>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-card360')">
+                <span class="icon">🪪</span> 10. Tarjeta 360
+            </button>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-authorizer')">
+                <span class="icon">⚡</span> 11. Autorizador Multiproducto
+            </button>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-reconciliation')">
+                <span class="icon">⚖️</span> 12. Conciliación con el Core
+            </button>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-plastics')">
+                <span class="icon">🏭</span> 13. Plásticos & Bureau
+            </button>
+
+            <div class="sidebar-category">Riesgo & Cumplimiento</div>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-disputes')">
+                <span class="icon">🧾</span> 14. Aclaraciones & Contracargos
+            </button>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-fraud')">
+                <span class="icon">🚨</span> 15. Fraude en Línea
+            </button>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-guild')">
+                <span class="icon">🤝</span> 16. Antifraude de Industria
+            </button>
+            <button class="nav-btn" onclick="switchTab(event, 'tab-reports')">
+                <span class="icon">📑</span> 17. Reportes & Regulatorio
             </button>
         </aside>
 
@@ -1939,6 +1968,7 @@
                 if (tabId === 'tab-accounting') { loadCardsForAccountingSelects(); loadAccountingStatement(); }
                 if (tabId === 'tab-customers') loadCustomers();
                 if (tabId === 'tab-audit') loadAuditLogs();
+                if (window.ops && ops.tabs[tabId]) ops.tabs[tabId]();
             }
 
             // --- HSM KEYS INVENTORY MODAL & HELPERS ---
@@ -3183,6 +3213,11 @@
             document.addEventListener("DOMContentLoaded", () => {
                 updateCreateFormMockup();
                 loadProducts();
+                // Consola de operación: pantallas de los módulos nuevos, cargadas aparte para no crecer este archivo
+                fetch('/ops/ops.html').then(r => r.text()).then(html => {
+                    document.querySelector('main.main-content').insertAdjacentHTML('beforeend', html);
+                    const sc = document.createElement('script'); sc.src = '/ops/ops.js'; document.body.appendChild(sc);
+                }).catch(e => console.error('No se pudo cargar la consola de operación', e));
             });
         </script>
 </body>

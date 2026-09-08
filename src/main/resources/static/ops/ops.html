@@ -1,0 +1,297 @@
+<!-- ===================== TARJETA 360 ===================== -->
+<div id="tab-card360" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="ops-card-title">Tarjeta 360</div>
+                <div class="ops-card-sub">Estado, controles, cuenta del core, plásticos, autorizaciones, aclaraciones y alertas de una tarjeta</div>
+            </div>
+            <div class="ops-toolbar">
+                <input id="c360Query" class="form-control" placeholder="ID de tarjeta o últimos 4" style="width:220px" onkeydown="if(event.key==='Enter')ops.card360.search()">
+                <button class="btn btn-primary" onclick="ops.card360.search()">🔍 Buscar</button>
+            </div>
+        </div>
+        <div id="c360Summary" class="ops-empty">Busca una tarjeta por id o por sus últimos cuatro dígitos.</div>
+    </div>
+    <div id="c360Body" style="display:none">
+        <div class="ops-grid-2">
+            <div class="card">
+                <div class="card-header"><div><div class="ops-card-title">Controles por tarjeta</div><div class="ops-card-sub">Canales, internacional, aviso de viaje y límites propios (ganan a los del producto)</div></div></div>
+                <div id="c360Controls"></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><div><div class="ops-card-title">Cuenta del core y saldo</div><div class="ops-card-sub">Vínculo con Mifos, disponible y verificación en el gremio</div></div></div>
+                <div id="c360Core"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div><div class="ops-card-title">Autorizaciones de la tarjeta</div><div class="ops-card-sub">Cada intento con su código, motivo técnico, mensaje al cliente y puntaje de riesgo</div></div>
+                <button class="btn btn-primary" onclick="ops.card360.loadAttempts()">🔄 Actualizar</button></div>
+            <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>Fecha</th><th>Comercio</th><th>Monto</th><th>Canal / País</th><th>Código</th><th>Riesgo</th><th>Autorización</th><th>Acciones</th></tr></thead><tbody id="c360Attempts"></tbody></table></div>
+        </div>
+        <div class="ops-grid-2">
+            <div class="card">
+                <div class="card-header"><div><div class="ops-card-title">Plásticos</div><div class="ops-card-sub">Del pedido a la activación</div></div>
+                    <button class="btn btn-emerald" onclick="ops.plastics.requestFor(ops.card360.card.id)">＋ Pedir plástico</button></div>
+                <div class="table-container"><table class="ops-compact"><thead><tr><th>#</th><th>Motivo</th><th>Estado</th><th>Lote</th><th>Guía</th><th>Acciones</th></tr></thead><tbody id="c360Plastics"></tbody></table></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><div><div class="ops-card-title">Aclaraciones y alertas</div><div class="ops-card-sub">Disputas abiertas y alertas del gremio sobre esta tarjeta</div></div></div>
+                <div id="c360Disputes"></div>
+                <div id="c360Guild" style="margin-top:0.8rem"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== AUTORIZADOR ===================== -->
+<div id="tab-authorizer" class="tab-content">
+    <div class="ops-grid-2">
+        <div class="card">
+            <div class="card-header"><div><div class="ops-card-title">Autorizador multiproducto</div><div class="ops-card-sub">Prepago (ledger), débito (saldo del core) y crédito (línea). Respuesta con código del campo 39 de ISO 8583</div></div></div>
+            <div class="form-grid">
+                <div class="form-group"><label>Tarjeta</label><select id="auCard" class="form-control" onchange="ops.authorizer.cardChanged()"></select></div>
+                <div class="form-group"><label>Monto</label><input id="auAmount" class="form-control" type="number" step="0.01" value="25"></div>
+                <div class="form-group"><label>Canal</label><select id="auChannel" class="form-control"><option>POS</option><option>ATM</option><option>ECOMMERCE</option><option>CONTACTLESS</option></select></div>
+                <div class="form-group"><label>País (ISO)</label><input id="auCountry" class="form-control" placeholder="MX" maxlength="3"></div>
+                <div class="form-group"><label>Comercio</label><input id="auMerchant" class="form-control" value="Cafetería Centro"></div>
+                <div class="form-group"><label>ID de comercio</label><input id="auMerchantId" class="form-control" value="4152310077007"></div>
+                <div class="form-group"><label>Token de verificación reforzada</label><input id="auStepUp" class="form-control" placeholder="se llena al verificar el OTP"></div>
+                <div class="form-group"><label>Clave de idempotencia</label><input id="auIdem" class="form-control" placeholder="opcional"></div>
+            </div>
+            <div class="btn-group" style="margin-top:0.8rem">
+                <button class="btn btn-primary" onclick="ops.authorizer.send()">⚡ Autorizar</button>
+                <button class="btn btn-amber" onclick="ops.authorizer.expireDue()">⏱ Expirar retenciones vencidas</button>
+            </div>
+            <div id="auResponse" class="ops-response" style="margin-top:1rem"><div class="ops-muted">Sin respuesta todavía.</div></div>
+            <div id="auChallenge" style="display:none; margin-top:0.8rem" class="ops-detail">
+                <h4>Verificación reforzada (1A)</h4>
+                <div class="ops-muted">El titular recibe un código; con él la compra se reintenta con el token.</div>
+                <div class="ops-toolbar" style="margin-top:0.5rem">
+                    <input id="auOtp" class="form-control" placeholder="OTP" style="width:120px">
+                    <button class="btn btn-emerald" onclick="ops.authorizer.verifyOtp()">Verificar y reintentar</button>
+                    <span id="auOtpHint" class="ops-mono ops-muted"></span>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div><div class="ops-card-title">Retención: capturar o reversar</div><div class="ops-card-sub">Autorizar reserva, capturar mueve el dinero, reversar libera</div></div></div>
+            <div class="ops-toolbar">
+                <input id="auCode" class="form-control" placeholder="Código de autorización" style="width:220px">
+                <input id="auCapAmount" class="form-control" type="number" step="0.01" placeholder="monto (parcial)" style="width:150px">
+                <button class="btn btn-primary" onclick="ops.authorizer.lookup()">Ver</button>
+                <button class="btn btn-emerald" onclick="ops.authorizer.capture()">Capturar</button>
+                <button class="btn btn-red" onclick="ops.authorizer.reverse()">Reversar</button>
+            </div>
+            <div id="auHold" class="ops-detail" style="display:none"></div>
+            <div class="card-header" style="margin-top:1rem"><div><div class="ops-card-title">Intentos de la tarjeta</div></div></div>
+            <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>Fecha</th><th>Comercio</th><th>Monto</th><th>Canal</th><th>Código</th><th>Riesgo</th><th>Autorización</th></tr></thead><tbody id="auAttempts"></tbody></table></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== CONCILIACIÓN ===================== -->
+<div id="tab-reconciliation" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <div><div class="ops-card-title">Conciliación con el core</div><div class="ops-card-sub">Retenciones y capturas del CMS contra Mifos: faltantes, montos distintos, retenciones sin liberar</div></div>
+            <div class="ops-toolbar">
+                <input id="rcAccount" class="form-control" placeholder="cuenta del core (opcional)" style="width:200px">
+                <button class="btn btn-primary" onclick="ops.recon.run()">▶ Conciliar ahora</button>
+                <select id="rcStatus" class="form-control" onchange="ops.recon.load()"><option value="OPEN">Abiertas</option><option value="RESOLVED">Resueltas</option><option value="">Todas</option></select>
+            </div>
+        </div>
+        <div class="ops-kpis" id="rcKpis"></div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Tipo</th><th>Cuenta</th><th>Tarjeta</th><th>Autorización</th><th>CMS</th><th>Core</th><th>Detalle</th><th>Visto</th><th>Estado</th><th></th></tr></thead><tbody id="rcItems"></tbody></table></div>
+        <div id="rcAccountDetail" class="ops-detail" style="display:none"></div>
+    </div>
+</div>
+
+<!-- ===================== ACLARACIONES ===================== -->
+<div id="tab-disputes" class="tab-content">
+    <div class="ops-grid-2" style="grid-template-columns: 2fr 1fr">
+        <div class="card">
+            <div class="card-header">
+                <div><div class="ops-card-title">Aclaraciones y contracargos</div><div class="ops-card-sub">Abrir, abono provisional, evidencia sellada, contracargo, representación y resolución con plazos</div></div>
+                <div class="ops-toolbar">
+                    <select id="dsStatus" class="form-control" onchange="ops.disputes.load()"><option value="">Todas</option><option>OPENED</option><option>CHARGEBACK_SENT</option><option>REPRESENTED</option><option>RESOLVED_CUSTOMER</option><option>RESOLVED_MERCHANT</option><option>WITHDRAWN</option></select>
+                    <button class="btn btn-amber" onclick="ops.disputes.loadDue()">⏰ Vencen en 7 días</button>
+                    <button class="btn btn-primary" onclick="ops.disputes.load()">🔄</button>
+                </div>
+            </div>
+            <div class="ops-kpis" id="dsKpis"></div>
+            <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Tarjeta</th><th>Autorización</th><th>Monto</th><th>Razón</th><th>Estado</th><th>Próximo plazo</th><th>Abono</th><th></th></tr></thead><tbody id="dsRows"></tbody></table></div>
+            <div id="dsDetail" class="ops-detail" style="display:none"></div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div><div class="ops-card-title">Abrir aclaración</div><div class="ops-card-sub">Sobre una autorización capturada</div></div></div>
+            <div class="form-group"><label>Tarjeta (id)</label><input id="dsCard" class="form-control" type="number"></div>
+            <div class="form-group"><label>Código de autorización</label><input id="dsCode" class="form-control"></div>
+            <div class="form-group"><label>Razón</label><select id="dsReason" class="form-control"></select></div>
+            <div class="form-group"><label>Monto (vacío = total)</label><input id="dsAmount" class="form-control" type="number" step="0.01"></div>
+            <div class="form-group"><label>Descripción</label><input id="dsDesc" class="form-control"></div>
+            <label class="ops-switch"><input id="dsCredit" type="checkbox" checked> Abono provisional al titular</label>
+            <div class="form-group"><label>Abre</label><input id="dsBy" class="form-control" value="mesa.control"></div>
+            <button class="btn btn-primary" onclick="ops.disputes.open()">Abrir aclaración</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== FRAUDE ===================== -->
+<div id="tab-fraud" class="tab-content">
+    <div class="ops-tabs">
+        <button class="on" onclick="ops.pane(this,'frAlerts')">Alertas</button>
+        <button onclick="ops.pane(this,'frBlock')">Listas de bloqueo</button>
+        <button onclick="ops.pane(this,'frChal')">Verificaciones reforzadas</button>
+    </div>
+    <div id="frAlerts" class="ops-pane on card">
+        <div class="card-header">
+            <div><div class="ops-card-title">Alertas de fraude</div><div class="ops-card-sub">Declinaciones por riesgo, verificaciones reforzadas y ataques de enumeración; cada una con su explicación</div></div>
+            <div class="ops-toolbar">
+                <select id="frStatus" class="form-control" onchange="ops.fraud.loadAlerts()"><option value="OPEN">Abiertas</option><option value="REVIEWED">Revisadas</option><option value="DISMISSED">Descartadas</option><option value="">Todas</option></select>
+                <button class="btn btn-primary" onclick="ops.fraud.loadAlerts()">🔄</button>
+            </div>
+        </div>
+        <div class="ops-kpis" id="frKpis"></div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Fecha</th><th>Tipo</th><th>Tarjeta</th><th>Comercio</th><th>Monto</th><th>Puntaje</th><th>Motivos</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="frRows"></tbody></table></div>
+    </div>
+    <div id="frBlock" class="ops-pane card">
+        <div class="card-header">
+            <div><div class="ops-card-title">Listas de bloqueo</div><div class="ops-card-sub">Comercios, países y tarjetas; origen interno o externo (gremio)</div></div>
+            <div class="ops-toolbar">
+                <select id="blType" class="form-control"><option>MERCHANT_ID</option><option>COUNTRY</option><option>CARD</option></select>
+                <input id="blValue" class="form-control" placeholder="valor" style="width:160px">
+                <input id="blReason" class="form-control" placeholder="motivo" style="width:200px">
+                <button class="btn btn-red" onclick="ops.fraud.block()">Bloquear</button>
+            </div>
+        </div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Tipo</th><th>Valor</th><th>Origen</th><th>Motivo</th><th>Agregó</th><th>Fecha</th><th></th></tr></thead><tbody id="blRows"></tbody></table></div>
+    </div>
+    <div id="frChal" class="ops-pane card">
+        <div class="card-header"><div><div class="ops-card-title">Verificación reforzada</div><div class="ops-card-sub">Consulta un reto por token y verifica el OTP en nombre del titular</div></div></div>
+        <div class="ops-toolbar">
+            <input id="chToken" class="form-control" placeholder="token del reto" style="width:320px">
+            <button class="btn btn-primary" onclick="ops.fraud.challenge()">Ver reto</button>
+            <input id="chOtp" class="form-control" placeholder="OTP" style="width:110px">
+            <button class="btn btn-emerald" onclick="ops.fraud.verify()">Verificar</button>
+        </div>
+        <div id="chDetail" class="ops-detail" style="display:none"></div>
+    </div>
+</div>
+
+<!-- ===================== GREMIO ===================== -->
+<div id="tab-guild" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <div><div class="ops-card-title">Antifraude de industria (gremio)</div><div class="ops-card-sub">Alertas SNA en ambos sentidos, verificación SVL y aviso de contracargos SPC, con plazos y quebranto asumido</div></div>
+            <div class="ops-toolbar">
+                <button class="btn btn-primary" onclick="ops.guild.flush()">📤 Enviar outbox</button>
+                <button class="btn btn-primary" onclick="ops.guild.poll()">📥 Sondear entrantes</button>
+                <button class="btn btn-amber" onclick="ops.guild.deadlines()">⏳ Correr plazos</button>
+                <button class="btn btn-primary" onclick="ops.guild.load()">🔄</button>
+            </div>
+        </div>
+        <div class="ops-kpis" id="gdKpis"></div>
+    </div>
+    <div class="ops-tabs">
+        <button class="on" onclick="ops.pane(this,'gdAlertsPane')">Alertas</button>
+        <button onclick="ops.pane(this,'gdVerifPane')">Verificaciones SVL</button>
+        <button onclick="ops.pane(this,'gdRaisePane')">Levantar alerta</button>
+        <button id="gdSimTab" onclick="ops.pane(this,'gdSimPane')" style="display:none">Simulador del gremio</button>
+    </div>
+    <div id="gdAlertsPane" class="ops-pane on card">
+        <div class="card-header"><div><div class="ops-card-title">Alertas</div></div>
+            <div class="ops-toolbar">
+                <select id="gdDir" class="form-control" onchange="ops.guild.loadAlerts()"><option value="">Ambos sentidos</option><option value="OUTBOUND">Salientes</option><option value="INBOUND">Entrantes</option></select>
+                <select id="gdStatus" class="form-control" onchange="ops.guild.loadAlerts()"><option value="">Todos los estados</option><option>PENDING_SEND</option><option>SENT</option><option>FAILED</option><option>RECEIVED</option><option>IN_REVIEW</option><option>CLOSED</option><option>EXPIRED</option></select>
+            </div></div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Sentido</th><th>Tipo</th><th>Estado</th><th>Tarjeta / Comercio</th><th>Folio</th><th>Plazo</th><th>Acción automática</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="gdRows"></tbody></table></div>
+    </div>
+    <div id="gdVerifPane" class="ops-pane card">
+        <div class="card-header"><div><div class="ops-card-title">Verificaciones en la lista del gremio (SVL)</div><div class="ops-card-sub">Se consulta a lo sumo una vez por ventana; un positivo entra a la lista de bloqueo local</div></div>
+            <div class="ops-toolbar">
+                <input id="gdVerifCard" class="form-control" placeholder="id de tarjeta" style="width:140px"><button class="btn btn-primary" onclick="ops.guild.verifyCard()">Verificar tarjeta</button>
+                <input id="gdVerifMerchant" class="form-control" placeholder="id de comercio" style="width:160px"><button class="btn btn-primary" onclick="ops.guild.verifyMerchant()">Verificar comercio</button>
+            </div></div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>Sujeto</th><th>Listado</th><th>Folio</th><th>Motivo</th><th>Degradada</th><th>Consultado</th><th>Vigente hasta</th></tr></thead><tbody id="gdVerifRows"></tbody></table></div>
+    </div>
+    <div id="gdRaisePane" class="ops-pane card">
+        <div class="card-header"><div><div class="ops-card-title">Levantar alerta al gremio</div><div class="ops-card-sub">Fraude confirmado sobre una tarjeta o comercio sospechoso; entra al outbox</div></div></div>
+        <div class="form-grid">
+            <div class="form-group"><label>Tipo</label><select id="gdType" class="form-control"><option>CONFIRMED_FRAUD</option><option>COMPROMISED_CARD</option><option>SUSPICIOUS_MERCHANT</option><option>ENUMERATION</option><option>OTHER</option></select></div>
+            <div class="form-group"><label>Tarjeta (id)</label><input id="gdCard" class="form-control" type="number"></div>
+            <div class="form-group"><label>ID de comercio</label><input id="gdMerchant" class="form-control"></div>
+            <div class="form-group"><label>Nombre del comercio</label><input id="gdMerchantName" class="form-control"></div>
+            <div class="form-group"><label>Monto</label><input id="gdAmount" class="form-control" type="number" step="0.01"></div>
+            <div class="form-group"><label>Analista</label><input id="gdBy" class="form-control" value="analista.fraude"></div>
+        </div>
+        <div class="form-group"><label>Descripción</label><input id="gdDesc" class="form-control"></div>
+        <button class="btn btn-primary" onclick="ops.guild.raise()">Encolar alerta</button>
+    </div>
+    <div id="gdSimPane" class="ops-pane card">
+        <div class="card-header"><div><div class="ops-card-title">Simulador del gremio</div><div class="ops-card-sub">Solo en modo simulado: poblar listas, encolar alertas entrantes y apagar el canal para probar la operación</div></div></div>
+        <div class="ops-grid-3">
+            <div><h4>Listar tarjeta en SVL</h4><input id="simBin" class="form-control" placeholder="BIN"><input id="simLast4" class="form-control" placeholder="últimos 4" style="margin-top:0.4rem"><input id="simReason" class="form-control" placeholder="motivo" style="margin-top:0.4rem"><button class="btn btn-red" style="margin-top:0.5rem" onclick="ops.guild.simListCard()">Listar</button></div>
+            <div><h4>Alerta entrante</h4><select id="simType" class="form-control"><option>COMPROMISED_CARD</option><option>SUSPICIOUS_MERCHANT</option><option>OTHER</option></select><input id="simInBin" class="form-control" placeholder="BIN" style="margin-top:0.4rem"><input id="simInLast4" class="form-control" placeholder="últimos 4" style="margin-top:0.4rem"><input id="simInMerchant" class="form-control" placeholder="id de comercio" style="margin-top:0.4rem"><input id="simInDesc" class="form-control" placeholder="descripción" style="margin-top:0.4rem"><button class="btn btn-amber" style="margin-top:0.5rem" onclick="ops.guild.simInbound()">Encolar en el gremio</button></div>
+            <div><h4>Canal</h4><div class="ops-muted">Apaga el gremio para ver reintentos y fail-open.</div><div class="btn-group" style="margin-top:0.5rem"><button class="btn btn-red" onclick="ops.guild.simDown(true)">Apagar</button><button class="btn btn-emerald" onclick="ops.guild.simDown(false)">Encender</button></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== PLÁSTICOS ===================== -->
+<div id="tab-plastics" class="tab-content">
+    <div class="ops-tabs">
+        <button class="on" onclick="ops.pane(this,'plQueue')">Plásticos</button>
+        <button onclick="ops.pane(this,'plBatches')">Lotes al bureau</button>
+    </div>
+    <div id="plQueue" class="ops-pane on card">
+        <div class="card-header">
+            <div><div class="ops-card-title">Plásticos</div><div class="ops-card-sub">Pedido → lote → fabricante → envío → entrega → activación; reposiciones y renovaciones</div></div>
+            <div class="ops-toolbar">
+                <select id="plStatus" class="form-control" onchange="ops.plastics.load()"><option value="">Todos</option><option>REQUESTED</option><option>IN_BATCH</option><option>SENT_TO_MANUFACTURER</option><option>PRODUCED</option><option>SHIPPED</option><option>DELIVERED</option><option>ACTIVATED</option><option>RETURNED</option><option>DESTROYED</option></select>
+                <input id="plRenewDays" class="form-control" type="number" value="60" style="width:90px" title="días">
+                <button class="btn btn-amber" onclick="ops.plastics.renewals()">♻ Pedir renovaciones</button>
+                <button class="btn btn-primary" onclick="ops.plastics.load()">🔄</button>
+            </div>
+        </div>
+        <div class="ops-kpis" id="plKpis"></div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Tarjeta</th><th>Sec.</th><th>Motivo</th><th>Estado</th><th>Nombre</th><th>Vigencia</th><th>Lote</th><th>Guía</th><th>Acciones</th></tr></thead><tbody id="plRows"></tbody></table></div>
+    </div>
+    <div id="plBatches" class="ops-pane card">
+        <div class="card-header">
+            <div><div class="ops-card-title">Lotes de personalización</div><div class="ops-card-sub">Archivo sellado (SHA-256) y cifrado (AES-256-GCM) con PVV y CVV2 del HSM</div></div>
+            <div class="ops-toolbar">
+                <input id="plManufacturer" class="form-control" placeholder="fabricante" value="IDEMIA-MX" style="width:160px">
+                <button class="btn btn-primary" onclick="ops.plastics.buildBatch()">📦 Armar lote con los pedidos</button>
+            </div>
+        </div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Lote</th><th>Fabricante</th><th>Estado</th><th>Registros</th><th>Fallidos</th><th>Sello</th><th>Tamaño</th><th>Armado</th><th>Acciones</th></tr></thead><tbody id="plBatchRows"></tbody></table></div>
+        <div id="plBatchDetail" class="ops-detail" style="display:none"></div>
+    </div>
+</div>
+
+<!-- ===================== REPORTES ===================== -->
+<div id="tab-reports" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <div><div class="ops-card-title">Reportes</div><div class="ops-card-sub">Operativos, regulatorios y de riesgo. Cada corrida guarda el CSV con su sello SHA-256 como evidencia</div></div>
+            <div class="ops-toolbar">
+                <label class="ops-muted">Desde</label><input id="rpFrom" class="form-control" type="date">
+                <label class="ops-muted">Hasta</label><input id="rpTo" class="form-control" type="date">
+                <input id="rpBy" class="form-control" placeholder="quién" value="auditoria" style="width:120px">
+            </div>
+        </div>
+        <div class="ops-report-grid" id="rpCatalog"></div>
+    </div>
+    <div class="card" id="rpPreviewCard" style="display:none">
+        <div class="card-header"><div><div class="ops-card-title" id="rpPreviewTitle"></div><div class="ops-card-sub" id="rpPreviewSub"></div></div>
+            <div class="ops-toolbar"><button class="btn btn-emerald" onclick="ops.reports.run()">🔏 Correr y sellar</button></div></div>
+        <div class="ops-kpis" id="rpSummary"></div>
+        <div class="table-container ops-scroll" id="rpTable"></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><div><div class="ops-card-title">Corridas selladas</div><div class="ops-card-sub">Descarga el archivo o verifica que la copia guardada no fue alterada</div></div>
+            <button class="btn btn-primary" onclick="ops.reports.loadRuns()">🔄</button></div>
+        <div class="table-container ops-scroll"><table class="ops-compact"><thead><tr><th>#</th><th>Reporte</th><th>Periodo</th><th>Parámetros</th><th>Filas</th><th>Generó</th><th>Fecha</th><th>Sello</th><th>Acciones</th></tr></thead><tbody id="rpRuns"></tbody></table></div>
+    </div>
+</div>
