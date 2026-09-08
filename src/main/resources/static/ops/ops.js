@@ -172,7 +172,7 @@
                 const hb = $('c360HeadBalance'), hn = $('c360HeadBalanceNote');
                 if (hb && a.coreBacked) { hb.textContent = money(a.available, this.card.currency); if (hn) hn.textContent = 'disponible en el core · cuenta ' + (a.externalAccountId || ''); }
                 else if (hn) hn.textContent = this.card.cardType === 'CREDIT' ? 'línea disponible' : 'ledger interno';
-                box.innerHTML = kv([['Respaldo', a.coreBacked ? '<span class="badge badge-emerald">Saldo en el core (Mifos)</span>' : '<span class="badge badge-cyan">Ledger interno / línea</span>'],
+                box.innerHTML = kv([['Respaldo', a.coreBacked ? '<span class="badge badge-emerald">Saldo en el core</span>' : '<span class="badge badge-cyan">Ledger interno / línea</span>'],
                     ['Cuenta del core', esc(a.externalAccountId)], ['Cliente del core', esc(a.externalClientId)],
                     ['Disponible', `<strong style="color:var(--accent-emerald)">${money(a.available)}</strong>`], ['Nota', esc(a.message)]]) +
                     `<div class="ops-toolbar" style="margin-top:0.7rem"><input id="c360Recharge" class="form-control" type="number" step="0.01" placeholder="monto" style="width:130px"><button class="btn btn-emerald" onclick="ops.card360.recharge()">Recargar</button></div>`;
@@ -256,7 +256,7 @@
             try {
                 const rows = await api('GET', `/api/fraud/attempts?cardId=${id}`);
                 if (!rows.length) return empty(tbody, 7, 'Sin intentos.');
-                tbody.innerHTML = rows.slice(0, 40).map(r => `<tr><td class="ops-mono">${dt(r.at)}</td><td>${esc(r.merchantName)}</td><td>${money(r.amount)}</td><td>${esc(r.channel)}</td><td>${rc(r.responseCode, r.approved)}</td><td>${r.riskScore ?? 0} <span class="ops-muted">${esc((r.riskReasons || []).join(', '))}</span></td><td class="ops-mono"><a href="#" onclick="ops.authorizer.pick('${esc(r.approvalCode || '')}');return false">${esc(r.approvalCode)}</a></td></tr>`).join('');
+                tbody.innerHTML = rows.slice(0, 40).map(r => `<tr><td class="ops-mono">${dt(r.at)}</td><td>${esc(r.merchantName)}</td><td>${money(r.amount)}</td><td>${esc(r.channel)}</td><td>${rc(r.responseCode, r.approved)}</td><td>${r.riskScore ?? 0} <span class="ops-muted">${esc((r.riskReasons || []).join(', '))}</span></td><td class="ops-mono" style="font-size:11px;max-width:150px;white-space:normal;word-break:break-all"><a href="#" onclick="ops.authorizer.pick('${esc(r.approvalCode || '')}');return false">${esc(r.approvalCode)}</a></td></tr>`).join('');
             } catch (e) { errRow(tbody, 7, e); }
         },
         pick(code) { if (code) { $('auCode').value = code; this.lookup(); } },
@@ -666,7 +666,7 @@
                 box.style.display = '';
                 box.innerHTML = `<h4>Lote #${b.id} · ${esc(b.network)} · ciclo ${esc(b.cycleDate)} ${badge(b.status)}</h4>` + kv([['Archivo', esc(b.fileName) + ' · sello <span class="ops-mono">' + esc((b.sha256 || '').slice(0, 16)) + '…</span>'], ['Cola del archivo', b.trailerCount + ' registros · ' + money(b.trailerAmount)], ['Casados / excepciones', b.matchedCount + ' / ' + b.exceptionCount], ['Ciclo de liquidación', '#' + b.settlementCycleId]]) +
                     `<div class="table-container" style="margin-top:0.6rem"><table class="ops-compact"><thead><tr><th>Línea</th><th>Tipo</th><th>Tarjeta</th><th>RRN</th><th>Aprob.</th><th>Monto</th><th>Intercambio</th><th>Comercio</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody>${recs.map(r => `<tr><td>${r.lineNo}</td><td>${badge(r.type)}</td><td>${r.cardId ? `<a href="#" onclick="ops.card360.open(${r.cardId});return false">#${r.cardId}</a> ` : ''}<span class="ops-mono">${esc(r.pan || '')}</span></td><td class="ops-mono">${esc(r.rrn)}</td><td class="ops-mono">${esc(r.approvalId)}</td><td>${money(r.amount)}</td><td>${money(r.interchangeFee)}</td><td>${esc(r.merchantName)}</td><td>${badge(r.outcome)}</td><td class="ops-muted">${esc(r.detail)}</td></tr>`).join('')}</tbody></table></div>`;
-                box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                box.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (e) { box.style.display = ''; box.innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; }
         },
         async simulate() {

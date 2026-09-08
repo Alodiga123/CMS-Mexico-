@@ -446,6 +446,25 @@
             } catch (e) { show('No se pudo verificar la sesión'); }
         }
 
+        /* Enlaces de descarga (/api/...): el navegador no manda el token en una navegación normal, así que
+           se bajan con fetch autenticado y se entregan como archivo con el nombre que dice el servidor. */
+        document.addEventListener('click', async (ev) => {
+            const a = ev.target && ev.target.closest && ev.target.closest('a[href^="/api/"]');
+            if (!a || ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey) return;
+            ev.preventDefault();
+            try {
+                const res = await fetch(a.getAttribute('href'));
+                if (!res.ok) { let why = 'HTTP ' + res.status; try { const e = await res.json(); why = e.message || why; } catch (ignored) { /* sin cuerpo */ } throw new Error(why); }
+                const cd = res.headers.get('Content-Disposition') || '';
+                const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+                const name = m ? decodeURIComponent(m[1]) : (a.getAttribute('download') || a.getAttribute('href').split('/').filter(Boolean).slice(-2).join('_'));
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const tmp = document.createElement('a'); tmp.href = url; tmp.download = name; document.body.appendChild(tmp); tmp.click(); tmp.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            } catch (e) { alert('No se pudo descargar: ' + e.message); }
+        }, true);
+
         window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
     })();
