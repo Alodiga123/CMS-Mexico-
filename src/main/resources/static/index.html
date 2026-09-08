@@ -3309,9 +3309,11 @@
                     const res = await fetch(url);
                     const data = await res.json();
 
-                    document.getElementById('kpiCredits').textContent = Number(data.totalCredits || 0).toLocaleString('es-ES');
-                    document.getElementById('kpiDebits').textContent = Number(data.totalDebits || 0).toLocaleString('es-ES');
-                    document.getElementById('kpiBalance').textContent = Number(data.currentBalance || 0).toLocaleString('es-ES');
+                    const money = (v) => Number(v || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const when = (ts) => (ts || '').replace('T', ' ').replace(/\.\d+$/, '');
+                    document.getElementById('kpiCredits').textContent = money(data.totalCredits);
+                    document.getElementById('kpiDebits').textContent = money(data.totalDebits);
+                    document.getElementById('kpiBalance').textContent = money(data.currentBalance);
                     document.getElementById('kpiCount').textContent = data.totalMovements || 0;
 
                     if (!data.movements || data.movements.length === 0) {
@@ -3322,12 +3324,12 @@
                     tbody.innerHTML = data.movements.map(m => `
                         <tr>
                             <td><strong>#${m.id}</strong></td>
-                            <td>${m.customerName}</td>
-                            <td>Card #${m.cardId} <code>(**** ${m.cardLast4})</code></td>
+                            <td style="white-space:nowrap;">${m.customerName}</td>
+                            <td style="white-space:nowrap;">Card #${m.cardId} <code>(**** ${m.cardLast4})</code></td>
                             <td><span class="badge ${m.type === 'CREDIT' ? 'badge-emerald' : 'badge-red'}">${m.type}</span></td>
-                            <td><strong>${Number(m.amount).toLocaleString('es-ES')}</strong></td>
+                            <td><strong>${money(m.amount)}</strong></td>
                             <td>${m.reference}</td>
-                            <td>${m.timestamp}</td>
+                            <td style="white-space:nowrap; font-family: ui-monospace, monospace; font-size: 12px;">${when(m.timestamp)}</td>
                         </tr>
                     `).join('');
                 } catch (err) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 2rem; color: #ef4444;">Error: ${err.message}</td></tr>`; }
