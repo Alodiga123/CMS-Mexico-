@@ -69,6 +69,11 @@ public class FraudService {
     @lombok.Setter
     private bank.cardissuing.fraud.guild.application.GuildService guild;
 
+    /** The messaging provider; optional so the service also runs without it (unit tests). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.thirdparty.messaging.MessagingService messaging;
+
     // ------------------------------------------------------------ scoring
 
     @Transactional
@@ -194,8 +199,13 @@ public class FraudService {
     private StepUpChallenge newChallenge(Card card, AuthorizationRequest req, Channel channel, LocalDateTime now) {
         String otp = String.format("%06d", RANDOM.nextInt(1_000_000));
         String token = UUID.randomUUID().toString();
-        return challenges.save(new StepUpChallenge(token, card, req.getAmount(), req.getMerchantId(), channel.name(), otp,
+        StepUpChallenge c = challenges.save(new StepUpChallenge(token, card, req.getAmount(), req.getMerchantId(), channel.name(), otp,
                 now.plusMinutes(s.getStepUp().getTtlMin())));
+        if (messaging != null) {
+            try { messaging.otp(card, otp, s.getStepUp().getTtlMin()); }
+            catch (RuntimeException e) { log.warn("Step-up code for card {} not sent: {}", card.getId(), e.getMessage()); }
+        }
+        return c;
     }
 
     /** The cardholder answers the challenge. Wrong codes count; too many and it fails for good. */

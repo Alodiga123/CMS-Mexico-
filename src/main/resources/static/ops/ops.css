@@ -49,3 +49,8 @@
 .ops-toast.ok { border-color: var(--accent-emerald); }
 .ops-scroll { max-height: 420px; overflow: auto; }
 table.ops-compact th, table.ops-compact td { padding: 0.45rem 0.6rem; font-size: 0.8rem; }
+
+/* contract editor */
+.ops-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.6rem; }
+.ops-form-grid label, #tpContract label { font-size: 0.8rem; color: var(--muted, #6b7280); display: flex; flex-direction: column; gap: 0.25rem; }
+.ops-form-grid .form-control, #tpContract .form-control { width: 100%; }

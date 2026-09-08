@@ -79,6 +79,7 @@ public class SecurityConfig {
                 // audit trail
                 .requestMatchers("/api/audit/**").hasAuthority(Permissions.READ)
                 // everything operational: cards, customers, controls, plastics, holds, ledger, reconciliation
+                .requestMatchers(HttpMethod.PUT, "/api/thirdparties/**").hasAuthority(Permissions.ADMIN)
                 .requestMatchers(HttpMethod.GET, "/api/**").hasAuthority(Permissions.READ)
                 .requestMatchers("/api/**").hasAuthority(Permissions.OPERATE)
                 .anyRequest().permitAll());

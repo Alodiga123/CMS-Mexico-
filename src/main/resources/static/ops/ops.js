@@ -665,6 +665,75 @@
         }
     };
 
+    // ------------------------------------------------------------------ TERCEROS Y CONTRATOS
+    const thirdparties = {
+        async init() { await Promise.all([this.load(), this.loadMessages()]); },
+        async load() {
+            const tbody = $('tpRows');
+            try {
+                const rows = await api('GET', '/api/thirdparties');
+                const up = rows.filter(r => r.health.up).length, active = rows.filter(r => r.contract && r.contract.status === 'ACTIVE').length, pending = rows.filter(r => !r.contract || ['PENDING', 'NEGOTIATION'].includes(r.contract.status)).length, expired = rows.filter(r => r.contract && r.contract.expired).length;
+                $('tpKpis').innerHTML = kpi('Terceros', rows.length) + kpi('Responden', up + ' / ' + rows.length, up === rows.length ? 'ok' : 'warn') + kpi('Contratos activos', active, active ? 'ok' : 'warn') + kpi('Sin contratar', pending, pending ? 'warn' : 'ok') + kpi('Vencidos', expired, expired ? 'bad' : 'ok');
+                tbody.innerHTML = rows.map(r => this.row(r)).join('');
+            } catch (e) { errRow(tbody, 9, e); }
+        },
+        row(r) {
+            const c = r.contract || {}; const vars = r.envVars || []; const set = vars.filter(v => v.set).length;
+            return `<tr id="tpRow-${r.key}"><td><strong>${esc(r.name)}</strong><div class="ops-muted">${esc(c.vendor || '')}</div></td><td class="ops-muted" style="max-width:280px">${esc(r.role)}</td><td>${badge(r.integration)}<div class="ops-muted">${esc(r.mode)}</div></td><td>${r.health.up ? '<span class="badge badge-green">responde</span>' : '<span class="badge badge-red">no responde</span>'}<div class="ops-muted">${esc(r.health.detail)}</div></td><td>${vars.length ? `<span title="${esc(vars.map(v => (v.set ? '✓ ' : '✗ ') + v.name).join('\n'))}">${set} / ${vars.length}</span>` : '—'}</td><td>${badge(c.status || 'PENDING')}${c.contractRef ? '<div class="ops-muted">' + esc(c.contractRef) + '</div>' : ''}</td><td>${c.expiresAt ? (c.expired ? '<span class="badge badge-red">' + esc(c.expiresAt) + '</span>' : esc(c.expiresAt)) : '—'}</td><td>${c.checklistTotal ? `${c.checklistDone} / ${c.checklistTotal}` : '—'}</td>
+                <td class="ops-actions"><button class="btn btn-primary" onclick="ops.thirdparties.check('${r.key}')">Verificar</button><button class="btn btn-amber" onclick="ops.thirdparties.edit('${r.key}')">Contrato</button><a class="btn btn-primary" href="https://github.com/Alodiga123/CMS-Mexico-/blob/feature/autorizador-multiproducto/docs/${esc(r.docs)}" target="_blank">Docs</a></td></tr>`;
+        },
+        async check(key) {
+            try { const r = await api('POST', `/api/thirdparties/${key}/check`); toast(`${r.name}: ${r.health.up ? 'responde' : 'NO responde'} · ${r.health.detail}`, r.health.up ? 'ok' : 'err'); const tr = $('tpRow-' + key); if (tr) tr.outerHTML = this.row(r); } catch (e) { fail(e); }
+        },
+        async edit(key) {
+            const box = $('tpContract');
+            try {
+                const r = await api('GET', '/api/thirdparties/' + key); const c = r.contract || {};
+                box.style.display = ''; box.dataset.key = key;
+                const opt = (v) => ['PENDING', 'NEGOTIATION', 'SIGNED', 'CERTIFYING', 'ACTIVE', 'SUSPENDED', 'TERMINATED'].map(s => `<option ${s === v ? 'selected' : ''}>${s}</option>`).join('');
+                box.innerHTML = `<h4>Contrato · ${esc(r.name)}</h4><div class="ops-muted" style="margin-bottom:0.6rem">${esc(r.role)} · variables: ${(r.envVars || []).map(v => (v.set ? '✓ ' : '✗ ') + v.name).join(', ') || 'ninguna'}</div>
+                    <div class="ops-form-grid">
+                        <label>Proveedor<input id="tpcVendor" class="form-control" value="${esc(c.vendor || '')}"></label>
+                        <label>Referencia del contrato<input id="tpcRef" class="form-control" value="${esc(c.contractRef || '')}"></label>
+                        <label>Estado<select id="tpcStatus" class="form-control">${opt(c.status || 'PENDING')}</select></label>
+                        <label>Firmado<input id="tpcSigned" type="date" class="form-control" value="${esc(c.signedAt || '')}"></label>
+                        <label>Vence<input id="tpcExpires" type="date" class="form-control" value="${esc(c.expiresAt || '')}"></label>
+                        <label>Contacto<input id="tpcContact" class="form-control" value="${esc(c.contact || '')}"></label>
+                    </div>
+                    <label style="display:block;margin-top:0.6rem">Niveles de servicio y notas<textarea id="tpcSla" class="form-control" rows="3">${esc(c.slaNotes || '')}</textarea></label>
+                    <label style="display:block;margin-top:0.6rem">Certificación (una línea por punto: [x] hecho, [ ] pendiente)<textarea id="tpcChecklist" class="form-control ops-mono" rows="7">${esc(c.checklist || '')}</textarea></label>
+                    <div class="ops-toolbar" style="margin-top:0.6rem"><button class="btn btn-emerald" onclick="ops.thirdparties.save()">Guardar contrato</button><button class="btn btn-primary" onclick="document.getElementById('tpContract').style.display='none'">Cerrar</button><span class="ops-muted">${c.updatedBy ? 'última edición ' + esc(c.updatedBy) + ' · ' + dt(c.updatedAt) : ''}</span></div>`;
+                box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (e) { fail(e); }
+        },
+        async save() {
+            const key = $('tpContract').dataset.key;
+            try {
+                await api('PUT', `/api/thirdparties/${key}/contract`, { vendor: $('tpcVendor').value, contractRef: $('tpcRef').value, status: $('tpcStatus').value, signedAt: $('tpcSigned').value, expiresAt: $('tpcExpires').value, contact: $('tpcContact').value, slaNotes: $('tpcSla').value, checklist: $('tpcChecklist').value, by: who() });
+                toast('Contrato guardado', 'ok'); $('tpContract').style.display = 'none'; await this.load();
+            } catch (e) { fail(e); }
+        },
+        async loadMessages() {
+            const tbody = $('tpMsgRows');
+            try { const st = await api('GET', '/api/thirdparties/messaging/status'); $('tpMsgStatusBar').innerHTML = kpi('Proveedor', st.mode) + kpi('Estado', st.up ? 'responde' : 'no responde', st.up ? 'ok' : 'bad') + kpi('En cola', st.queued, st.queued ? 'warn' : 'ok') + kpi('Detalle', st.detail); } catch (e) { $('tpMsgStatusBar').innerHTML = ''; }
+            const first = !(tbody.__pager && tbody.__pager.server);
+            const load = async (page, size) => {
+                try {
+                    const p = await api('GET', `/api/thirdparties/messages?status=${$('tpMsgStatus').value}&page=${page}&size=${size}`);
+                    const rows = p.content || [];
+                    if (!rows.length) { empty(tbody, 11, 'Sin mensajes.'); return { total: 0 }; }
+                    tbody.innerHTML = rows.map(m => `<tr><td>#${m.id}</td><td class="ops-mono">${dt(m.createdAt)}</td><td>${badge(m.channel)}</td><td class="ops-mono">${esc(m.recipient)}</td><td>${m.cardId ? `<a href="#" onclick="ops.card360.open(${m.cardId});return false">#${m.cardId}</a>` : '—'}</td><td>${badge(m.template)}</td><td class="ops-muted" style="max-width:320px">${esc(m.text)}</td><td>${badge(m.status)}${m.lastError ? '<div class="ops-muted">' + esc(m.lastError) + '</div>' : ''}</td><td class="ops-mono">${esc(m.providerRef || '')}<div class="ops-muted">${esc(m.providerMode)}</div></td><td>${m.attempts}</td>
+                        <td class="ops-actions">${['QUEUED', 'FAILED'].includes(m.status) ? `<button class="btn btn-amber" onclick="ops.thirdparties.retry(${m.id})">Reintentar</button>` : ''}</td></tr>`).join('');
+                    return { total: p.totalElements, page: p.page, size: p.size };
+                } catch (e) { errRow(tbody, 11, e); return { total: 0 }; }
+            };
+            if (first) await pager.server(tbody, load); else await tbody.__pager.reload(true);
+        },
+        async retry(id) { try { const m = await api('POST', `/api/thirdparties/messages/${id}/retry`); toast('Mensaje ' + m.status, m.status === 'QUEUED' ? 'err' : 'ok'); await this.loadMessages(); } catch (e) { fail(e); } },
+        async test() { try { const m = await api('POST', '/api/thirdparties/messages/test', { channel: $('tpTestChannel').value, to: $('tpTestTo').value, text: $('tpTestText').value, by: who() }); toast(`Mensaje #${m.id} ${m.status}${m.providerRef ? ' · ' + m.providerRef : ''}`, m.status === 'QUEUED' || m.status === 'FAILED' ? 'err' : 'ok'); await this.loadMessages(); } catch (e) { fail(e); } },
+        async simulator() { try { const st = await api('GET', '/api/thirdparties/messaging/status'); const r = await api('POST', '/api/thirdparties/messaging/simulator', { down: !st.simulatorDown }); toast('Simulador de mensajería ' + (r.simulatorDown ? 'apagado' : 'encendido'), r.simulatorDown ? 'err' : 'ok'); await this.loadMessages(); } catch (e) { fail(e); } }
+    };
+
     // ------------------------------------------------------------------ wiring
     const tabs = {
         'tab-card360': () => {
@@ -679,7 +748,8 @@
         'tab-guild': () => guild.load(),
         'tab-plastics': () => plastics.init(),
         'tab-reports': () => reports.init(),
-        'tab-clearing': () => clearing.init()
+        'tab-clearing': () => clearing.init(),
+        'tab-thirdparties': () => thirdparties.init()
     };
 
     /** What a hash argument means on each screen (used by the browser's back / forward and deep links). */
@@ -692,7 +762,7 @@
         else if (tabId === 'tab-disputes' && arg) { await disputes.init(); await disputes.openDetail(Number(arg)); }
     }
 
-    window.ops = { card360, authorizer, recon, disputes, fraud, guild, plastics, reports, clearing, pane, tabs, route, setOperator: (n) => localStorage.setItem('ops.operator', n) };
+    window.ops = { card360, authorizer, recon, disputes, fraud, guild, plastics, reports, clearing, thirdparties, pane, tabs, route, setOperator: (n) => localStorage.setItem('ops.operator', n) };
     // the console's screens exist only now: honour a deep link that names one of them
     if (location.hash && tabs[location.hash.replace(/^#/, '').split('/')[0]] && typeof routeTo === 'function') routeTo(location.hash);
 })();

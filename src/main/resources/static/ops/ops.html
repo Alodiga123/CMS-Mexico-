@@ -337,3 +337,26 @@
         <div class="table-container"><table class="ops-compact"><thead><tr><th>Lote</th><th>Línea</th><th>Tipo</th><th>Tarjeta</th><th>Monto</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody id="clExcRows"></tbody></table></div>
     </div>
 </div>
+
+<!-- ===================== TERCEROS Y CONTRATOS ===================== -->
+<div id="tab-thirdparties" class="tab-content">
+    <div class="ops-tabs">
+        <button class="on" onclick="ops.pane(this,'tpProviders')">Proveedores y contratos</button>
+        <button onclick="ops.pane(this,'tpMessages')">Mensajería al cliente</button>
+    </div>
+    <div id="tpProviders" class="ops-pane on card">
+        <div class="card-header"><div><div class="ops-card-title">Terceros de los que depende la emisión</div><div class="ops-card-sub">Qué hace cada uno, cómo está conectado, si responde ahora y dónde va el contrato. Verificar hace la llamada real; el contrato lo edita administración</div></div>
+            <button class="btn btn-primary" onclick="ops.thirdparties.load()">🔄</button></div>
+        <div id="tpKpis" class="ops-kpis"></div>
+        <div class="table-container"><table class="ops-compact"><thead><tr><th>Tercero</th><th>Para qué</th><th>Conexión</th><th>Salud</th><th>Variables</th><th>Contrato</th><th>Vence</th><th>Certificación</th><th>Acciones</th></tr></thead><tbody id="tpRows"></tbody></table></div>
+        <div id="tpContract" class="ops-detail" style="display:none"></div>
+    </div>
+    <div id="tpMessages" class="ops-pane card">
+        <div class="card-header"><div><div class="ops-card-title">Mensajes al tarjetahabiente</div><div class="ops-card-sub">Códigos de un solo uso, avisos del plástico y de aclaraciones: lo que se pidió al proveedor y lo que contestó</div></div>
+            <div class="ops-toolbar"><select id="tpMsgStatus" class="form-control" onchange="ops.thirdparties.loadMessages()"><option value="">Todos</option><option>QUEUED</option><option>SENT</option><option>DELIVERED</option><option>FAILED</option></select><button class="btn btn-primary" onclick="ops.thirdparties.loadMessages()">🔄</button></div></div>
+        <div id="tpMsgStatusBar" class="ops-kpis"></div>
+        <div class="ops-detail" style="margin:0 0 1rem"><h4>Mensaje de prueba al proveedor</h4>
+            <div class="ops-toolbar"><select id="tpTestChannel" class="form-control"><option>SMS</option><option>WHATSAPP</option><option>EMAIL</option></select><input id="tpTestTo" class="form-control" placeholder="destinatario (teléfono)" style="width:200px"><input id="tpTestText" class="form-control" placeholder="texto" style="width:360px" value="Prueba del CMS"><button class="btn btn-primary" onclick="ops.thirdparties.test()">Enviar</button><button class="btn btn-amber" onclick="ops.thirdparties.simulator()">Apagar / encender simulador</button></div></div>
+        <div class="table-container"><table class="ops-compact"><thead><tr><th>#</th><th>Cuándo</th><th>Canal</th><th>Destinatario</th><th>Tarjeta</th><th>Plantilla</th><th>Texto</th><th>Estado</th><th>Proveedor</th><th>Intentos</th><th></th></tr></thead><tbody id="tpMsgRows"></tbody></table></div>
+    </div>
+</div>

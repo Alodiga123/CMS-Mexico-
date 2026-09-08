@@ -58,6 +58,16 @@ public class DisputeService {
     private final FundsRouter router;
     private final AuditService audit;
 
+    /** The messaging provider; optional so the service also runs without it (unit tests). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.thirdparty.messaging.MessagingService messaging;
+
+    private void notify(Runnable r) {
+        if (messaging == null) return;
+        try { r.run(); } catch (RuntimeException e) { org.slf4j.LoggerFactory.getLogger(getClass()).warn("Cardholder not notified: {}", e.getMessage()); }
+    }
+
     /** Early notice of chargebacks to the guild (SPC); optional so the service also runs without it. */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     @lombok.Setter
@@ -148,6 +158,7 @@ public class DisputeService {
         }
         event(d, "RESOLVED_" + outcome, from, d.getStatus(), note, by(by));
         audit.log("RESOLVE_DISPUTE", "Dispute", d.getId().toString(), by(by));
+        notify(() -> messaging.disputeResolved(d.getCard(), d.getId(), outcome.name()));
         log.info("Dispute {} resolved for {} ({})", d.getId(), outcome, note);
         return disputes.save(d);
     }

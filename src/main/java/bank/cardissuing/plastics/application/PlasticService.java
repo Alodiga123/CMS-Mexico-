@@ -44,6 +44,16 @@ public class PlasticService {
     private final PlasticSettings settings;
     private final AuditService audit;
 
+    /** The messaging provider; optional so the service also runs without it (unit tests). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.thirdparty.messaging.MessagingService messaging;
+
+    private void notify(Runnable r) {
+        if (messaging == null) return;
+        try { r.run(); } catch (RuntimeException e) { org.slf4j.LoggerFactory.getLogger(getClass()).warn("Cardholder not notified: {}", e.getMessage()); }
+    }
+
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     @lombok.Setter
     private bank.cardissuing.hsm.application.CardCryptoService cardCrypto;
@@ -164,6 +174,7 @@ public class PlasticService {
     public Plastic ship(Long id, String carrier, String trackingNumber, String by) {
         Plastic p = get(id); p.ship(carrier, trackingNumber);
         audit.log("SHIP_PLASTIC", "Plastic", id.toString(), by(by));
+        notify(() -> messaging.cardShipped(p.getCard(), carrier, trackingNumber));
         return plastics.save(p);
     }
 
@@ -171,6 +182,7 @@ public class PlasticService {
     public Plastic deliver(Long id, String by) {
         Plastic p = get(id); p.deliver();
         audit.log("DELIVER_PLASTIC", "Plastic", id.toString(), by(by));
+        notify(() -> messaging.cardDelivered(p.getCard()));
         return plastics.save(p);
     }
 

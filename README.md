@@ -83,6 +83,7 @@ el historial de git; esa contraseña debe considerarse comprometida y rotarse en
 ## Documentación
 
 - [Compensación y liquidación con los archivos de la red](docs/compensacion-liquidacion.md)
+- [Contratos con terceros](docs/contratos-terceros.md)
 - [Conexión con los sistemas antifraude del gremio (ACT-094)](docs/guild-antifraude.md)
 - [Canal ISO 8583, validación criptográfica y stand-in](docs/iso8583-criptografia-standin.md)
 - [Seguridad de la consola y la API con el IAM](docs/seguridad-iam.md)
