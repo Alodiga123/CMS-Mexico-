@@ -9,15 +9,18 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * In-memory stand-in for the core, so the authorizer can be developed and tested
- * without the real Mifos being reachable. Active unless {@code core.mode=fineract}.
+ * In-memory stand-in for the core, so the authorizer and issuance can be developed and
+ * tested without the real Mifos being reachable. Active unless {@code core.mode=fineract}.
  *
- * <p>Every unknown account starts with {@code core.simulated.default-balance}. Holds
- * are tracked per reference so release and withdraw behave like the real thing.
+ * <p>Every unknown account starts with {@code core.simulated.default-balance}; accounts
+ * opened through {@link #openSavingsAccount} start at zero, like a real new account.
+ * Holds are tracked per reference so release and withdraw behave like the real thing.
  */
 @Slf4j
 @Component
@@ -28,6 +31,9 @@ public class SimulatedCoreBankingClient implements CoreBankingClient {
     private final Map<String, BigDecimal> balances = new ConcurrentHashMap<>();
     private final Map<String, BigDecimal> heldByAccount = new ConcurrentHashMap<>();
     private final Map<String, String[]> holds = new ConcurrentHashMap<>(); // ref -> {account, amount}
+    private final Map<String, String> clientsByExternalId = new ConcurrentHashMap<>();
+    private final AtomicLong nextClient = new AtomicLong(1000);
+    private final AtomicLong nextAccount = new AtomicLong(5000);
 
     public SimulatedCoreBankingClient(@Value("${core.simulated.default-balance:10000}") BigDecimal defaultBalance) {
         this.defaultBalance = defaultBalance;
@@ -69,5 +75,30 @@ public class SimulatedCoreBankingClient implements CoreBankingClient {
     public synchronized String deposit(String accountId, BigDecimal amount, String reference) {
         balances.merge(accountId, amount, BigDecimal::add);
         return "SIMTX-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    @Override
+    public Optional<String> findClientByExternalId(String externalId) {
+        return Optional.ofNullable(clientsByExternalId.get(externalId));
+    }
+
+    @Override
+    public String createClient(String firstName, String lastName, String externalId) {
+        String id = String.valueOf(nextClient.getAndIncrement());
+        clientsByExternalId.put(externalId, id);
+        return id;
+    }
+
+    @Override
+    public String openSavingsAccount(String clientId, String externalId) {
+        String id = String.valueOf(nextAccount.getAndIncrement());
+        balances.put(id, BigDecimal.ZERO); // a new account has no money until someone deposits
+        return id;
+    }
+
+    @Override
+    public boolean accountIsActive(String accountId) {
+        // Anything numeric-looking is a valid simulated account; it simply starts with the default balance.
+        return accountId != null && !accountId.isBlank();
     }
 }

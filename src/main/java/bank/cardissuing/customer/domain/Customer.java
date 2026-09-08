@@ -18,4 +18,13 @@ public class Customer extends BaseEntity {
 
     private String phoneNumber;
 
+    /** Client id in the core banking system (Mifos), once one was created or found for this customer. */
+    @Column(name = "external_client_id", length = 80)
+    private String externalClientId;
+
+    public Customer(String fullName, String phoneNumber) {
+        this.fullName = fullName;
+        this.phoneNumber = phoneNumber;
+    }
+
 }

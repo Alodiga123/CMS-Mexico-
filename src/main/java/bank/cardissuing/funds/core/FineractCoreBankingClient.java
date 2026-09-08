@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Apache Fineract (Mifos) implementation of the core contract, over its REST API.
@@ -26,6 +27,10 @@ import java.util.Map;
  * reserves, {@code releaseAmount} undoes, and {@code withdrawal} moves money. That is
  * exactly the shape the authorizer needs, so the debit-with-core product delegates the
  * reservation to the core instead of keeping a shadow balance.
+ *
+ * <p>Client and account creation follow the payloads the existing Alodiga core
+ * integration already uses against this same Mifos (office, legal form, savings
+ * product, approve + activate on the same day).
  *
  * <p>Enabled with {@code core.mode=fineract}. Credentials come from properties and are
  * never logged.
@@ -48,6 +53,8 @@ public class FineractCoreBankingClient implements CoreBankingClient {
     private final RestClient http;
     /** Fineract makes paymentTypeId mandatory on deposits and withdrawals. */
     private final long paymentTypeId;
+    private final long savingsProductId;
+    private final long officeId;
 
     public FineractCoreBankingClient(
             @Value("${core.fineract.base-url}") String baseUrl,
@@ -55,6 +62,8 @@ public class FineractCoreBankingClient implements CoreBankingClient {
             @Value("${core.fineract.username}") String username,
             @Value("${core.fineract.password}") String password,
             @Value("${core.fineract.payment-type-id:1}") long paymentTypeId,
+            @Value("${core.fineract.savings-product-id:1}") long savingsProductId,
+            @Value("${core.fineract.office-id:1}") long officeId,
             RestClient.Builder builder) {
         this.http = builder
                 .baseUrl(baseUrl)
@@ -62,8 +71,13 @@ public class FineractCoreBankingClient implements CoreBankingClient {
                 .defaultHeaders(h -> h.setBasicAuth(username, password))
                 .build();
         this.paymentTypeId = paymentTypeId;
-        log.info("Core banking client: FINERACT at {} (tenant {}, paymentTypeId {})", baseUrl, tenant, paymentTypeId);
+        this.savingsProductId = savingsProductId;
+        this.officeId = officeId;
+        log.info("Core banking client: FINERACT at {} (tenant {}, paymentTypeId {}, savingsProductId {}, officeId {})",
+                baseUrl, tenant, paymentTypeId, savingsProductId, officeId);
     }
+
+    // ---------------------------------------------------------------- money
 
     @Override
     @SuppressWarnings("unchecked")
@@ -110,6 +124,92 @@ public class FineractCoreBankingClient implements CoreBankingClient {
         return transact(accountId, amount, reference, "deposit");
     }
 
+    // ------------------------------------------------------------- accounts
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Optional<String> findClientByExternalId(String externalId) {
+        Map<String, Object> body = call(() -> http.get()
+                .uri("/clients?externalId={ext}", externalId)
+                .retrieve().body(Map.class));
+        List<Map<String, Object>> items = (List<Map<String, Object>>) body.getOrDefault("pageItems", List.of());
+        return items.stream()
+                .filter(c -> externalId.equals(String.valueOf(c.get("externalId"))))
+                .map(c -> String.valueOf(c.get("id")))
+                .findFirst();
+    }
+
+    @Override
+    public String createClient(String firstName, String lastName, String externalId) {
+        String today = todayUtc();
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("locale", "en");
+        p.put("dateFormat", "dd MMMM yyyy");
+        p.put("officeId", officeId);
+        p.put("legalFormId", 1);
+        p.put("firstname", firstName);
+        p.put("lastname", lastName);
+        p.put("externalId", externalId);
+        p.put("active", true);
+        p.put("activationDate", today);
+        p.put("submittedOnDate", today);
+        Map<String, Object> body = call(() -> http.post()
+                .uri("/clients").contentType(MediaType.APPLICATION_JSON).body(p)
+                .retrieve().body(Map.class));
+        String id = String.valueOf(body.get("clientId"));
+        log.info("Fineract client {} created for externalId {}", id, externalId);
+        return id;
+    }
+
+    @Override
+    public String openSavingsAccount(String clientId, String externalId) {
+        String today = todayUtc();
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("locale", "en");
+        p.put("dateFormat", "dd MMMM yyyy");
+        p.put("clientId", Long.valueOf(clientId));
+        p.put("productId", savingsProductId);
+        p.put("externalId", externalId);
+        p.put("submittedOnDate", today);
+        p.put("nominalAnnualInterestRate", 0);
+        p.put("allowOverdraft", false);
+        p.put("enforceMinRequiredBalance", false);
+        p.put("withdrawalFeeForTransfers", false);
+        p.put("interestCalculationDaysInYearType", 365);
+        p.put("interestCalculationType", 1);
+        p.put("interestCompoundingPeriodType", 1);
+        p.put("interestPostingPeriodType", 4);
+        Map<String, Object> created = call(() -> http.post()
+                .uri("/savingsaccounts").contentType(MediaType.APPLICATION_JSON).body(p)
+                .retrieve().body(Map.class));
+        String savingsId = String.valueOf(created.get("savingsId"));
+
+        Map<String, Object> approve = Map.of("locale", "en", "dateFormat", "dd MMMM yyyy", "approvedOnDate", today);
+        call(() -> http.post().uri("/savingsaccounts/{id}?command=approve", savingsId)
+                .contentType(MediaType.APPLICATION_JSON).body(approve).retrieve().body(Map.class));
+        Map<String, Object> activate = Map.of("locale", "en", "dateFormat", "dd MMMM yyyy", "activatedOnDate", today);
+        call(() -> http.post().uri("/savingsaccounts/{id}?command=activate", savingsId)
+                .contentType(MediaType.APPLICATION_JSON).body(activate).retrieve().body(Map.class));
+        log.info("Fineract savings account {} opened and activated for client {} ({})", savingsId, clientId, externalId);
+        return savingsId;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean accountIsActive(String accountId) {
+        try {
+            Map<String, Object> body = call(() -> http.get()
+                    .uri("/savingsaccounts/{id}", accountId)
+                    .retrieve().body(Map.class));
+            Map<String, Object> status = (Map<String, Object>) body.get("status");
+            return status != null && Boolean.TRUE.equals(status.get("active"));
+        } catch (BusinessException e) {
+            return false; // 404 or unreachable: not something we can link to
+        }
+    }
+
+    // -------------------------------------------------------------- helpers
+
     private String transact(String accountId, BigDecimal amount, String reference, String command) {
         Map<String, Object> payload = datedPayload(accountId, amount);
         payload.put("paymentTypeId", paymentTypeId);
@@ -145,6 +245,10 @@ public class FineractCoreBankingClient implements CoreBankingClient {
                 .max(LocalDate::compareTo)
                 .orElse(today);
         return last.isAfter(today) ? last : today;
+    }
+
+    private static String todayUtc() {
+        return LocalDate.now(ZoneOffset.UTC).format(FINERACT_DATE);
     }
 
     private static <T> T call(java.util.function.Supplier<T> request) {

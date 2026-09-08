@@ -1,6 +1,8 @@
 package bank.cardissuing.card.infrastructure;
 
+import bank.cardissuing.card.application.CoreAccountLinker;
 import bank.cardissuing.card.domain.Card;
+import bank.cardissuing.funds.core.CoreBankingClient;
 import bank.cardissuing.card.domain.CardCategory;
 import bank.cardissuing.card.domain.CardProduct;
 import bank.cardissuing.card.domain.CardStatus;
@@ -37,6 +39,8 @@ public class CardController {
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final bank.cardissuing.hsm.infrastructure.HsmService hsmService;
+    private final CoreAccountLinker coreAccountLinker;
+    private final CoreBankingClient coreBankingClient;
 
     @GetMapping
     public ResponseEntity<List<CardResponse>> getAllCards() {
@@ -110,6 +114,9 @@ public class CardController {
         card.setStatus(CardStatus.ACTIVE);
         card.setCardCategory(request.getCardCategory() != null ? CardCategory.valueOf(request.getCardCategory().toUpperCase()) : CardCategory.PHYSICAL);
         card.setExpiryDate(LocalDate.now().plusYears(3));
+        BigDecimal requestedDeposit = request.getInitialDeposit() != null ? request.getInitialDeposit() : BigDecimal.ZERO;
+        // Debit-with-core products get their account in the core here, before anything is saved locally.
+        boolean linkedToCore = coreAccountLinker.link(card, customer, request.getExternalAccountId(), requestedDeposit);
         card = cardRepository.save(card);
 
         // Ledger Account Creation
@@ -119,12 +126,14 @@ public class CardController {
         account = ledgerAccountRepository.save(account);
 
         BigDecimal initialDeposit = request.getInitialDeposit() != null ? request.getInitialDeposit() : BigDecimal.ZERO;
-        if (initialDeposit.compareTo(BigDecimal.ZERO) > 0) {
+        if (!linkedToCore && initialDeposit.compareTo(BigDecimal.ZERO) > 0) {
             LedgerEntry entry = new LedgerEntry(account, EntryType.CREDIT, initialDeposit, "Initial Issuance Deposit (HSM Encrypted PIN Block: " + crypto.getPinBlock() + ")");
             ledgerEntryRepository.save(entry);
         }
 
-        BigDecimal balance = ledgerEntryRepository.calculateBalance(account);
+        BigDecimal balance = linkedToCore
+                ? coreBankingClient.availableBalance(card.getExternalAccountId())
+                : ledgerEntryRepository.calculateBalance(account);
 
         CardResponse response = new CardResponse(
                 card.getId(),
@@ -196,6 +205,20 @@ public class CardController {
                 "message", "Card status updated successfully"
         ));
     }
+    /** Where a card's money lives in the core, if anywhere. */
+    @GetMapping("/{id}/core-account")
+    public ResponseEntity<java.util.Map<String, Object>> coreAccount(@PathVariable Long id) {
+        Card card = cardRepository.findById(id)
+                .orElseThrow(() -> new bank.cardissuing.common.exception.ResourceNotFoundException("Card", "id", id));
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("cardId", id);
+        m.put("coreBacked", coreAccountLinker.isCoreBacked(card.getProduct()));
+        m.put("externalAccountId", card.getExternalAccountId());
+        m.put("externalClientId", card.getCustomer() != null ? card.getCustomer().getExternalClientId() : null);
+        m.put("available", card.getExternalAccountId() != null ? coreBankingClient.availableBalance(card.getExternalAccountId()) : null);
+        return ResponseEntity.ok(m);
+    }
+
 
     @Data
     public static class CardIssueRequest {
@@ -205,6 +228,8 @@ public class CardController {
         private String cardCategory; // PHYSICAL, VIRTUAL
         private String last4;
         private BigDecimal initialDeposit;
+        /** Optional: link to this existing core account instead of opening a new one. */
+        private String externalAccountId;
     }
 
     @Data
