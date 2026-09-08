@@ -194,3 +194,16 @@ label, .form-group label { display: block; }
 .form-group div[style*="display:flex"], .form-group div[style*="display: flex"] { align-items: stretch; }
 .form-group div[style*="display:flex"] > .form-control, .form-group div[style*="display: flex"] > .form-control { min-width: 0; flex: 1 1 auto; }
 .form-group div[style*="display:flex"] > .btn, .form-group div[style*="display: flex"] > .btn { flex: 0 0 auto; padding: 6px 12px !important; font-size: 12px !important; }
+
+/* ── paginacion de tablas ── */
+.ops-scroll { max-height: none !important; overflow: visible !important; }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 4px 0; font-size: 12px; color: var(--muted); }
+.pager-info strong { color: var(--ink); font-weight: 600; }
+.pager-nav { display: flex; align-items: center; gap: 4px; }
+.pager-btn { min-width: 30px; height: 30px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); font-size: 12px; font-weight: 500; cursor: pointer; }
+.pager-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.pager-btn.on { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600; }
+.pager-btn:disabled { opacity: .4; cursor: default; }
+.pager-gap { padding: 0 4px; color: var(--muted); }
+.pager-size { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px !important; white-space: nowrap; }
+.pager-size select { padding: 4px 28px 4px 10px !important; border-radius: 999px !important; font-size: 12px !important; width: auto; }
