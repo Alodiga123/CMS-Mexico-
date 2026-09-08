@@ -323,13 +323,13 @@
             <h4>Cargar un archivo de la red (formato CMS-CLR 1.0)</h4>
             <div class="ops-toolbar"><input id="clFileName" class="form-control" placeholder="nombre del archivo" style="width:220px"><input id="clFileInput" type="file" accept=".clr,.txt,.csv" class="form-control" style="width:300px"><button class="btn btn-primary" onclick="ops.clearing.upload()">Cargar y procesar</button></div>
         </div>
-        <div class="table-container"><table class="ops-compact"><thead><tr><th>#</th><th>Red</th><th>Ciclo</th><th>Archivo</th><th>Estado</th><th>Registros</th><th>Casados</th><th>Excepciones</th><th>Presentaciones</th><th>Reversos</th><th>Contracargos</th><th>Cuotas</th><th>Cargó</th><th></th></tr></thead><tbody id="clBatchRows"></tbody></table></div>
+        <div class="table-container"><table class="ops-compact"><thead><tr><th>#</th><th>Red</th><th>Ciclo</th><th>Archivo</th><th>Estado</th><th>Registros (casados · excepciones)</th><th>Presentaciones</th><th>Reversos</th><th>Contracargos</th><th>Intercambio</th><th>Cuotas de red</th><th>Cargó</th><th></th></tr></thead><tbody id="clBatchRows"></tbody></table></div>
         <div id="clBatchDetail" class="ops-detail" style="display:none"></div>
     </div>
     <div id="clCycles" class="ops-pane card">
-        <div class="card-header"><div><div class="ops-card-title">Liquidación por red y ciclo</div><div class="ops-card-sub">Presentaciones − reversos − contracargos − intercambio = posición neta. Cerrar congela las cifras y sella el archivo para tesorería; pagar registra la transferencia</div></div>
+        <div class="card-header"><div><div class="ops-card-title">Liquidación por red y ciclo</div><div class="ops-card-sub">Presentaciones − reversos − contracargos − intercambio + cuotas de red = posición neta. Cerrar congela las cifras y sella el archivo para tesorería; pagar registra la transferencia</div></div>
             <button class="btn btn-primary" onclick="ops.clearing.loadCycles()">🔄</button></div>
-        <div class="table-container"><table class="ops-compact"><thead><tr><th>#</th><th>Red</th><th>Ciclo</th><th>Estado</th><th>Lotes</th><th>Presentaciones</th><th>Reversos</th><th>Contracargos</th><th>Intercambio</th><th>Posición neta</th><th>Excepciones</th><th>Cierre / pago</th><th>Acciones</th></tr></thead><tbody id="clCycleRows"></tbody></table></div>
+        <div class="table-container"><table class="ops-compact"><thead><tr><th>#</th><th>Red</th><th>Ciclo</th><th>Estado</th><th>Lotes</th><th>Presentaciones</th><th>Reversos</th><th>Contracargos</th><th>Intercambio</th><th>Cuotas de red</th><th>Posición neta</th><th>Excepciones</th><th>Cierre / pago</th><th>Acciones</th></tr></thead><tbody id="clCycleRows"></tbody></table></div>
     </div>
     <div id="clExceptions" class="ops-pane card">
         <div class="card-header"><div><div class="ops-card-title">Excepciones de compensación</div><div class="ops-card-sub">Montos fuera de tolerancia, duplicados, PAN desconocidos, contracargos sin aclaración, forzados sin autorización. Cada una tiene su ítem en conciliación</div></div>

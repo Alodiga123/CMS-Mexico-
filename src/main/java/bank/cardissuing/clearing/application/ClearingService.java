@@ -87,12 +87,12 @@ public class ClearingService {
         audit.log("CLEARING_FILE_LOADED", "ClearingBatch", b.getId().toString(), b.getLoadedBy());
 
         int matched = 0, exceptions = 0, presentments = 0;
-        BigDecimal pres = BigDecimal.ZERO, rev = BigDecimal.ZERO, cb = BigDecimal.ZERO, fees = BigDecimal.ZERO;
+        BigDecimal pres = BigDecimal.ZERO, rev = BigDecimal.ZERO, cb = BigDecimal.ZERO, fees = BigDecimal.ZERO, interchange = BigDecimal.ZERO;
         for (Line l : parsed.lines()) {
             ClearingRecord r = process(b, l);
             if (EXCEPTIONS.contains(r.getOutcome())) exceptions++; else matched++;
             switch (l.type()) {
-                case PRESENTMENT -> { if (r.getOutcome() != Outcome.NO_CARD && r.getOutcome() != Outcome.ALREADY_CAPTURED) { presentments++; pres = pres.add(l.amount()); } if (l.interchangeFee() != null) fees = fees.add(l.interchangeFee()); }
+                case PRESENTMENT -> { if (r.getOutcome() != Outcome.NO_CARD && r.getOutcome() != Outcome.ALREADY_CAPTURED) { presentments++; pres = pres.add(l.amount()); } if (l.interchangeFee() != null && r.getOutcome() != Outcome.NO_CARD && r.getOutcome() != Outcome.ALREADY_CAPTURED) interchange = interchange.add(l.interchangeFee()); }
                 case REVERSAL -> { if (r.getOutcome() == Outcome.REVERSED) rev = rev.add(l.amount()); }
                 case CHARGEBACK -> { if (r.getOutcome() == Outcome.DISPUTE_LINKED) cb = cb.add(l.amount()); }
                 case FEE -> fees = fees.add(l.amount());
@@ -106,12 +106,21 @@ public class ClearingService {
         b.setReversalsAmount(rev);
         b.setChargebacksAmount(cb);
         b.setFeesAmount(fees);
+        b.setInterchangeAmount(interchange);
         b.setStatus(ClearingBatch.Status.PROCESSED);
         b.setProcessedAt(LocalDateTime.now());
-        b.setSettlementCycleId(settlement.addBatch(b).getId());
+        try {
+            b.setSettlementCycleId(settlement.addBatch(b).getId());
+        } catch (BusinessException e) {
+            // the records are posted (each in its own transaction); the batch stays visible as FAILED with the reason
+            b.setStatus(ClearingBatch.Status.FAILED);
+            b.setError(e.getMessage());
+            batches.save(b);
+            throw e;
+        }
         b = batches.save(b);
         audit.log("CLEARING_FILE_PROCESSED", "ClearingBatch", b.getId().toString(), b.getLoadedBy());
-        log.info("Clearing batch #{} {} {}: {} records, {} matched, {} exceptions, presentments {} fees {}", b.getId(), b.getNetwork(), b.getCycleDate(), b.getRecordCount(), matched, exceptions, pres, fees);
+        log.info("Clearing batch #{} {} {}: {} records, {} matched, {} exceptions, presentments {} interchange {} fees {}", b.getId(), b.getNetwork(), b.getCycleDate(), b.getRecordCount(), matched, exceptions, pres, interchange, fees);
         return b;
     }
 

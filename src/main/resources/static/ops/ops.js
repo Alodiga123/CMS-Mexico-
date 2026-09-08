@@ -621,10 +621,10 @@
             const tbody = $('clBatchRows');
             try {
                 const rows = await api('GET', '/api/clearing/batches');
-                if (!rows.length) return empty(tbody, 14, 'Sin archivos de compensación. Carga uno o simula un ciclo.');
-                tbody.innerHTML = rows.map(b => `<tr><td>#${b.id}</td><td>${badge(b.network)}</td><td>${esc(b.cycleDate)}</td><td>${esc(b.fileName)}</td><td>${badge(b.status)}</td><td>${b.recordCount}</td><td>${b.matchedCount}</td><td>${b.exceptionCount ? '<span class="badge badge-red">' + b.exceptionCount + '</span>' : '0'}</td><td>${b.presentmentsCount} · ${money(b.presentmentsAmount)}</td><td>${money(b.reversalsAmount)}</td><td>${money(b.chargebacksAmount)}</td><td>${money(b.feesAmount)}</td><td>${esc(b.loadedBy)}<div class="ops-muted">${dt(b.loadedAt)}</div></td>
+                if (!rows.length) return empty(tbody, 13, 'Sin archivos de compensación. Carga uno o simula un ciclo.');
+                tbody.innerHTML = rows.map(b => `<tr><td>#${b.id}</td><td>${badge(b.network)}</td><td>${esc(b.cycleDate)}</td><td>${esc(b.fileName)}</td><td>${badge(b.status)}${b.error ? '<div class="ops-muted" style="max-width:220px;white-space:normal">' + esc(b.error) + '</div>' : ''}</td><td>${b.recordCount} <span class="ops-muted">(${b.matchedCount} · ${b.exceptionCount ? '<span class="badge badge-red">' + b.exceptionCount + '</span>' : '0'})</span></td><td>${b.presentmentsCount} · ${money(b.presentmentsAmount)}</td><td>${money(b.reversalsAmount)}</td><td>${money(b.chargebacksAmount)}</td><td>${money(b.interchangeAmount)}</td><td>${money(b.feesAmount)}</td><td>${esc(b.loadedBy)}<div class="ops-muted">${dt(b.loadedAt)}</div></td>
                     <td class="ops-actions"><button class="btn btn-primary" onclick="ops.clearing.batch(${b.id})">Ver</button><a class="btn btn-primary" href="/api/clearing/batches/${b.id}/file" target="_blank">⬇</a></td></tr>`).join('');
-            } catch (e) { errRow(tbody, 14, e); }
+            } catch (e) { errRow(tbody, 13, e); }
         },
         async batch(id) {
             const box = $('clBatchDetail');
@@ -648,10 +648,10 @@
             const tbody = $('clCycleRows');
             try {
                 const rows = await api('GET', '/api/clearing/settlement/cycles');
-                if (!rows.length) return empty(tbody, 13, 'Sin ciclos de liquidación.');
-                tbody.innerHTML = rows.map(c => `<tr><td>#${c.id}</td><td>${badge(c.network)}</td><td>${esc(c.cycleDate)}</td><td>${badge(c.status)}</td><td>${c.batchCount}</td><td>${c.presentmentsCount} · ${money(c.presentmentsAmount)}</td><td>${money(c.reversalsAmount)}</td><td>${money(c.chargebacksAmount)}</td><td>${money(c.interchangeAmount)}</td><td><strong style="color:${c.direction === 'ISSUER_PAYS' ? 'var(--bad)' : 'var(--ok)'}">${money(c.netPosition, c.currency)}</strong><div class="ops-muted">${c.direction === 'ISSUER_PAYS' ? 'el emisor paga' : 'el emisor recibe'}</div></td><td>${c.exceptionCount}</td><td class="ops-muted">${c.closedAt ? 'cerrado ' + dt(c.closedAt) + ' · ' + esc(c.closedBy) : ''}${c.paidAt ? '<br>pagado ' + dt(c.paidAt) + ' · ' + esc(c.paymentRef) : ''}</td>
+                if (!rows.length) return empty(tbody, 14, 'Sin ciclos de liquidación.');
+                tbody.innerHTML = rows.map(c => `<tr><td>#${c.id}</td><td>${badge(c.network)}</td><td>${esc(c.cycleDate)}</td><td>${badge(c.status)}</td><td>${c.batchCount}</td><td>${c.presentmentsCount} · ${money(c.presentmentsAmount)}</td><td>${money(c.reversalsAmount)}</td><td>${money(c.chargebacksAmount)}</td><td>${money(c.interchangeAmount)}</td><td>${money(c.feesAmount)}</td><td><strong style="color:${c.direction === 'ISSUER_PAYS' ? 'var(--bad)' : 'var(--ok)'}">${money(c.netPosition, c.currency)}</strong><div class="ops-muted">${c.direction === 'ISSUER_PAYS' ? 'el emisor paga' : 'el emisor recibe'}</div></td><td>${c.exceptionCount}</td><td class="ops-muted">${c.closedAt ? 'cerrado ' + dt(c.closedAt) + ' · ' + esc(c.closedBy) : ''}${c.paidAt ? '<br>pagado ' + dt(c.paidAt) + ' · ' + esc(c.paymentRef) : ''}</td>
                     <td class="ops-actions">${c.status === 'OPEN' ? `<button class="btn btn-emerald" onclick="ops.clearing.close(${c.id})">Cerrar ciclo</button>` : ''}${c.status === 'CLOSED' ? `<button class="btn btn-amber" onclick="ops.clearing.pay(${c.id})">Registrar pago</button>` : ''}${c.status !== 'OPEN' ? `<a class="btn btn-primary" href="/api/clearing/settlement/cycles/${c.id}/file">⬇ Archivo</a>` : ''}</td></tr>`).join('');
-            } catch (e) { errRow(tbody, 13, e); }
+            } catch (e) { errRow(tbody, 14, e); }
         },
         async close(id) { if (!confirm('Cerrar el ciclo congela las cifras y sella el archivo para tesorería. ¿Continuar?')) return; try { const c = await api('POST', `/api/clearing/settlement/cycles/${id}/close`, { by: who() }); toast(`Ciclo cerrado · neto ${money(c.netPosition, c.currency)} · sello ${c.sha256.slice(0, 12)}…`, 'ok'); await this.loadCycles(); } catch (e) { fail(e); } },
         async pay(id) { const ref = prompt('Referencia del pago (SPEI / transferencia)'); if (!ref) return; try { await api('POST', `/api/clearing/settlement/cycles/${id}/paid`, { paymentRef: ref, by: who() }); toast('Ciclo pagado', 'ok'); await this.loadCycles(); } catch (e) { fail(e); } },

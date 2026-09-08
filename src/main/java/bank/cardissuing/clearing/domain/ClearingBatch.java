@@ -75,6 +75,10 @@ public class ClearingBatch extends BaseEntity {
     @Column(name = "fees_amount", precision = 19, scale = 2, nullable = false)
     private BigDecimal feesAmount = BigDecimal.ZERO;
 
+    /** Interchange the acquirers owe us on the presentments (the issuer receives it). */
+    @Column(name = "interchange_amount", precision = 19, scale = 2)
+    private BigDecimal interchangeAmount = BigDecimal.ZERO;
+
     @Column(name = "matched_count", nullable = false)
     private int matchedCount;
 

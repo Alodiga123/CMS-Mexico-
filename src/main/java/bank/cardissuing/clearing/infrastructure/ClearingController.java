@@ -110,7 +110,7 @@ public class ClearingController {
         m.put("cycleDate", b.getCycleDate()); m.put("status", b.getStatus().name()); m.put("sha256", b.getSha256());
         m.put("recordCount", b.getRecordCount()); m.put("trailerCount", b.getTrailerCount()); m.put("trailerAmount", b.getTrailerAmount());
         m.put("presentmentsCount", b.getPresentmentsCount()); m.put("presentmentsAmount", b.getPresentmentsAmount());
-        m.put("reversalsAmount", b.getReversalsAmount()); m.put("chargebacksAmount", b.getChargebacksAmount()); m.put("feesAmount", b.getFeesAmount());
+        m.put("reversalsAmount", b.getReversalsAmount()); m.put("chargebacksAmount", b.getChargebacksAmount()); m.put("interchangeAmount", b.getInterchangeAmount()); m.put("feesAmount", b.getFeesAmount());
         m.put("matchedCount", b.getMatchedCount()); m.put("exceptionCount", b.getExceptionCount());
         m.put("loadedBy", b.getLoadedBy()); m.put("loadedAt", b.getCreatedAt()); m.put("processedAt", b.getProcessedAt());
         m.put("settlementCycleId", b.getSettlementCycleId()); m.put("error", b.getError());
@@ -119,7 +119,7 @@ public class ClearingController {
 
     static Map<String, Object> view(ClearingRecord r) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id", r.getId()); m.put("lineNo", r.getLineNo()); m.put("type", r.getType().name()); m.put("pan", r.getPanMasked()); m.put("cardId", r.getCardId());
+        m.put("id", r.getId()); m.put("batchId", r.getBatch() != null ? r.getBatch().getId() : null); m.put("lineNo", r.getLineNo()); m.put("type", r.getType().name()); m.put("pan", r.getPanMasked()); m.put("cardId", r.getCardId());
         m.put("rrn", r.getRrn()); m.put("stan", r.getStan()); m.put("approvalId", r.getApprovalId()); m.put("approvalCode", r.getApprovalCode());
         m.put("amount", r.getAmount()); m.put("currency", r.getCurrency()); m.put("interchangeFee", r.getInterchangeFee()); m.put("mcc", r.getMcc());
         m.put("merchantId", r.getMerchantId()); m.put("merchantName", r.getMerchantName()); m.put("transactionDate", r.getTransactionDate());
@@ -131,7 +131,7 @@ public class ClearingController {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", c.getId()); m.put("network", c.getNetwork().name()); m.put("cycleDate", c.getCycleDate()); m.put("status", c.getStatus().name());
         m.put("batchCount", c.getBatchCount()); m.put("presentmentsCount", c.getPresentmentsCount()); m.put("presentmentsAmount", c.getPresentmentsAmount());
-        m.put("reversalsAmount", c.getReversalsAmount()); m.put("chargebacksAmount", c.getChargebacksAmount()); m.put("interchangeAmount", c.getInterchangeAmount());
+        m.put("reversalsAmount", c.getReversalsAmount()); m.put("chargebacksAmount", c.getChargebacksAmount()); m.put("interchangeAmount", c.getInterchangeAmount()); m.put("feesAmount", c.getFeesAmount());
         m.put("netPosition", c.getNetPosition()); m.put("direction", c.getNetPosition().signum() >= 0 ? "ISSUER_PAYS" : "ISSUER_RECEIVES");
         m.put("exceptionCount", c.getExceptionCount()); m.put("currency", c.getCurrency()); m.put("sha256", c.getSha256());
         m.put("closedAt", c.getClosedAt()); m.put("closedBy", c.getClosedBy()); m.put("paidAt", c.getPaidAt()); m.put("paymentRef", c.getPaymentRef());

@@ -61,6 +61,10 @@ public class SettlementCycle extends BaseEntity {
     @Column(name = "interchange_amount", precision = 19, scale = 2, nullable = false)
     private BigDecimal interchangeAmount = BigDecimal.ZERO;
 
+    /** Network fees billed to the issuer (scheme fees, FEE records). */
+    @Column(name = "fees_amount", precision = 19, scale = 2)
+    private BigDecimal feesAmount = BigDecimal.ZERO;
+
     /** presentments - reversals - chargebacks - interchange. Positive: the issuer pays. */
     @Column(name = "net_position", precision = 19, scale = 2, nullable = false)
     private BigDecimal netPosition = BigDecimal.ZERO;
@@ -93,8 +97,12 @@ public class SettlementCycle extends BaseEntity {
         presentmentsAmount = presentmentsAmount.add(b.getPresentmentsAmount());
         reversalsAmount = reversalsAmount.add(b.getReversalsAmount());
         chargebacksAmount = chargebacksAmount.add(b.getChargebacksAmount());
-        interchangeAmount = interchangeAmount.add(b.getFeesAmount());
+        interchangeAmount = interchangeAmount.add(nz(b.getInterchangeAmount()));
+        feesAmount = nz(feesAmount).add(nz(b.getFeesAmount()));
         exceptionCount += b.getExceptionCount();
-        netPosition = presentmentsAmount.subtract(reversalsAmount).subtract(chargebacksAmount).subtract(interchangeAmount);
+        // what the issuer pays: what its cardholders spent, less what came back, less the interchange it earns, plus the network fees it is billed
+        netPosition = presentmentsAmount.subtract(reversalsAmount).subtract(chargebacksAmount).subtract(interchangeAmount).add(feesAmount);
     }
+
+    private static BigDecimal nz(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
 }

@@ -61,14 +61,14 @@ class ClearingFileParserTest {
         c.setNetwork(Network.MASTERCARD); c.setCycleDate(LocalDate.of(2026, 9, 8));
         ClearingBatch a = new ClearingBatch();
         a.setPresentmentsCount(3); a.setPresentmentsAmount(new BigDecimal("135.00")); a.setReversalsAmount(new BigDecimal("60.00"));
-        a.setChargebacksAmount(new BigDecimal("80.00")); a.setFeesAmount(new BigDecimal("1.55")); a.setExceptionCount(2);
+        a.setChargebacksAmount(new BigDecimal("80.00")); a.setInterchangeAmount(new BigDecimal("1.55")); a.setFeesAmount(new BigDecimal("38.70")); a.setExceptionCount(2);
         ClearingBatch b = new ClearingBatch();
         b.setPresentmentsCount(1); b.setPresentmentsAmount(new BigDecimal("20.00"));
         c.add(a); c.add(b);
         assertEquals(2, c.getBatchCount());
         assertEquals(4, c.getPresentmentsCount());
         assertEquals(new BigDecimal("155.00"), c.getPresentmentsAmount());
-        assertEquals(new BigDecimal("13.45"), c.getNetPosition(), "155 - 60 - 80 - 1.55: the issuer pays");
+        assertEquals(new BigDecimal("52.15"), c.getNetPosition(), "155 - 60 - 80 - 1.55 + 38.70: the issuer pays");
         assertEquals(2, c.getExceptionCount());
     }
 }

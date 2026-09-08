@@ -18,7 +18,7 @@ red ──archivo CMS-CLR──▶ POST /api/clearing/files ──▶ lote (Clea
                                                      └─ FEE          → cuota de red
                                                      ▼
                                               ciclo de liquidación (red + fecha)
-                                              neto = presentaciones − reversos − contracargos − intercambio
+                                              neto = presentaciones − reversos − contracargos − intercambio + cuotas de red
                                               OPEN → CLOSED (archivo sellado) → PAID (referencia SPEI)
 ```
 
@@ -61,7 +61,7 @@ Cada línea se procesa en su propia transacción: una línea que falla no tumba 
 | `NO_CARD` | el PAN no es nuestro | ninguno | `CLEARING_NO_CARD` |
 | `REVERSED` | reverso de compensación de una presentación ya capturada | abono al titular (o libera si aún estaba retenida) | no |
 | `DISPUTE_LINKED` | contracargo o representación ligada a una aclaración abierta | ninguno (la aclaración ya lo hizo) | no |
-| `FEE_BOOKED` | cuota de red | ninguno en cuentas de clientes; suma al intercambio del ciclo | no |
+| `FEE_BOOKED` | cuota de red | ninguno en cuentas de clientes; suma a las cuotas de red del ciclo (el emisor las paga) | no |
 | `UNMATCHED` | reverso o contracargo sin autorización ni aclaración | ninguno | `CLEARING_UNMATCHED` |
 | `ERROR` | fallo técnico en la línea | ninguno | ninguno; ver detalle |
 
@@ -74,7 +74,7 @@ identifican como `CLEARING:<lote>:<línea>` y se atienden en la pantalla de conc
 Un ciclo es una red y una fecha. Cada lote cargado suma al ciclo abierto:
 
 ```
-neto = presentaciones − reversos − contracargos − intercambio
+neto = presentaciones − reversos − contracargos − intercambio + cuotas de red
 neto > 0 : el emisor paga a la red
 neto < 0 : el emisor recibe de la red
 ```

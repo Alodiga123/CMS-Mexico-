@@ -84,7 +84,7 @@ check("retenciones: 30 capturada por 30, 45 por 45, 60 por 60, 80 capturada", al
 check("ledger: 420 - 30 - 45 - 60 + 60 (reverso) = 345", ledger() == 345, ledger())
 items = sql("select string_agg(type, ',' order by id) from reconciliation_items where item_key like 'CLEARING:%d:%%'" % b["id"])
 check("excepciones abiertas en conciliacion: monto distinto, duplicado, PAN desconocido", "CLEARING_AMOUNT_MISMATCH" in items and "CLEARING_DUPLICATE" in items and "CLEARING_NO_CARD" in items, items)
-check("totales del lote: 3 presentaciones por 150 (45+45+60), reversos 60, contracargos 80, cuotas 38.70 + intercambio", b["presentmentsCount"] == 3 and float(b["presentmentsAmount"]) == 150 and float(b["reversalsAmount"]) == 60 and float(b["chargebacksAmount"]) == 80 and float(b["feesAmount"]) > 38.70, {k: b[k] for k in ("presentmentsCount", "presentmentsAmount", "reversalsAmount", "chargebacksAmount", "feesAmount", "matchedCount", "exceptionCount")})
+check("totales del lote: 3 presentaciones por 150 (45+45+60), reversos 60, contracargos 80, cuota de red 38.70 e intercambio 1.15% de lo retenido (135)", b["presentmentsCount"] == 3 and float(b["presentmentsAmount"]) == 150 and float(b["reversalsAmount"]) == 60 and float(b["chargebacksAmount"]) == 80 and float(b["feesAmount"]) == 38.70 and abs(float(b["interchangeAmount"]) - 1.55) < 0.02, {k: b[k] for k in ("presentmentsCount", "presentmentsAmount", "reversalsAmount", "chargebacksAmount", "interchangeAmount", "feesAmount", "matchedCount", "exceptionCount")})
 st, dup = http("POST", "/clearing/files", {"fileName": "again.clr", "content": content, "by": "ops"})
 check("cargar el mismo archivo otra vez -> 409", st == 409 and dup.get("errorCode") == "CLEARING_FILE_DUPLICATE", (st, dup))
 st, badf = http("POST", "/clearing/files", {"fileName": "bad.clr", "content": content.replace("TRL|", "TRL|9"), "by": "ops"})
@@ -96,13 +96,13 @@ st, exc = http("GET", "/clearing/exceptions"); check("las excepciones se listan 
 print("== 3. liquidacion: posicion neta, cierre sellado, pago ==")
 st, cycles = http("GET", "/clearing/settlement/cycles")
 cyc = next(x for x in cycles if x["id"] == b["settlementCycleId"])
-expected_net = 150 - 60 - 80 - float(b["feesAmount"])
-check("ciclo VISA de hoy abierto con la posicion neta = presentaciones - reversos - contracargos - intercambio", cyc["status"] == "OPEN" and abs(float(cyc["netPosition"]) - expected_net) < 0.01 and cyc["direction"] == "ISSUER_RECEIVES", (cyc, expected_net))
+expected_net = 150 - 60 - 80 - float(b["interchangeAmount"]) + float(b["feesAmount"])
+check("ciclo VISA de hoy abierto con la posicion neta = presentaciones - reversos - contracargos - intercambio + cuotas de red", cyc["status"] == "OPEN" and abs(float(cyc["netPosition"]) - expected_net) < 0.01 and cyc["direction"] == "ISSUER_PAYS", (cyc, expected_net))
 st, closed = http("POST", f"/clearing/settlement/cycles/{cyc['id']}/close", {"by": "tesoreria"})
 check("cierre: CLOSED, sellado, quien y cuando", st == 200 and closed["status"] == "CLOSED" and len(closed["sha256"]) == 64 and closed["closedBy"] == "tesoreria", (st, closed))
 st, sf, hdr = http("GET", f"/clearing/settlement/cycles/{cyc['id']}/file", raw=True)
 text = sf.decode("utf-8")
-check("archivo de liquidacion CSV con lote, total y neto, y su sello coincide", st == 200 and text.startswith("network,cycle_date,batch_id") and ",NET," in text and "ISSUER RECEIVES" in text and hashlib.sha256(sf).hexdigest() == closed["sha256"], text[:200])
+check("archivo de liquidacion CSV con lote, total y neto, y su sello coincide", st == 200 and text.startswith("network,cycle_date,batch_id") and ",NET," in text and "ISSUER PAYS" in text and hashlib.sha256(sf).hexdigest() == closed["sha256"], text[:200])
 st, again = http("POST", f"/clearing/settlement/cycles/{cyc['id']}/close", {"by": "x"}); check("cerrar dos veces -> 409", st == 409, st)
 st, late = http("POST", "/clearing/simulate", {"network": "VISA", "anomalies": "fee", "cardId": C, "ingest": True})
 check("un archivo tardio para un ciclo cerrado -> 409 (necesita nuevo ciclo)", st == 409 and late.get("errorCode") == "SETTLEMENT_CYCLE_CLOSED", (st, late))
@@ -119,6 +119,8 @@ with c as (select %d as id),
  d0 as (delete from clearing_records where batch_id in (select id from b)),
  d0b as (delete from clearing_batches where id in (select id from b)),
  d0c as (delete from settlement_cycles where id = %d),
+ d0d as (delete from clearing_records where batch_id in (select id from clearing_batches where status='FAILED' and loaded_by='scripts')),
+ d0e as (delete from clearing_batches where status='FAILED' and loaded_by='scripts'),
  d1 as (delete from ledger_entries where ledger_account_id in (select id from ledger_accounts where card_id in (select id from c))),
  d2 as (delete from ledger_accounts where card_id in (select id from c)),
  d3 as (delete from card_controls where card_id in (select id from c)),

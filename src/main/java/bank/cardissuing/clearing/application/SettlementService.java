@@ -87,16 +87,16 @@ public class SettlementService {
 
     /** The settlement file for treasury: one line per batch, totals and the net position, CSV, sealed. */
     String settlementFile(SettlementCycle c) {
-        List<String> cols = List.of("network", "cycle_date", "batch_id", "file", "records", "presentments", "presentments_amount", "reversals", "chargebacks", "interchange", "exceptions", "sha256");
+        List<String> cols = List.of("network", "cycle_date", "batch_id", "file", "records", "presentments", "presentments_amount", "reversals", "chargebacks", "interchange", "network_fees", "exceptions", "sha256");
         List<List<Object>> rows = new ArrayList<>();
         for (ClearingBatch b : batches.findBySettlementCycleIdOrderByCreatedAtAsc(c.getId())) {
             rows.add(Arrays.asList(b.getNetwork().name(), b.getCycleDate(), b.getId(), b.getFileName(), b.getRecordCount(), b.getPresentmentsCount(),
-                    b.getPresentmentsAmount(), b.getReversalsAmount(), b.getChargebacksAmount(), b.getFeesAmount(), b.getExceptionCount(), b.getSha256()));
+                    b.getPresentmentsAmount(), b.getReversalsAmount(), b.getChargebacksAmount(), b.getInterchangeAmount(), b.getFeesAmount(), b.getExceptionCount(), b.getSha256()));
         }
         rows.add(Arrays.asList(c.getNetwork().name(), c.getCycleDate(), "TOTAL", c.getBatchCount() + " batches", null, c.getPresentmentsCount(),
-                c.getPresentmentsAmount(), c.getReversalsAmount(), c.getChargebacksAmount(), c.getInterchangeAmount(), c.getExceptionCount(), null));
+                c.getPresentmentsAmount(), c.getReversalsAmount(), c.getChargebacksAmount(), c.getInterchangeAmount(), c.getFeesAmount(), c.getExceptionCount(), null));
         rows.add(Arrays.asList(c.getNetwork().name(), c.getCycleDate(), "NET", c.getNetPosition().signum() >= 0 ? "ISSUER PAYS" : "ISSUER RECEIVES",
-                null, null, c.getNetPosition().abs(), null, null, null, null, c.getCurrency()));
+                null, null, c.getNetPosition().abs(), null, null, null, null, null, c.getCurrency()));
         return ReportCsv.write(cols, rows);
     }
 
