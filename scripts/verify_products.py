@@ -94,5 +94,26 @@ st, c = http("POST", "/customers", {"fullName": "Titular " + RUN, "phoneNumber":
 st, k = http("POST", "/cards/issue", {"customerId": c["id"], "productId": g1["id"], "embossedName": "TITULAR", "cardCategory": "VIRTUAL", "last4": "7" + RUN[-3:], "initialDeposit": 100})
 check("tarjeta emitida sobre PRE-MX-NNN", st in (200, 201) and k.get("id"), (st, k))
 
+print("== 6. limpieza: este script no deja productos ni tarjetas de prueba ==")
+codes = ",".join("'%s'" % x for x in [CODE + "-V2", g1["productCode"], g2["productCode"], g3["productCode"]])
+sql(f"""
+with p as (select id from card_products where product_code in ({codes})),
+     c as (select id from cards where product_id in (select id from p)),
+     la as (select id from ledger_accounts where card_id in (select id from c)),
+     d1 as (delete from ledger_entries where ledger_account_id in (select id from la)),
+     d2 as (delete from ledger_accounts where id in (select id from la)),
+     d3 as (delete from card_controls where card_id in (select id from c)),
+     d4 as (delete from authorization_attempts where card_id in (select id from c)),
+     d5 as (delete from fraud_alerts where card_id in (select id from c)),
+     d6 as (delete from step_up_challenges where card_id in (select id from c)),
+     d7 as (delete from plastics where card_id in (select id from c)),
+     d8 as (delete from disputes where card_id in (select id from c)),
+     d9 as (delete from authorization_holds where card_id in (select id from c)),
+     d10 as (delete from cards where id in (select id from c))
+delete from card_products where id in (select id from p)
+""")
+left = sql(f"select count(*) from card_products where product_code in ({codes})")
+check("productos de prueba borrados con sus tarjetas", left == "0", left)
+
 print(f"\nRESULTADO: {ok} OK, {bad} FAIL")
 raise SystemExit(1 if bad else 0)

@@ -63,3 +63,19 @@ The system is divided into independent modules with strict boundaries:
 *   **Service Tests:** Verify business flows with mocked dependencies.
 
 _Built by LeHuyTuong_# CMS-Alodiga
+
+## Configuración y secretos
+
+La aplicación no lleva credenciales en el código. Todo se toma de variables de entorno
+(ver `.env.example`); `application.properties` solo trae valores por defecto locales y
+la contraseña de base de datos no tiene valor por defecto.
+
+- `.env` está en `.gitignore`. Nunca se versiona.
+- Base local: `DB_URL=jdbc:postgresql://localhost:5432/cms_mexico`, `DB_USERNAME`, `DB_PASSWORD`.
+- Core Mifos/Fineract: `CORE_MODE=fineract` más `FINERACT_USER` / `FINERACT_PASSWORD`.
+- Bureau de plásticos: `PLASTICS_MANUFACTURER_KEY` (AES-256 en base64). La llave de desarrollo
+  que trae `application.properties` no sirve para producción.
+
+Histórico: hasta septiembre de 2026 el repositorio incluía un `.env` y valores por defecto con
+la credencial de un Postgres remoto (`200.73.194.40`). Se retiraron del árbol, pero siguen en
+el historial de git; esa contraseña debe considerarse comprometida y rotarse en el servidor.
