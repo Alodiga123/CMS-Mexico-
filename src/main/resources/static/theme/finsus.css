@@ -261,3 +261,6 @@ body.login-open > header, body.login-open > .app-layout { filter: blur(3px); poi
 .session-box small { display: block; color: var(--muted); font-size: 10.5px; }
 .session-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 14px; }
 .session-box + .nav-back { margin-left: 8px; }
+
+/* selects con opciones largas: nunca más anchos que su celda */
+select.form-control { max-width: 100%; text-overflow: ellipsis; }

@@ -2758,8 +2758,11 @@
                         fetch('/api/products'),
                         fetch('/api/promotions')
                     ]);
-                    globalProducts = await prodRes.json();
-                    globalPromotions = await promoRes.json();
+                    if (!prodRes.ok) throw new Error('productos: HTTP ' + prodRes.status);
+                    const prodJson = await prodRes.json();
+                    const promoJson = promoRes.ok ? await promoRes.json() : [];
+                    globalProducts = Array.isArray(prodJson) ? prodJson : (prodJson.content || []);
+                    globalPromotions = Array.isArray(promoJson) ? promoJson : (promoJson.content || []);
 
                     if (countBadge && Array.isArray(globalProducts)) {
                         countBadge.textContent = globalProducts.length;
