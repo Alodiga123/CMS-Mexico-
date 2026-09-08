@@ -1482,8 +1482,8 @@
             <div id="tab-trans" class="tab-content">
                 <div class="card">
                     <div class="card-header">
-                        <span>Paso 6: Procesar Autorización de Compra (Descuento de Saldo & Validación de Límites)</span>
-                        <button class="btn btn-emerald" onclick="sendAuthorizationRequest()">▶ Ejecutar Autorización & Descuenta Saldo</button>
+                        <span>Paso 6: Autorización de compra (reserva de fondos y validación de límites)</span>
+                        <button class="btn btn-emerald" onclick="sendAuthorizationRequest()">▶ Ejecutar autorización</button>
                     </div>
                     
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.25rem;">
@@ -3237,9 +3237,11 @@
             // --- AUTHORIZATION ENGINE ---
             async function loadCardsForAuthSelect() {
                 const select = document.getElementById('authCardSelect');
+                const keep = select.value;
                 const res = await fetch('/api/cards');
                 const data = await res.json();
-                select.innerHTML = data.map(c => `<option value="${c.id}">Tarjeta #${c.id} - ${c.embossedName} [${c.productName}] (Saldo: $${Number(c.balance).toLocaleString()})</option>`).join('');
+                select.innerHTML = data.map(c => `<option value="${c.id}">Tarjeta #${c.id} - ${c.embossedName} [${c.productName}] (Saldo: $${Number(c.balance).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</option>`).join('');
+                if (keep && [...select.options].some(o => o.value === keep)) select.value = keep;
                 updateAuthPayloadFromSelect();
             }
 
