@@ -15,6 +15,8 @@ import bank.cardissuing.ledger.infrastructure.LedgerAccountRepository;
 import bank.cardissuing.ledger.infrastructure.LedgerEntryRepository;
 import jakarta.transaction.Transactional;
 import lombok.Data;
+import bank.cardissuing.plastics.application.PlasticService;
+import bank.cardissuing.plastics.domain.Plastic;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 public class CardController {
 
     private final CardRepository cardRepository;
+    private final PlasticService plasticService;
     private final CardProductRepository cardProductRepository;
     private final CustomerRepository customerRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
@@ -118,6 +121,9 @@ public class CardController {
         // Debit-with-core products get their account in the core here, before anything is saved locally.
         boolean linkedToCore = coreAccountLinker.link(card, customer, request.getExternalAccountId(), requestedDeposit);
         card = cardRepository.save(card);
+        if (card.getCardCategory() == CardCategory.PHYSICAL) {
+            plasticService.request(card, Plastic.Reason.NEW, null, true, "ISSUANCE");
+        }
 
         // Ledger Account Creation
         LedgerAccount account = new LedgerAccount();
