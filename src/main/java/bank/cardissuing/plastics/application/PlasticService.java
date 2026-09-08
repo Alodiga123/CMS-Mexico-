@@ -257,5 +257,5 @@ public class PlasticService {
         return cards.findById(cardId).orElseThrow(() -> new ResourceNotFoundException("Card", "id", cardId));
     }
 
-    private static String by(String by) { return by != null && !by.isBlank() ? by : "SYSTEM"; }
+    private static String by(String by) { return bank.cardissuing.common.security.CmsPrincipal.auditName(by); }
 }

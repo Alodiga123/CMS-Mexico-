@@ -11,6 +11,7 @@ def http(method, path, body=None, headers=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(B + path, data=data, method=method)
     req.add_header("Content-Type", "application/json")
+    req.add_header("X-Api-Key", os.environ.get("CMS_API_KEY", "dev-api-key"))
     for k, v in (headers or {}).items(): req.add_header(k, v)
     try:
         with urllib.request.urlopen(req, timeout=20) as r:

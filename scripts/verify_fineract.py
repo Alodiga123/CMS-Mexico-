@@ -16,7 +16,7 @@ tok = base64.b64encode(f"{os.environ['FINERACT_USER']}:{os.environ['FINERACT_PAS
 ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
 
 def req(base, m, p, b=None, h=None, c=None):
-    hd = {"Content-Type": "application/json", "Accept": "application/json"}; hd.update(h or {})
+    hd = {"Content-Type": "application/json", "X-Api-Key": os.environ.get("CMS_API_KEY", "dev-api-key"), "Accept": "application/json"}; hd.update(h or {})
     r = urllib.request.Request(base + p, data=json.dumps(b).encode() if b is not None else None, method=m, headers=hd)
     try:
         with urllib.request.urlopen(r, timeout=60, context=c) as x: return x.status, json.loads(x.read() or b"null")

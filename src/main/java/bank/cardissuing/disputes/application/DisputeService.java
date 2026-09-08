@@ -261,7 +261,7 @@ public class DisputeService {
     }
 
     private static String by(String by) {
-        return by != null && !by.isBlank() ? by : "SYSTEM";
+        return bank.cardissuing.common.security.CmsPrincipal.auditName(by);
     }
 
     public static String sha256(byte[] content) {

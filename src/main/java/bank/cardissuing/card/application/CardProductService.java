@@ -88,7 +88,7 @@ public class CardProductService {
         applyFees(p, in);
         p.setActive(in.active() == null || in.active());
         p = products.save(p);
-        audit.log("CREATE_PRODUCT", "CardProduct", p.getProductCode(), by != null ? by : "API");
+        audit.log("CREATE_PRODUCT", "CardProduct", p.getProductCode(), bank.cardissuing.common.security.CmsPrincipal.auditName(by));
         log.info("Product {} '{}' created ({} {} {})", p.getProductCode(), p.getProductName(), cardType, paymentType, network);
         return p;
     }
@@ -123,7 +123,7 @@ public class CardProductService {
         applyFees(p, in);
         if (in.active() != null) p.setActive(in.active());
         p = products.save(p);
-        audit.log("UPDATE_PRODUCT", "CardProduct", p.getProductCode(), by != null ? by : "API");
+        audit.log("UPDATE_PRODUCT", "CardProduct", p.getProductCode(), bank.cardissuing.common.security.CmsPrincipal.auditName(by));
         return p;
     }
 

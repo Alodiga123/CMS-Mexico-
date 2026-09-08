@@ -52,7 +52,7 @@ public class CardControlsService {
         if (u.perTransactionMax() != null) c.setPerTransactionMax(nonNegative(u.perTransactionMax(), "perTransactionMax"));
 
         CardControls saved = controls.save(c);
-        String by = u.performedBy() != null && !u.performedBy().isBlank() ? u.performedBy() : "SYSTEM";
+        String by = bank.cardissuing.common.security.CmsPrincipal.auditName(u.performedBy());
         audit.log("UPDATE_CARD_CONTROLS", "Card", cardId.toString(), by);
         log.info("Card {} controls updated by {}: pos={} atm={} ecom={} ctl={} intl={} travelUntil={} limits d/w/m={}/{}/{} perTx={}",
                 cardId, by, saved.isPosEnabled(), saved.isAtmEnabled(), saved.isEcommerceEnabled(),

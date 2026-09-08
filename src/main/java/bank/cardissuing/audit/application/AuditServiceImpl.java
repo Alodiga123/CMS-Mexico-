@@ -15,14 +15,13 @@ public class AuditServiceImpl implements AuditService {
     private final AuditLogRepository auditLogRepository;
 
     @Override
-    @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW) // transaction riêng biệt
+    @Transactional(propagation = Propagation.REQUIRES_NEW) // own transaction: an audit row survives a rollback of the caller
     public void log(String action, String entityName, String entityId, String performBy) {
         AuditLog newLog = AuditLog.builder()
                 .action(action)
                 .entityName(entityName)
                 .entityId(entityId)
-                .username(performBy)
+                .username(bank.cardissuing.common.security.CmsPrincipal.auditName(performBy))
                 .build();
 
         auditLogRepository.save(newLog);

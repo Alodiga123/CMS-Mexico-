@@ -96,7 +96,7 @@ public class GuildService {
         if (type == null || type == Type.CHARGEBACK_PREVENTION) throw new BusinessException("GUILD_BAD_TYPE", "type must be CONFIRMED_FRAUD, COMPROMISED_CARD, SUSPICIOUS_MERCHANT, ENUMERATION or OTHER", HttpStatus.BAD_REQUEST);
         if ((type == Type.CONFIRMED_FRAUD || type == Type.COMPROMISED_CARD) && cardId == null) throw new BusinessException("GUILD_CARD_REQUIRED", "cardId is required for " + type, HttpStatus.BAD_REQUEST);
         if ((type == Type.SUSPICIOUS_MERCHANT || type == Type.ENUMERATION) && (merchantId == null || merchantId.isBlank())) throw new BusinessException("GUILD_MERCHANT_REQUIRED", "merchantId is required for " + type, HttpStatus.BAD_REQUEST);
-        GuildAlert a = GuildAlert.outbound(type, "MANUAL", by != null ? by : "API");
+        GuildAlert a = GuildAlert.outbound(type, "MANUAL", bank.cardissuing.common.security.CmsPrincipal.auditName(by));
         if (cardId != null) {
             Card c = cards.findById(cardId).orElseThrow(() -> new BusinessException("CARD_NOT_FOUND", "Card " + cardId + " not found", HttpStatus.NOT_FOUND));
             a.setCardId(c.getId());
@@ -116,7 +116,7 @@ public class GuildService {
     /** Called by disputes when a chargeback goes out: give the guild the early notice (SPC). */
     @Transactional
     public GuildAlert preventChargeback(Long disputeId, Card card, BigDecimal amount, String reasonCode, String approvalCode, String by) {
-        GuildAlert a = GuildAlert.outbound(Type.CHARGEBACK_PREVENTION, "DISPUTE:" + disputeId, by != null ? by : "SYSTEM");
+        GuildAlert a = GuildAlert.outbound(Type.CHARGEBACK_PREVENTION, "DISPUTE:" + disputeId, bank.cardissuing.common.security.CmsPrincipal.auditName(by));
         a.setCardId(card.getId());
         a.setBin(card.getProduct() != null ? card.getProduct().getBin() : null);
         a.setLast4(card.getLast4());
@@ -312,7 +312,7 @@ public class GuildService {
         GuildAlert a = get(id);
         if (!a.getStatus().open()) throw new BusinessException("GUILD_ALERT_CLOSED", "Alert " + id + " is already " + a.getStatus(), HttpStatus.CONFLICT);
         if (a.getDirection() == Direction.OUTBOUND && a.getStatus() != Status.SENT) throw new BusinessException("GUILD_ALERT_NOT_SENT", "Alert " + id + " was never acknowledged by the guild", HttpStatus.CONFLICT);
-        a.close(resolution, by != null ? by : "API", LocalDateTime.now());
+        a.close(resolution, bank.cardissuing.common.security.CmsPrincipal.auditName(by), LocalDateTime.now());
         audit.log("GUILD_ALERT_CLOSED", "GuildAlert", a.getId().toString(), a.getClosedBy());
         return alerts.save(a);
     }

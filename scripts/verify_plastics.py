@@ -10,7 +10,7 @@ PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
 
 def http(m, p, b=None, raw=False):
     r = urllib.request.Request(CMS + p, data=json.dumps(b).encode() if b is not None else None, method=m,
-                               headers={"Content-Type": "application/json", "Accept": "*/*"})
+                               headers={"Content-Type": "application/json", "X-Api-Key": os.environ.get("CMS_API_KEY", "dev-api-key"), "Accept": "*/*"})
     try:
         with urllib.request.urlopen(r, timeout=90) as x:
             body = x.read()

@@ -357,9 +357,117 @@
         }
     </style>
     <link rel="stylesheet" href="/theme/finsus.css">
+
+    <script>
+    /* Sesión con el IAM: token en sessionStorage, cabecera Authorization en cada llamada a /api,
+       pantalla de inicio de sesión cuando no hay sesión o cuando el servidor responde 401. */
+    (function () {
+        const KEY = 'cms.session';
+        const app = { session: null };
+        const read = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { return null; } };
+        const write = (s) => { try { if (s) sessionStorage.setItem(KEY, JSON.stringify(s)); else sessionStorage.removeItem(KEY); } catch (e) { /* sin almacenamiento */ } };
+        const $ = (id) => document.getElementById(id);
+
+        // every /api call carries the token; a 401 means the session is gone
+        const rawFetch = window.fetch.bind(window);
+        window.fetch = function (input, init) {
+            const url = typeof input === 'string' ? input : (input && input.url) || '';
+            const isApi = url.startsWith('/api/') && !url.startsWith('/api/auth/login');
+            if (isApi && app.session && app.session.accessToken) {
+                init = init || {};
+                const h = new Headers(init.headers || (typeof input !== 'string' && input.headers) || {});
+                if (!h.has('Authorization')) h.set('Authorization', 'Bearer ' + app.session.accessToken);
+                init.headers = h;
+            }
+            return rawFetch(input, init).then(res => {
+                if (isApi && res.status === 401 && app.session) { app.session = null; write(null); show('Tu sesión venció. Inicia sesión de nuevo.'); }
+                return res;
+            });
+        };
+
+        function show(message) {
+            const sc = $('loginScreen'); if (!sc) return;
+            sc.hidden = false; document.body.classList.add('login-open');
+            const err = $('loginError'); if (err) { err.hidden = !message; err.textContent = message || ''; }
+            setTimeout(() => { const u = $('loginUser'); if (u) u.focus(); }, 50);
+        }
+        function hide() { const sc = $('loginScreen'); if (sc) sc.hidden = true; document.body.classList.remove('login-open'); }
+
+        function can(perm) { return !!(app.session && app.session.permissions && (app.session.permissions.includes(perm) || app.session.permissions.includes('CMS:ADMIN') && perm !== 'CMS:ADMIN' && false)) || !!(app.session && app.session.permissions && app.session.permissions.includes(perm)); }
+
+        /** Menu entries and buttons that need a permission carry data-perm; hide what the person cannot do. */
+        function applyPermissions() {
+            document.querySelectorAll('[data-perm]').forEach(el => {
+                const ok = el.dataset.perm.split(',').some(p => can(p.trim()));
+                el.style.display = ok ? '' : 'none';
+            });
+            const who = $('sessionUser');
+            if (who && app.session) {
+                who.textContent = app.session.fullName || app.session.username;
+                const r = $('sessionRoles'); if (r) r.textContent = (app.session.roles || []).join(', ');
+                const box = $('sessionBox'); if (box) box.style.display = '';
+            }
+        }
+
+        async function submit(ev) {
+            ev.preventDefault();
+            const btn = $('loginBtn'); btn.disabled = true; btn.textContent = 'Entrando…';
+            try {
+                const res = await rawFetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: $('loginUser').value.trim(), password: $('loginPass').value }) });
+                const data = await res.json();
+                if (!res.ok) { $('loginError').hidden = false; $('loginError').textContent = data.message || ('Error ' + res.status); return false; }
+                app.session = data; write(data);
+                $('loginPass').value = '';
+                hide(); applyPermissions();
+                try { localStorage.setItem('ops.operator', data.username); } catch (e) { /* sin almacenamiento */ }
+                document.dispatchEvent(new CustomEvent('cms:login', { detail: data }));
+            } catch (e) {
+                $('loginError').hidden = false; $('loginError').textContent = 'No se pudo contactar al servidor: ' + e.message;
+            } finally { btn.disabled = false; btn.textContent = 'Entrar'; }
+            return false;
+        }
+
+        async function logout() {
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* the session dies anyway */ }
+            app.session = null; write(null);
+            location.hash = ''; location.reload();
+        }
+
+        async function boot() {
+            app.session = read();
+            if (!app.session) { show(); return; }
+            try {
+                const res = await fetch('/api/auth/me');
+                if (!res.ok) { app.session = null; write(null); show(); return; }
+                const me = await res.json();
+                app.session = Object.assign({}, app.session, { username: me.username, roles: me.roles, permissions: me.permissions });
+                write(app.session); applyPermissions();
+            } catch (e) { show('No se pudo verificar la sesión'); }
+        }
+
+        window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+    })();
+    </script>
     <script src="/ops/pager.js" defer></script>
 </head>
 <body>
+    <!-- ══════════ INICIO DE SESIÓN (IAM) ══════════ -->
+    <section id="loginScreen" class="login" hidden>
+        <div class="login-card">
+            <div class="wordmark wordmark-lg">f<span class="i">i</span>nsus</div>
+            <p class="login-sub">Card Management System · Emisión y autorizador</p>
+            <form id="loginForm" onsubmit="return auth.submit(event)">
+                <label class="field"><span>Usuario</span><input id="loginUser" type="text" autocomplete="username" required></label>
+                <label class="field"><span>Contraseña</span><input id="loginPass" type="password" autocomplete="current-password" required></label>
+                <div id="loginError" class="login-error" hidden></div>
+                <button class="btn btn-primary btn-block" id="loginBtn" type="submit">Entrar</button>
+            </form>
+            <p class="login-note">Acceso con las credenciales del IAM corporativo · proyecto EMISION_CMS</p>
+        </div>
+    </section>
+
     <!-- TOP HEADER -->
     <header>
         <div class="logo-area">
@@ -371,6 +479,11 @@
                 </div>
         </div>
 
+        <div id="sessionBox" class="session-box" style="display:none">
+            <span class="session-avatar">👤</span>
+            <span><strong id="sessionUser"></strong><small id="sessionRoles"></small></span>
+            <button class="btn btn-amber btn-sm session-logout" onclick="auth.logout()" title="Cerrar sesión">Salir</button>
+        </div>
         <button id="navBack" class="btn btn-amber nav-back" onclick="navBack()" title="Volver a la pantalla anterior">← Volver</button>
         <div class="telemetry-bar">
             <button class="btn btn-primary" onclick="openHsmKeysModal()" style="display:flex; align-items:center; gap:0.5rem; padding:0.55rem 1rem; font-size:0.82rem; font-weight:700;">
@@ -392,65 +505,65 @@
         <!-- SIDEBAR NAVIGATION -->
         <aside class="sidebar">
             <div class="sidebar-category">Gestión de Tarjetas</div>
-            <button class="nav-btn active" onclick="switchTab(event, 'tab-products')">
+            <button class="nav-btn active" data-perm="CMS:READ" onclick="switchTab(event, 'tab-products')">
                 <span class="icon">📦</span> 1. Crear & Editar Tarjetas
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-issue')">
+            <button class="nav-btn" data-perm="CMS:OPERATE" onclick="switchTab(event, 'tab-issue')">
                 <span class="icon">💳</span> 2. Emitir Tarjeta a Cliente
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-cards')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-cards')">
                 <span class="icon">📊</span> 3. Tarjetas Emitidas
             </button>
 
             <div class="sidebar-category">Marketing & Clientes</div>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-promotions')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-promotions')">
                 <span class="icon">🎁</span> 4. Promociones & Beneficios
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-customers')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-customers')">
                 <span class="icon">👤</span> 5. Clientes & KYC
             </button>
 
             <div class="sidebar-category">Transacciones & Finanzas</div>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-trans')">
+            <button class="nav-btn" data-perm="CMS:OPERATE" onclick="switchTab(event, 'tab-trans')">
                 <span class="icon">⚡</span> 6. Autorizaciones POS/Web
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-accounting')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-accounting')">
                 <span class="icon">📈</span> 7. Contabilidad Bancaria
             </button>
 
             <div class="sidebar-category">Seguridad & Sistema</div>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-audit')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-audit')">
                 <span class="icon">🛡️</span> 8. Audit Logs & Traza
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-design-compliance')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-design-compliance')">
                 <span class="icon">🎨</span> 9. Normativa EMV & Marcas
             </button>
 
             <div class="sidebar-category">Operación del Autorizador</div>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-card360')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-card360')">
                 <span class="icon">🪪</span> 10. Tarjeta 360
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-authorizer')">
+            <button class="nav-btn" data-perm="CMS:OPERATE" onclick="switchTab(event, 'tab-authorizer')">
                 <span class="icon">⚡</span> 11. Autorizador Multiproducto
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-reconciliation')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-reconciliation')">
                 <span class="icon">⚖️</span> 12. Conciliación con el Core
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-plastics')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-plastics')">
                 <span class="icon">🏭</span> 13. Plásticos & Bureau
             </button>
 
             <div class="sidebar-category">Riesgo & Cumplimiento</div>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-disputes')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-disputes')">
                 <span class="icon">🧾</span> 14. Aclaraciones & Contracargos
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-fraud')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-fraud')">
                 <span class="icon">🚨</span> 15. Fraude en Línea
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-guild')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-guild')">
                 <span class="icon">🤝</span> 16. Antifraude de Industria
             </button>
-            <button class="nav-btn" onclick="switchTab(event, 'tab-reports')">
+            <button class="nav-btn" data-perm="CMS:READ" onclick="switchTab(event, 'tab-reports')">
                 <span class="icon">📑</span> 17. Reportes & Regulatorio
             </button>
         </aside>
@@ -3282,6 +3395,7 @@
                 if (location.hash && location.hash !== '#tab-products') routeTo(location.hash);
                 updateNavBack();
                 // Consola de operación: pantallas de los módulos nuevos, cargadas aparte para no crecer este archivo
+                document.addEventListener('cms:login', () => { loadProducts(); });
                 fetch('/ops/ops.html').then(r => r.text()).then(html => {
                     document.querySelector('main.main-content').insertAdjacentHTML('beforeend', html);
                     const sc = document.createElement('script'); sc.src = '/ops/ops.js'; document.body.appendChild(sc);

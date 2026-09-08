@@ -1,6 +1,9 @@
 package bank.cardissuing.common.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.tags.Tag;
@@ -36,7 +39,15 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI cmsOpenApi() {
-        return new OpenAPI().info(new Info()
+        return new OpenAPI()
+                .components(new Components()
+                        .addSecuritySchemes("bearer", new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")
+                                .description("Token del IAM obtenido con POST /api/auth/login"))
+                        .addSecuritySchemes("apiKey", new SecurityScheme().type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.HEADER).name("X-Api-Key")
+                                .description("Llave de sistema (security.api-key.value) para scripts e integraciones")))
+                .addSecurityItem(new SecurityRequirement().addList("bearer"))
+                .addSecurityItem(new SecurityRequirement().addList("apiKey"))
+                .info(new Info()
                 .title("CMS Mexico -- emision y autorizador multiproducto")
                 .version("feature/autorizador-multiproducto")
                 .description("""

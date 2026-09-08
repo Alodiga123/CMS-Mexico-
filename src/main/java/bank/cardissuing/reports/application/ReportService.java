@@ -76,7 +76,7 @@ public class ReportService {
         r.setPeriodFrom(t.from());
         r.setPeriodTo(t.to());
         r.setParams(t.params().entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(";")));
-        r.setGeneratedBy(by != null && !by.isBlank() ? by : "SYSTEM");
+        r.setGeneratedBy(bank.cardissuing.common.security.CmsPrincipal.auditName(by));
         r.setRowCount(t.rows().size());
         r.setCsv(csv);
         r.setSha256(ReportCsv.sha256(csv));

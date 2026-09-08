@@ -10,7 +10,7 @@ PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
 
 def http(m, p, b=None):
     r = urllib.request.Request(CMS + p, data=json.dumps(b).encode() if b is not None else None, method=m,
-                               headers={"Content-Type": "application/json", "Accept": "application/json"})
+                               headers={"Content-Type": "application/json", "X-Api-Key": os.environ.get("CMS_API_KEY", "dev-api-key"), "Accept": "application/json"})
     try:
         with urllib.request.urlopen(r, timeout=60) as x:
             return x.status, json.loads(x.read() or b"null")

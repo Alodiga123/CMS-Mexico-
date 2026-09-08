@@ -314,7 +314,7 @@ public class FraudService {
         BlockedEntity e = blocklist.findByTypeAndValue(type, v).orElseGet(() -> new BlockedEntity(type, v, BlockedEntity.Source.INTERNAL, reason, by));
         e.setActive(true);
         if (reason != null) e.setReason(reason);
-        if (by != null) e.setAddedBy(by);
+        e.setAddedBy(bank.cardissuing.common.security.CmsPrincipal.auditName(by));
         log.info("Blocklist: {} {} ({}) by {}", type, v, reason, by);
         return blocklist.save(e);
     }

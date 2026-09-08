@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """Server-side paging of cards, authorization attempts and fraud alerts: envelope shape, page
 arithmetic, filters, size cap, and backward compatibility (no params -> plain array)."""
-import json, urllib.request, urllib.error
+import os, json, urllib.request, urllib.error
 
 CMS = "http://localhost:8085/api"
 
 
 def get(p):
     try:
-        with urllib.request.urlopen(urllib.request.Request(CMS + p, headers={"Accept": "application/json"}), timeout=60) as x:
+        with urllib.request.urlopen(urllib.request.Request(CMS + p, headers={"Accept": "application/json", "X-Api-Key": os.environ.get("CMS_API_KEY", "dev-api-key")}), timeout=60) as x:
             return x.status, json.loads(x.read() or b"null")
     except urllib.error.HTTPError as e:
         try: return e.code, json.loads(e.read() or b"null")
