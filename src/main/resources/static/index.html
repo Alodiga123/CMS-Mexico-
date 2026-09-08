@@ -3367,7 +3367,8 @@
             async function loadAuditFacets() {
                 if (auditFacetsLoaded) return;
                 try {
-                    const f = await (await fetch('/api/audit/facets')).json();
+                    const res = await fetch('/api/audit/facets'); if (!res.ok) return;
+                    const f = await res.json();
                     const fill = (id, values) => { const s = document.getElementById(id); const keep = s.value; s.innerHTML = s.options[0].outerHTML + values.map(v => `<option>${v}</option>`).join(''); s.value = keep; };
                     fill('auditEntity', f.entities || []); fill('auditAction', f.actions || []); fill('auditUser', f.users || []);
                     auditFacetsLoaded = true;
