@@ -45,4 +45,9 @@ public interface AuthorizationHoldRepository extends JpaRepository<Authorization
     BigDecimal standInAmountSince(@Param("card") Card card, @Param("since") LocalDateTime since);
 
     long countByCardAndStandInTrueAndCreatedAtAfter(Card card, LocalDateTime since);
+
+    /** The network carries only six characters of our approval code (ISO field 38). */
+    Optional<AuthorizationHold> findFirstByApprovalCodeEndingWithOrderByCreatedAtDesc(String approvalIdSuffix);
+
+    List<AuthorizationHold> findByStatusAndCreatedAtAfterOrderByCreatedAtAsc(HoldStatus status, LocalDateTime after);
 }

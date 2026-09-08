@@ -18,4 +18,5 @@ public interface DisputeRepository extends JpaRepository<Dispute, Long> {
     List<Dispute> findAllByOrderByCreatedAtDesc();
 
     boolean existsByApprovalCodeAndStatusIn(String approvalCode, Collection<Dispute.Status> statuses);
+    java.util.Optional<Dispute> findFirstByApprovalCodeOrderByCreatedAtDesc(String approvalCode);
 }

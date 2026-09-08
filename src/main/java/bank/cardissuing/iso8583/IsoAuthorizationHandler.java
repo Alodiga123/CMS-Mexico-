@@ -217,7 +217,7 @@ public class IsoAuthorizationHandler {
     // ------------------------------------------------------------ helpers
 
     /** Field 38 is six characters: the tail of our approval code. */
-    static String approvalId(String approvalCode) {
+    public static String approvalId(String approvalCode) {
         String s = approvalCode.replace("AUTH-", "");
         return s.length() >= 6 ? s.substring(s.length() - 6) : String.format("%6s", s).replace(' ', '0');
     }

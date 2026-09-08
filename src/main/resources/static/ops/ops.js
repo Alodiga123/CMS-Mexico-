@@ -614,6 +614,57 @@
         async verify(id) { try { const v = await api('GET', `/api/reports/runs/${id}/verify`); toast(v.valid ? `Corrida #${id}: el archivo guardado coincide con su sello` : `Corrida #${id}: el archivo NO coincide con el sello`, v.valid ? 'ok' : 'err'); } catch (e) { fail(e); } }
     };
 
+    // ------------------------------------------------------------------ COMPENSACIÓN Y LIQUIDACIÓN
+    const clearing = {
+        async init() { await Promise.all([this.load(), this.loadCycles(), this.loadExceptions()]); },
+        async load() {
+            const tbody = $('clBatchRows');
+            try {
+                const rows = await api('GET', '/api/clearing/batches');
+                if (!rows.length) return empty(tbody, 14, 'Sin archivos de compensación. Carga uno o simula un ciclo.');
+                tbody.innerHTML = rows.map(b => `<tr><td>#${b.id}</td><td>${badge(b.network)}</td><td>${esc(b.cycleDate)}</td><td>${esc(b.fileName)}</td><td>${badge(b.status)}</td><td>${b.recordCount}</td><td>${b.matchedCount}</td><td>${b.exceptionCount ? '<span class="badge badge-red">' + b.exceptionCount + '</span>' : '0'}</td><td>${b.presentmentsCount} · ${money(b.presentmentsAmount)}</td><td>${money(b.reversalsAmount)}</td><td>${money(b.chargebacksAmount)}</td><td>${money(b.feesAmount)}</td><td>${esc(b.loadedBy)}<div class="ops-muted">${dt(b.loadedAt)}</div></td>
+                    <td class="ops-actions"><button class="btn btn-primary" onclick="ops.clearing.batch(${b.id})">Ver</button><a class="btn btn-primary" href="/api/clearing/batches/${b.id}/file" target="_blank">⬇</a></td></tr>`).join('');
+            } catch (e) { errRow(tbody, 14, e); }
+        },
+        async batch(id) {
+            const box = $('clBatchDetail');
+            try {
+                const [b, recs] = await Promise.all([api('GET', '/api/clearing/batches/' + id), api('GET', `/api/clearing/batches/${id}/records`)]);
+                box.style.display = '';
+                box.innerHTML = `<h4>Lote #${b.id} · ${esc(b.network)} · ciclo ${esc(b.cycleDate)} ${badge(b.status)}</h4>` + kv([['Archivo', esc(b.fileName) + ' · sello <span class="ops-mono">' + esc((b.sha256 || '').slice(0, 16)) + '…</span>'], ['Cola del archivo', b.trailerCount + ' registros · ' + money(b.trailerAmount)], ['Casados / excepciones', b.matchedCount + ' / ' + b.exceptionCount], ['Ciclo de liquidación', '#' + b.settlementCycleId]]) +
+                    `<div class="table-container" style="margin-top:0.6rem"><table class="ops-compact"><thead><tr><th>Línea</th><th>Tipo</th><th>Tarjeta</th><th>RRN</th><th>Aprob.</th><th>Monto</th><th>Intercambio</th><th>Comercio</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody>${recs.map(r => `<tr><td>${r.lineNo}</td><td>${badge(r.type)}</td><td>${r.cardId ? `<a href="#" onclick="ops.card360.open(${r.cardId});return false">#${r.cardId}</a> ` : ''}<span class="ops-mono">${esc(r.pan || '')}</span></td><td class="ops-mono">${esc(r.rrn)}</td><td class="ops-mono">${esc(r.approvalId)}</td><td>${money(r.amount)}</td><td>${money(r.interchangeFee)}</td><td>${esc(r.merchantName)}</td><td>${badge(r.outcome)}</td><td class="ops-muted">${esc(r.detail)}</td></tr>`).join('')}</tbody></table></div>`;
+                box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (e) { box.style.display = ''; box.innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; }
+        },
+        async simulate() {
+            try { const r = await api('POST', '/api/clearing/simulate', { network: $('clNetwork').value, anomalies: $('clAnomalies').value, ingest: true, by: who() }); toast(`Ciclo simulado y cargado: lote #${r.batch.id}, ${r.batch.recordCount} registros, ${r.batch.exceptionCount} excepciones`, r.batch.exceptionCount ? 'err' : 'ok'); await this.init(); await this.batch(r.batch.id); } catch (e) { fail(e); }
+        },
+        async upload() {
+            const f = $('clFileInput').files[0]; if (!f) return toast('Elige un archivo', 'err');
+            const content = await f.text();
+            try { const b = await api('POST', '/api/clearing/files', { fileName: $('clFileName').value || f.name, content, by: who() }); toast(`Lote #${b.id} procesado: ${b.matchedCount} casados, ${b.exceptionCount} excepciones`, b.exceptionCount ? 'err' : 'ok'); await this.init(); await this.batch(b.id); } catch (e) { fail(e); }
+        },
+        async loadCycles() {
+            const tbody = $('clCycleRows');
+            try {
+                const rows = await api('GET', '/api/clearing/settlement/cycles');
+                if (!rows.length) return empty(tbody, 13, 'Sin ciclos de liquidación.');
+                tbody.innerHTML = rows.map(c => `<tr><td>#${c.id}</td><td>${badge(c.network)}</td><td>${esc(c.cycleDate)}</td><td>${badge(c.status)}</td><td>${c.batchCount}</td><td>${c.presentmentsCount} · ${money(c.presentmentsAmount)}</td><td>${money(c.reversalsAmount)}</td><td>${money(c.chargebacksAmount)}</td><td>${money(c.interchangeAmount)}</td><td><strong style="color:${c.direction === 'ISSUER_PAYS' ? 'var(--bad)' : 'var(--ok)'}">${money(c.netPosition, c.currency)}</strong><div class="ops-muted">${c.direction === 'ISSUER_PAYS' ? 'el emisor paga' : 'el emisor recibe'}</div></td><td>${c.exceptionCount}</td><td class="ops-muted">${c.closedAt ? 'cerrado ' + dt(c.closedAt) + ' · ' + esc(c.closedBy) : ''}${c.paidAt ? '<br>pagado ' + dt(c.paidAt) + ' · ' + esc(c.paymentRef) : ''}</td>
+                    <td class="ops-actions">${c.status === 'OPEN' ? `<button class="btn btn-emerald" onclick="ops.clearing.close(${c.id})">Cerrar ciclo</button>` : ''}${c.status === 'CLOSED' ? `<button class="btn btn-amber" onclick="ops.clearing.pay(${c.id})">Registrar pago</button>` : ''}${c.status !== 'OPEN' ? `<a class="btn btn-primary" href="/api/clearing/settlement/cycles/${c.id}/file">⬇ Archivo</a>` : ''}</td></tr>`).join('');
+            } catch (e) { errRow(tbody, 13, e); }
+        },
+        async close(id) { if (!confirm('Cerrar el ciclo congela las cifras y sella el archivo para tesorería. ¿Continuar?')) return; try { const c = await api('POST', `/api/clearing/settlement/cycles/${id}/close`, { by: who() }); toast(`Ciclo cerrado · neto ${money(c.netPosition, c.currency)} · sello ${c.sha256.slice(0, 12)}…`, 'ok'); await this.loadCycles(); } catch (e) { fail(e); } },
+        async pay(id) { const ref = prompt('Referencia del pago (SPEI / transferencia)'); if (!ref) return; try { await api('POST', `/api/clearing/settlement/cycles/${id}/paid`, { paymentRef: ref, by: who() }); toast('Ciclo pagado', 'ok'); await this.loadCycles(); } catch (e) { fail(e); } },
+        async loadExceptions() {
+            const tbody = $('clExcRows');
+            try {
+                const rows = await api('GET', '/api/clearing/exceptions');
+                if (!rows.length) return empty(tbody, 7, 'Sin excepciones.');
+                tbody.innerHTML = rows.map(r => `<tr><td>${r.batchId ? `<a href="#" onclick="ops.clearing.batch(${r.batchId});return false">#${r.batchId}</a>` : ''}</td><td>${r.lineNo}</td><td>${badge(r.type)}</td><td>${r.cardId ? `<a href="#" onclick="ops.card360.open(${r.cardId});return false">#${r.cardId}</a>` : ''} <span class="ops-mono">${esc(r.pan || '')}</span></td><td>${money(r.amount)}</td><td>${badge(r.outcome)}</td><td class="ops-muted">${esc(r.detail)}</td></tr>`).join('');
+            } catch (e) { errRow(tbody, 7, e); }
+        }
+    };
+
     // ------------------------------------------------------------------ wiring
     const tabs = {
         'tab-card360': () => {
@@ -627,7 +678,8 @@
         'tab-fraud': () => fraud.init(),
         'tab-guild': () => guild.load(),
         'tab-plastics': () => plastics.init(),
-        'tab-reports': () => reports.init()
+        'tab-reports': () => reports.init(),
+        'tab-clearing': () => clearing.init()
     };
 
     /** What a hash argument means on each screen (used by the browser's back / forward and deep links). */
@@ -640,7 +692,7 @@
         else if (tabId === 'tab-disputes' && arg) { await disputes.init(); await disputes.openDetail(Number(arg)); }
     }
 
-    window.ops = { card360, authorizer, recon, disputes, fraud, guild, plastics, reports, pane, tabs, route, setOperator: (n) => localStorage.setItem('ops.operator', n) };
+    window.ops = { card360, authorizer, recon, disputes, fraud, guild, plastics, reports, clearing, pane, tabs, route, setOperator: (n) => localStorage.setItem('ops.operator', n) };
     // the console's screens exist only now: honour a deep link that names one of them
     if (location.hash && tabs[location.hash.replace(/^#/, '').split('/')[0]] && typeof routeTo === 'function') routeTo(location.hash);
 })();

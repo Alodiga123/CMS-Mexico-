@@ -40,7 +40,17 @@ public class ReconciliationItem extends BaseEntity {
         /** Sum of CMS holds differs from what the core reports as on hold. */
         HOLD_TOTAL_MISMATCH,
         /** Approved in stand-in while the core was down; when it came back it refused the reservation. */
-        STAND_IN_REJECTED
+        STAND_IN_REJECTED,
+        /** A clearing presentment without a live authorization was posted anyway. */
+        CLEARING_NO_AUTHORIZATION,
+        /** The network presented an amount outside the tolerance of the authorization. */
+        CLEARING_AMOUNT_MISMATCH,
+        /** The same presentment arrived twice. */
+        CLEARING_DUPLICATE,
+        /** A clearing record for a PAN the CMS does not know. */
+        CLEARING_NO_CARD,
+        /** A chargeback, representment or reversal that matches nothing on our side. */
+        CLEARING_UNMATCHED
     }
 
     public enum Status { OPEN, RESOLVED }

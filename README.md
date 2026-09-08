@@ -79,3 +79,10 @@ la contraseña de base de datos no tiene valor por defecto.
 Histórico: hasta septiembre de 2026 el repositorio incluía un `.env` y valores por defecto con
 la credencial de un Postgres remoto (`200.73.194.40`). Se retiraron del árbol, pero siguen en
 el historial de git; esa contraseña debe considerarse comprometida y rotarse en el servidor.
+
+## Documentación
+
+- [Compensación y liquidación con los archivos de la red](docs/compensacion-liquidacion.md)
+- [Conexión con los sistemas antifraude del gremio (ACT-094)](docs/guild-antifraude.md)
+- [Canal ISO 8583, validación criptográfica y stand-in](docs/iso8583-criptografia-standin.md)
+- [Seguridad de la consola y la API con el IAM](docs/seguridad-iam.md)
