@@ -371,6 +371,7 @@
                 </div>
         </div>
 
+        <button id="navBack" class="btn btn-amber nav-back" onclick="navBack()" title="Volver a la pantalla anterior">← Volver</button>
         <div class="telemetry-bar">
             <button class="btn btn-primary" onclick="openHsmKeysModal()" style="display:flex; align-items:center; gap:0.5rem; padding:0.55rem 1rem; font-size:0.82rem; font-weight:700;">
                 🔑 Inventario Llaves HSM (PayShield 10K)
@@ -1948,6 +1949,33 @@
                 }
             }
 
+            // ---- navegación: historial del navegador + botón Volver ----
+            function navBack() {
+                if (history.state && history.state.tab && history.length > 1) history.back();
+                else routeTo('tab-products');
+            }
+            function updateNavBack() {
+                const b = document.getElementById('navBack');
+                const active = document.querySelector('.tab-content.active');
+                if (b) b.style.display = (active && active.id !== 'tab-products') ? 'inline-block' : 'none';
+            }
+            /** Opens what a hash names: "#tab-card360/139" -> Tarjeta 360 with card 139. Silent: no new history entry. */
+            function routeTo(hash) {
+                const h = (hash || '').replace(/^#/, ''); if (!h) return false;
+                const [tabId, arg] = h.split('/');
+                if (!document.getElementById(tabId)) return false;
+                window.__navSilent = true;
+                try { switchTab({ target: null }, tabId); } finally { window.__navSilent = false; }
+                if (window.ops && ops.route) ops.route(tabId, arg);
+                return true;
+            }
+            window.addEventListener('popstate', (ev) => {
+                if (ev.state && ev.state.tab) routeTo(ev.state.tab + (ev.state.arg ? '/' + ev.state.arg : ''));
+                else routeTo(location.hash || '#tab-products');
+                updateNavBack();
+            });
+            window.routeTo = routeTo;
+
             function switchTab(e, tabId) {
                 document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -1962,6 +1990,8 @@
                 const targetTab = document.getElementById(tabId);
                 if (targetTab) targetTab.classList.add('active');
                 window.scrollTo({ top: 0, behavior: 'auto' });
+                if (!window.__navSilent) { const url = '#' + tabId; if (location.hash !== url) history.pushState({ tab: tabId }, '', url); }
+                updateNavBack();
 
                 updateWorkflowBanner(tabId);
 
@@ -3248,6 +3278,9 @@
             document.addEventListener("DOMContentLoaded", () => {
                 updateCreateFormMockup();
                 loadProducts();
+                history.replaceState({ tab: (location.hash || '#tab-products').replace(/^#/, '').split('/')[0] }, '', location.hash || '#tab-products');
+                if (location.hash && location.hash !== '#tab-products') routeTo(location.hash);
+                updateNavBack();
                 // Consola de operación: pantallas de los módulos nuevos, cargadas aparte para no crecer este archivo
                 fetch('/ops/ops.html').then(r => r.text()).then(html => {
                     document.querySelector('main.main-content').insertAdjacentHTML('beforeend', html);

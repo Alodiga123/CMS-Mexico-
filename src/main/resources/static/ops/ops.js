@@ -83,14 +83,29 @@
                     card = hits.sort((a, b) => b.id - a.id)[0];
                 }
                 await this.show(card);
+                if (!(history.state && history.state.arg === String(card.id))) history.replaceState({ tab: 'tab-card360', arg: String(card.id) }, '', '#tab-card360/' + card.id);
             } catch (e) { $('c360Summary').innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; $('c360Body').style.display = 'none'; fail(e); }
         },
-        async open(id) { $('c360Query').value = id; switchTab({ target: null }, 'tab-card360'); await this.search(); },
+        async open(id) {
+            $('c360Query').value = id;
+            window.__navSilent = true; try { switchTab({ target: null }, 'tab-card360'); } finally { window.__navSilent = false; }
+            history.pushState({ tab: 'tab-card360', arg: String(id) }, '', '#tab-card360/' + id);
+            if (typeof updateNavBack === 'function') updateNavBack();
+            await this.search();
+        },
+        /** Back to the quick list without leaving the screen. */
+        async clear() {
+            this.card = null; $('c360Query').value = ''; $('c360Body').style.display = 'none';
+            history.pushState({ tab: 'tab-card360' }, '', '#tab-card360');
+            if (typeof updateNavBack === 'function') updateNavBack();
+            await this.recent();
+        },
         /** Nothing chosen yet: the newest cards as quick picks, so the screen is never empty. */
         async recent() {
             const box = $('c360Summary');
             try {
                 const p = await api('GET', '/api/cards?page=0&size=12');
+                if (this.card) return;   // a card got selected meanwhile: keep it
                 const rows = p.content || [];
                 box.innerHTML = `<div class="ops-muted" style="margin-bottom:0.6rem">Busca por id o últimos cuatro, o elige una de las últimas tarjetas emitidas:</div>
                     <div class="table-container"><table class="ops-compact"><thead><tr><th>ID</th><th>Titular</th><th>Producto</th><th>Últimos 4</th><th>Estado</th><th>Saldo</th><th></th></tr></thead><tbody>${rows.map(c => `<tr><td>#${c.id}</td><td>${esc(c.embossedName)}</td><td>${esc(c.productName)}</td><td class="ops-mono">**** ${esc(c.last4)}</td><td>${badge(c.status)}</td><td>${money(c.balance, c.currency)}</td><td><button class="btn btn-primary" style="padding:0.3rem 0.7rem;font-size:0.72rem" onclick="ops.card360.open(${c.id})">Ver 360</button></td></tr>`).join('')}</tbody></table></div>`;
@@ -109,6 +124,7 @@
                         ${c.status === 'ACTIVE' || c.status === 'SUSPENDED' ? `<button class="btn btn-red" onclick="ops.card360.status('BLOCKED')">Bloquear</button>` : ''}
                         ${c.status === 'BLOCKED' ? `<button class="btn btn-emerald" onclick="ops.card360.status('ACTIVE')">Desbloquear</button>` : ''}
                         <button class="btn btn-primary" onclick="ops.authorizer.preselect(${c.id})">⚡ Autorizar</button>
+                        <button class="btn btn-amber" onclick="ops.card360.clear()">← Volver a la lista</button>
                         <button class="btn btn-primary" onclick="ops.guild.verifyCardId(${c.id})">🛡 Verificar en gremio</button></div>`]])}</div>
                 </div>`;
             $('c360Body').style.display = '';
@@ -211,7 +227,7 @@
                 await this.cardChanged();
             } catch (e) { fail(e); }
         },
-        async preselect(id) { switchTab({ target: null }, 'tab-authorizer'); await this.init(); $('auCard').value = id; await this.cardChanged(); },
+        async preselect(id) { switchTab({ target: null }, 'tab-authorizer'); await this.init(); $('auCard').value = id; await this.cardChanged(); history.replaceState({ tab: 'tab-authorizer', arg: String(id) }, '', '#tab-authorizer/' + id); },
         async cardChanged() {
             const id = $('auCard').value; const tbody = $('auAttempts');
             if (!id) return empty(tbody, 7);
@@ -335,6 +351,7 @@
         },
         async openDetail(id) {
             switchTab({ target: null }, 'tab-disputes');
+            history.replaceState({ tab: 'tab-disputes', arg: String(id) }, '', '#tab-disputes/' + id);
             const box = $('dsDetail');
             try {
                 const x = await api('GET', '/api/disputes/' + id);
@@ -586,7 +603,11 @@
 
     // ------------------------------------------------------------------ wiring
     const tabs = {
-        'tab-card360': () => { if (card360.card) card360.show(card360.card); else card360.recent(); },
+        'tab-card360': () => {
+            if (window.__navSilent) return;   // history / deep link: ops.route decides from the hash
+            if (card360.card) { card360.show(card360.card); history.replaceState({ tab: 'tab-card360', arg: String(card360.card.id) }, '', '#tab-card360/' + card360.card.id); }
+            else card360.recent();
+        },
         'tab-authorizer': () => authorizer.init(),
         'tab-reconciliation': () => recon.load(),
         'tab-disputes': () => disputes.init(),
@@ -596,5 +617,17 @@
         'tab-reports': () => reports.init()
     };
 
-    window.ops = { card360, authorizer, recon, disputes, fraud, guild, plastics, reports, pane, tabs, setOperator: (n) => localStorage.setItem('ops.operator', n) };
+    /** What a hash argument means on each screen (used by the browser's back / forward and deep links). */
+    async function route(tabId, arg) {
+        if (tabId === 'tab-card360') {
+            if (arg) { $('c360Query').value = arg; await card360.search(); }
+            else { card360.card = null; $('c360Query').value = ''; $('c360Body').style.display = 'none'; await card360.recent(); }
+        }
+        else if (tabId === 'tab-authorizer' && arg) { await authorizer.init(); $('auCard').value = arg; await authorizer.cardChanged(); }
+        else if (tabId === 'tab-disputes' && arg) { await disputes.init(); await disputes.openDetail(Number(arg)); }
+    }
+
+    window.ops = { card360, authorizer, recon, disputes, fraud, guild, plastics, reports, pane, tabs, route, setOperator: (n) => localStorage.setItem('ops.operator', n) };
+    // the console's screens exist only now: honour a deep link that names one of them
+    if (location.hash && tabs[location.hash.replace(/^#/, '').split('/')[0]] && typeof routeTo === 'function') routeTo(location.hash);
 })();
