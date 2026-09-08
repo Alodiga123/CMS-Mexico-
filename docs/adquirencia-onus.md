@@ -28,8 +28,11 @@ cierre del día ───▶ POST /clearing/cms/submit ──CMS-CLR (RRN + foli
 - **Enrutamiento**: `SmartRoutingServiceImpl` consulta primero `esOnUs(bin)` del adaptador
   (`switch.cms.bins`). Si el BIN es nuestro y el CMS responde, la ruta es `ON_US_ISSUER` con
   intercambio cero; si el CMS no responde, sigue la ruta de la marca. Aplica a venta,
-  preautorización y anulación del mismo día; devoluciones y capturas diferidas siguen su
-  camino (la captura on-us se liquida por compensación).
+  preautorización y anulación del mismo día. La devolución de una venta on-us va al CMS
+  como 0200 con código de proceso 20xxxx y el RRN de la venta original: el CMS ubica la
+  tarjeta por ese RRN, comprueba que no supere el monto original y abona por el mismo puerto
+  de fondos (ledger, core o línea). La captura diferida de una preautorización on-us no
+  viaja como 0220: se liquida con el archivo de compensación.
 - **PAN**: el backend solo persiste el PAN enmascarado. El PAN completo del cargo se mantiene
   en memoria (`Transaccion.panClaro`, transitorio) el tiempo de la autorización, que es lo
   que el emisor necesita para ubicar la tarjeta. El reverso lleva el RRN de la venta
@@ -69,7 +72,8 @@ Configuración (`application.yml`):
 `python scripts/verify_acquiring_onus.py` con el CMS en 8085 y el backend de adquirencia con
 la ruta on-us en `POS_URL` (por defecto `http://localhost:4100/api/v1`; en local se levanta
 con `SERVER_PORT=4100 MANAGEMENT_PORT=9405 CMS_API_KEY=dev-api-key DB_URL=jdbc:postgresql://localhost:5432/adquiriencia_pos DB_USERNAME=postgres DB_PASSWORD=... mvn spring-boot:run`).
-16 comprobaciones: venta aprobada on-us con folio y RRN reflejados en la retención del CMS,
+19 comprobaciones: venta aprobada on-us con folio y RRN reflejados en la retención del CMS,
 51 por fondos, 61 por límite diario, tarjeta ajena por la ruta de la marca, anulación que
-libera, archivo CMS-CLR aceptado y casado por RRN con captura, ciclo sin intercambio y rechazo
-del archivo repetido. Borra sus datos en las dos bases.
+libera, archivo CMS-CLR aceptado y casado por RRN con captura, ciclo sin intercambio,
+devolución parcial abonada al titular y rechazada cuando supera la venta, y rechazo del
+archivo repetido. Borra sus datos en las dos bases.

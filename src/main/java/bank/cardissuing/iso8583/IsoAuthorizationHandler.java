@@ -52,6 +52,7 @@ public class IsoAuthorizationHandler {
     private final AuthorizationService authorizer;
     private final AuthorizationHoldRepository holds;
     private final bank.cardissuing.fraud.application.FraudService fraudService;
+    private final bank.cardissuing.funds.application.FundsRouter fundsRouter;
 
     /** Recent traffic for the console, masked. */
     public record Trace(LocalDateTime at, String peer, String mti, String pan, String amount, String code, String note, long millis) { }
@@ -89,6 +90,7 @@ public class IsoAuthorizationHandler {
 
     private Object[] authorize(Iso8583Message req) {
         Iso8583Message resp = req.reply();
+        if (req.has(3) && req.get(3).startsWith("20")) return refund(req);
         String pan = req.get(2);
         if (pan == null && req.has(35)) pan = req.get(35).split("[=D]")[0];
         if (pan == null || !pan.matches("\\d{12,19}")) return new Object[] {resp.set(39, ResponseCode.INVALID_CARD.getCode()), "no PAN"};
@@ -171,6 +173,36 @@ public class IsoAuthorizationHandler {
     }
 
     // ------------------------------------------------------------ reversal and advice
+
+    /**
+     * 0200 with processing code 20xxxx: a refund (credit to the cardholder) from an acquirer.
+     * The card comes from the PAN when the message carries it whole, or from the original sale
+     * by RRN (the way our own acquirer sends it, since it never keeps the PAN in clear). The
+     * money goes back through the same funds port the card lives on: ledger, core or line.
+     */
+    private Object[] refund(Iso8583Message req) {
+        Iso8583Message resp = req.reply();
+        String pan = req.get(2);
+        Optional<Card> found = Optional.empty();
+        Optional<AuthorizationHold> original = Optional.empty();
+        if (pan != null && pan.matches("\\d{12,19}")) found = cards.findByPanHash(vault.hash(pan));
+        if (found.isEmpty() && req.has(37)) {
+            original = holds.findFirstByRrnOrderByCreatedAtDesc(req.get(37));
+            found = original.map(h -> h.getCard().getId()).flatMap(cards::findById);   // the hold's card is a lazy proxy; load it here, outside any session
+        }
+        if (found.isEmpty()) return new Object[] {resp.set(39, ResponseCode.UNABLE_TO_LOCATE.getCode()), "refund: original not found"};
+        Card card = found.get();
+        BigDecimal amount = new BigDecimal(req.get(4)).movePointLeft(minorUnits(req.get(49)));
+        if (amount.signum() <= 0) return new Object[] {resp.set(39, "13"), "refund: amount"};
+        if (original.isPresent() && amount.compareTo(original.get().getAmount()) > 0) {
+            return new Object[] {resp.set(39, "13"), "refund above the original " + original.get().getAmount()};
+        }
+        String reference = "REFUND-" + (req.has(37) ? req.get(37).trim() : req.get(11));
+        fundsRouter.forCard(card).credit(card, amount, reference);
+        String approval = String.format("%06d", Math.abs((reference + System.nanoTime()).hashCode()) % 1_000_000);
+        log.info("ISO refund {} {} to card {} ({})", amount, req.has(49) ? req.get(49) : "", card.getId(), reference);
+        return new Object[] {resp.set(39, "00").set(38, approval), "refund " + amount + " -> card " + card.getId()};
+    }
 
     private Object[] reverse(Iso8583Message req) {
         Iso8583Message resp = req.reply();

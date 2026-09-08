@@ -121,6 +121,13 @@ check("retencion CAPTURED y ledger 420 (500 - 80)", h4 and h4["status"] == "CAPT
 st, cycles = cms("GET", "/clearing/settlement/cycles")
 cyc = [c for c in (cycles or []) if c["id"] == cmsb.get("settlementCycleId")]
 check("el ciclo de liquidacion suma la presentacion sin intercambio (on-us)", cyc and float(cyc[0]["presentmentsAmount"]) >= 80 and float(cyc[0]["interchangeAmount"]) == 0, cyc)
+print("== 5b. devolucion parcial de la venta compensada -> abono al titular ==")
+st, rf = pos("POST", "/transactions/refund", {"uuidTransaccionOriginal": tx4["uuidTransaccion"], "monto": 30.00, "motivo": "producto devuelto"})
+rtx = (rf or {}).get("data") or {}
+check("el adquirente devuelve 30 por la ruta on-us y el emisor abona (00)", st == 200 and rtx.get("codigoRespuesta") == "00" and rtx.get("switchProcesador") == "CMS_ISSUER" and "Devoluci" in (rtx.get("estatus") or ""), (st, rf))
+check("ledger 450 (420 + 30 devueltos)", ledger() == 450, ledger())
+st, rf2 = pos("POST", "/transactions/refund", {"uuidTransaccionOriginal": tx4["uuidTransaccion"], "monto": 500.00, "motivo": "mas que la venta"})
+check("devolver mas que la venta se rechaza (el adquirente o el emisor con 13)", st != 200 or ((rf2 or {}).get("data") or {}).get("codigoRespuesta") in ("13", None), rf2)
 st, cl2 = pos("POST", "/clearing/cms/submit")
 d2 = (cl2 or {}).get("data") or {}
 check("volver a compensar el mismo dia: el CMS rechaza el archivo duplicado o no hay nada nuevo", st in (200, 502) and ((d2.get("batch") or {}).get("totalRecords", 0) == 0 or "ya" in json.dumps(cl2).lower() or "duplic" in json.dumps(cl2).lower() or "already" in json.dumps(cl2).lower()), cl2)
