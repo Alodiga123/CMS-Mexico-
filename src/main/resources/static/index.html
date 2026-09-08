@@ -1509,7 +1509,9 @@
                             <input type="number" id="authAmount" class="form-control" value="150" step="0.01" min="1" oninput="updateAuthPayloadFromInputs()" />
                         </div>
                         <div class="form-group" style="grid-column: 1/-1;">
-                            <label>Nombre del Comercio / Punto de Venta (Merchant):</label>
+                            <label>Comercio afiliado (portal de negocios): <span id="authMerchantSrc" style="font-weight:400; color:var(--text-muted);"></span></label>
+                                <select id="authMerchantSelect" class="form-control" onchange="pickAuthMerchant(this)" style="margin-bottom:0.6rem;"><option value="">Escribir a mano…</option></select>
+                                <label>Nombre del Comercio / Punto de Venta (Merchant):</label>
                             <input type="text" id="authMerchant" class="form-control" value="Amazon Online Store" oninput="updateAuthPayloadFromInputs()" />
                         </div>
                     </div>
@@ -3270,7 +3272,26 @@
             }
 
             // --- AUTHORIZATION ENGINE ---
+            let authMerchants = [];
+            async function loadAuthMerchants() {
+                const sel = document.getElementById('authMerchantSelect'), src = document.getElementById('authMerchantSrc');
+                if (!sel) return;
+                try {
+                    const res = await fetch('/api/merchants'); if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const r = await res.json(); authMerchants = r.merchants || [];
+                    sel.innerHTML = '<option value="">Escribir a mano…</option>' + authMerchants.map(m => `<option value="${m.code || m.id}">${m.name}${m.code ? ' · ' + m.code : ''}</option>`).join('');
+                    if (src) src.textContent = r.available ? `${authMerchants.length} afiliados` : `portal no disponible (${r.detail})`;
+                } catch (e) { if (src) src.textContent = 'portal no disponible'; }
+            }
+            function pickAuthMerchant(sel) {
+                const m = authMerchants.find(x => String(x.code || x.id) === sel.value);
+                if (!m) return;
+                document.getElementById('authMerchant').value = m.name;
+                window.authMerchantId = m.code || m.subMid || String(m.id);
+                updateAuthPayloadFromInputs();
+            }
             async function loadCardsForAuthSelect() {
+                loadAuthMerchants();
                 const select = document.getElementById('authCardSelect');
                 const keep = select.value;
                 const res = await fetch('/api/cards');
@@ -3289,7 +3310,7 @@
                 document.getElementById('jsonRequest').value = JSON.stringify({
                     cardId: cardId,
                     amount: amount,
-                    merchantName: merchant
+                    merchantName: merchant, ...(window.authMerchantId ? { merchantId: window.authMerchantId } : {})
                 }, null, 2);
             }
 

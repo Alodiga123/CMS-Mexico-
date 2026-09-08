@@ -260,6 +260,20 @@
             } catch (e) { errRow(tbody, 7, e); }
         },
         pick(code) { if (code) { $('auCode').value = code; this.lookup(); } },
+        merchants: [],
+        async loadMerchants() {
+            const dl = $('auMerchantList'), src = $('auMerchantSrc'); if (!dl) return;
+            try {
+                const r = await api('GET', '/api/merchants');
+                this.merchants = r.merchants || [];
+                dl.innerHTML = this.merchants.map(m => `<option value="${esc(m.name)}">${esc(m.code || '')}${m.rfc ? ' · ' + esc(m.rfc) : ''}</option>`).join('');
+                if (src) src.textContent = r.available ? `· ${this.merchants.length} afiliados del portal de negocios` : `· portal no disponible, captura manual (${r.detail})`;
+            } catch (e) { if (src) src.textContent = '· portal no disponible, captura manual'; }
+        },
+        merchantPicked(name) {
+            const m = this.merchants.find(x => x.name === name);
+            if (m) { $('auMerchantId').value = m.code || m.subMid || m.id || ''; toast(`Comercio ${m.name} · ${m.code || ''}`, 'ok'); }
+        },
         async send() {
             const body = { cardId: Number($('auCard').value), amount: Number($('auAmount').value), merchantName: $('auMerchant').value, merchantId: $('auMerchantId').value, channel: $('auChannel').value };
             if ($('auCountry').value) body.countryCode = $('auCountry').value.toUpperCase();
@@ -774,7 +788,7 @@
             if (card360.card) { card360.show(card360.card); history.replaceState({ tab: 'tab-card360', arg: String(card360.card.id) }, '', '#tab-card360/' + card360.card.id); }
             else card360.recent();
         },
-        'tab-authorizer': () => authorizer.init(),
+        'tab-authorizer': () => { authorizer.loadMerchants(); return authorizer.init(); },
         'tab-reconciliation': () => recon.load(),
         'tab-disputes': () => disputes.init(),
         'tab-fraud': () => fraud.init(),

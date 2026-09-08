@@ -118,6 +118,34 @@ tratamiento de datos personales. Variables: `THIRDPARTY_MESSAGING_MODE`,
 `THIRDPARTY_MESSAGING_CHANNEL`, `THIRDPARTY_MESSAGING_MAX_ATTEMPTS`,
 `THIRDPARTY_MESSAGING_RETRY_MS`, `THIRDPARTY_MESSAGING_MASK_OTP`.
 
+### Portal de negocios (adquirencia)
+
+El padrón de comercios afiliados vive en el backend de adquirencia
+(`puntos-adquisicion-pos/BackendAdquiriencia`, `GET /api/v1/merchants`). El CMS lo lee para
+alimentar el selector de comercio de las dos pantallas de autorización (pestañas 6 y 11): al
+elegir un comercio se llenan el nombre y el código de afiliación que viajan como campos 43 y
+42 del mensaje. En producción esos campos los trae el adquirente en el ISO 8583; el selector
+solo sirve para simular desde la consola.
+
+- **Puerto** `MerchantDirectoryClient`: `GET {MERCHANT_PORTAL_URL}/merchants` con la
+  cabecera `X-API-Key`; respuesta con `data[]` (`codigoComercio`, `nombreComercio`, `rfc`,
+  `estatus`, `bloqueado`, `tipoComercio`, `subMid`). El listado se guarda en caché 60 s. Si el
+  portal no responde, se sirve el último listado bueno y la consola lo avisa; si no hay
+  credencial, el selector queda en captura manual. Nunca bloquea una autorización.
+- **Endpoint del CMS**: `GET /api/merchants?search=&activeOnly=true` (`CMS:READ`) devuelve
+  `available`, `detail` y la lista filtrada; el registro de terceros lo muestra como
+  `MERCHANT_PORTAL` con verificación en vivo.
+- **Credencial**: en el portal, un administrador emite una credencial de integración con rol
+  `COMERCIOS` (`POST /api/v1/agregadores/credenciales/integracion`
+  `{"nombre":"CMS Mexico","rolOtorgado":"COMERCIOS"}`); el secreto solo se muestra una vez y
+  va en `MERCHANT_PORTAL_API_KEY`. El portal debe aceptar la clave en la ruta `/merchants`
+  (`RUTAS_COEXISTENTES` de su `ApiKeyAuthenticationFilter`).
+
+Contratar y certificar: credencial con rol `COMERCIOS`, ruta `/merchants` habilitada para la
+clave, acuerdo de uso del padrón (incluye RFC), sincronización de altas y bajas. Variables:
+`MERCHANT_PORTAL_URL`, `MERCHANT_PORTAL_API_KEY`, `MERCHANT_PORTAL_TIMEOUT_MS`,
+`MERCHANT_PORTAL_CACHE_SECONDS`, `MERCHANT_PORTAL_ENABLED`.
+
 ### Bureau de personalización (plásticos)
 
 Recibe el archivo de emboce sellado y cifrado con AES, produce y embarca los plásticos y el

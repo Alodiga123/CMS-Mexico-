@@ -66,7 +66,7 @@ def check(label, cond, detail=""):
 print("== 1. el registro de terceros ==")
 st, tp = http("GET", "/thirdparties")
 keys = [t["key"] for t in tp]
-check("12 terceros en el registro, cada uno con salud y contrato sembrado", st == 200 and len(tp) == 12 and all(t["health"] and t["contract"] for t in tp), (st, keys))
+check("13 terceros en el registro, cada uno con salud y contrato sembrado", st == 200 and len(tp) == 13 and all(t["health"] and t["contract"] for t in tp), (st, keys))
 by = {t["key"]: t for t in tp}
 check("core bancario en modo fineract y sin señales de caída", by["CORE_BANKING"]["mode"] == "fineract" and by["CORE_BANKING"]["health"]["up"], by["CORE_BANKING"]["health"])
 check("HSM responde al diagnóstico", by["HSM"]["health"]["up"], by["HSM"]["health"])

@@ -70,6 +70,10 @@ public class ThirdPartyRegistry {
                     "Proveedor de SMS/WhatsApp (Twilio, Infobip, agregador local)", List.of("THIRDPARTY_MESSAGING_MODE", "THIRDPARTY_MESSAGING_URL", "THIRDPARTY_MESSAGING_API_KEY", "THIRDPARTY_MESSAGING_SENDER"),
                     List.of("Remitente registrado (short code o WhatsApp Business verificado)", "Plantillas aprobadas: OTP, tarjeta enviada, tarjeta entregada, aclaración resuelta", "Entrega en menos de 10 s para OTP (SLA)", "Reporte de entrega (DLR) y reintentos", "Datos personales: contrato de encargado de tratamiento"),
                     "contratos-terceros.md"),
+            new Definition("MERCHANT_PORTAL", "Portal de negocios (adquirencia)", "Comercios afiliados con su código, RFC y estado; alimenta el selector de comercio del autorizador", Integration.ONLINE,
+                    "BackendAdquiriencia (puntos-adquisicion-pos)", List.of("MERCHANT_PORTAL_URL", "MERCHANT_PORTAL_API_KEY"),
+                    List.of("Credencial de integración con rol COMERCIOS emitida en el portal", "Ruta /merchants habilitada para X-API-Key", "Acuerdo de uso del padrón de comercios (datos de RFC)", "Sincronización de altas y bajas (webhook o consulta periódica)"),
+                    "contratos-terceros.md"),
             new Definition("PERSO_BUREAU", "Bureau de personalización (plásticos)", "Recibe el archivo de emboce cifrado, produce y entrega los plásticos y el PIN mailer", Integration.FILE,
                     "IDEMIA / Thales / bureau local", List.of("PLASTICS_MANUFACTURER", "PLASTICS_MANUFACTURER_KEY", "PLASTICS_CHIP_PROFILE"),
                     List.of("Llave AES del archivo de emboce intercambiada en ceremonia", "Perfil de chip aprobado por la red (EMV) y datos de personalización", "Canal SFTP con llaves y ventana de corte", "Prueba de lote: archivo, acuse, producción, embarque", "Certificación PCI Card Production"),
@@ -108,6 +112,7 @@ public class ThirdPartyRegistry {
     private final IamClient iam;
     private final GuildClient guild;
     private final MessagingProvider messaging;
+    private final bank.cardissuing.thirdparty.merchants.MerchantDirectoryClient merchants;
     private final Environment env;
     private final AuditService audit;
 
@@ -156,6 +161,7 @@ public class ThirdPartyRegistry {
             case "CORE_BANKING" -> env.getProperty("core.mode", "simulated");
             case "GUILD" -> guild.mode();
             case "MESSAGING" -> messaging.mode();
+            case "MERCHANT_PORTAL" -> merchants.mode();
             case "HSM" -> env.getProperty("HSM_HOST", "localhost") + ":" + env.getProperty("HSM_PORT", "1500");
             case "IAM" -> Boolean.parseBoolean(env.getProperty("security.enabled", "true")) ? "introspection" : "disabled";
             case "PERSO_BUREAU" -> DEV_PERSO_KEY.equals(env.getProperty("plastics.manufacturer-key-base64", DEV_PERSO_KEY)) ? "dev-key" : "own-key";
@@ -182,6 +188,11 @@ public class ThirdPartyRegistry {
                 }
                 case "GUILD": { GuildClient.Health h = guild.health(); return new Health(h.up(), h.detail(), now); }
                 case "MESSAGING": { MessagingProvider.Health h = messaging.health(); return new Health(h.up(), h.detail(), now); }
+                case "MERCHANT_PORTAL": {
+                    if (!merchants.configured()) return new Health(false, "sin credencial: el selector de comercios queda en captura manual", now);
+                    if (!probe) { var l = merchants.all(); return new Health(l.available(), l.available() ? l.merchants().size() + " comercios (" + l.detail() + ")" : l.detail(), now); }
+                    return merchants.ping() ? new Health(true, "responde: " + merchants.all().merchants().size() + " comercios", now) : new Health(false, "no responde: " + merchants.lastError(), now);
+                }
                 case "PERSO_BUREAU": return "dev-key".equals(mode(d)) ? new Health(true, "clave de desarrollo: sustituir por la del bureau antes de producción", now) : new Health(true, "clave propia configurada", now);
                 case "COURIER": return new Health(true, "manual: la guía se captura al despachar", now);
                 case "TREASURY_SPEI": return new Health(true, "manual: la referencia SPEI se captura al pagar el ciclo", now);

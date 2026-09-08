@@ -60,7 +60,7 @@
                 <div class="form-group"><label>Monto</label><input id="auAmount" class="form-control" type="number" step="0.01" value="25"></div>
                 <div class="form-group"><label>Canal</label><select id="auChannel" class="form-control"><option>POS</option><option>ATM</option><option>ECOMMERCE</option><option>CONTACTLESS</option></select></div>
                 <div class="form-group"><label>País (ISO)</label><input id="auCountry" class="form-control" placeholder="MX" maxlength="3"></div>
-                <div class="form-group"><label>Comercio</label><input id="auMerchant" class="form-control" value="Cafetería Centro"></div>
+                <div class="form-group"><label>Comercio <span id="auMerchantSrc" class="ops-muted" style="font-weight:400"></span></label><input id="auMerchant" class="form-control" list="auMerchantList" value="Cafetería Centro" placeholder="escribe o elige un comercio afiliado" oninput="ops.authorizer.merchantPicked(this.value)" autocomplete="off"><datalist id="auMerchantList"></datalist></div>
                 <div class="form-group"><label>ID de comercio</label><input id="auMerchantId" class="form-control" value="4152310077007"></div>
                 <div class="form-group"><label>Token de verificación reforzada</label><input id="auStepUp" class="form-control" placeholder="se llena al verificar el OTP"></div>
                 <div class="form-group"><label>Clave de idempotencia</label><input id="auIdem" class="form-control" placeholder="opcional"></div>
