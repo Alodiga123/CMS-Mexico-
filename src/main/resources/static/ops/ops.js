@@ -336,7 +336,7 @@
         reasons: null,
         async init() {
             if (!this.reasons) {
-                try { this.reasons = await api('GET', '/api/disputes/reasons'); $('dsReason').innerHTML = this.reasons.map(r => `<option value="${esc(r.code)}">${esc(r.code)} · ${esc(r.description)} (${esc(r.network)}${r.requiresEvidence ? ', exige evidencia' : ''})</option>`).join(''); } catch (e) { fail(e); }
+                try { this.reasons = await api('GET', '/api/disputes/reasons'); $('dsReason').innerHTML = this.reasons.map(r => `<option value="${esc(r.code)}">${esc(r.code)} · ${esc(r.description)}${r.requiresEvidence ? ' · exige evidencia' : ''}</option>`).join(''); } catch (e) { fail(e); }
             }
             await this.load();
         },
@@ -373,7 +373,7 @@
                 box.style.display = '';
                 box.innerHTML = `<h4>Aclaración #${x.id} ${badge(st)} ${x.outcome ? '· a favor de ' + (x.outcome === 'CUSTOMER' ? 'cliente' : 'comercio') : ''}</h4>
                     <div class="ops-grid-2">
-                        <div>${kv([['Tarjeta', `<a href="#" onclick="ops.card360.open(${x.cardId});return false">#${x.cardId}</a>`], ['Autorización', '<span class="ops-mono">' + esc(x.approvalCode) + '</span>'], ['Monto', money(x.amount, x.currency)], ['Razón', `${esc(x.reasonCode)} · ${esc(x.reason)} (${esc(x.network)})`], ['Descripción', esc(x.description)], ['Abrió', esc(x.openedBy) + ' · ' + dt(x.openedAt)], ['Abono provisional', x.provisionalCredit ? 'sí · ref ' + esc(x.creditRef) + (x.creditReversalRef ? ' · reversado ' + esc(x.creditReversalRef) : '') : 'no']])}</div>
+                        <div>${kv([['Tarjeta', `<a href="#" onclick="ops.card360.open(${x.cardId});return false">#${x.cardId}</a>`], ['Autorización', '<span class="ops-mono">' + esc(x.approvalCode) + '</span>'], ['Monto', money(x.amount, x.currency)], ['Razón', `${esc(x.reasonCode)} · ${esc(x.reason)}`], ['Descripción', esc(x.description)], ['Abrió', esc(x.openedBy) + ' · ' + dt(x.openedAt)], ['Abono provisional', x.provisionalCredit ? 'sí · ref ' + esc(x.creditRef) + (x.creditReversalRef ? ' · reversado ' + esc(x.creditReversalRef) : '') : 'no']])}</div>
                         <div>${kv([['Contracargo antes de', esc(x.chargebackDeadline)], ['Representación antes de', esc(x.representmentDeadline)], ['Resolver antes de', esc(x.resolveBy)], ['Próximo plazo', esc(x.nextDeadline)], ['Caso del adquirente', esc(x.acquirerCaseRef)], ['Resuelta', dt(x.resolvedAt) + ' ' + esc(x.resolutionNote || '')]])}</div>
                     </div>
                     <h4 style="margin-top:0.8rem">Evidencia (${ev.length}) <span class="ops-muted">sellada con SHA-256</span></h4>
