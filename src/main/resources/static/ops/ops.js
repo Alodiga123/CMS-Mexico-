@@ -117,7 +117,7 @@
             $('c360Summary').innerHTML = `
                 <div class="ops-grid-3">
                     <div>${kv([['Tarjeta', `<strong>#${c.id}</strong> **** ${esc(c.last4)}`], ['Titular', esc(c.embossedName) + ' <span class="ops-muted">' + esc(c.customerName) + '</span>'], ['Producto', `${esc(c.productName)} · ${badge(c.cardType)} ${c.paymentType && c.paymentType !== c.cardType ? badge(c.paymentType) : ''} ${badge(c.network)}`], ['Categoría', esc(c.cardCategory)]])}</div>
-                    <div>${kv([['Estado', badge(c.status)], ['Vence', esc(c.expiryDate)], ['Moneda / País', `${esc(c.currency)} · ${esc(c.country)}`], ['Saldo ledger', `<strong style="color:var(--accent-emerald)">${money(c.balance, c.currency)}</strong>`]])}</div>
+                    <div>${kv([['Estado', badge(c.status)], ['Vence', esc(c.expiryDate)], ['Moneda / País', `${esc(c.currency)} · ${esc(c.country)}`], ['Saldo', `<strong id="c360HeadBalance" style="color:var(--accent-emerald)">${money(c.balance, c.currency)}</strong> <span id="c360HeadBalanceNote" class="ops-muted">ledger interno</span>`]])}</div>
                     <div>${kv([['Límites producto', `día ${money(c.dailyLimit)} · semana ${money(c.weeklyLimit)} · mes ${money(c.monthlyLimit)}`], ['Acciones', `<div class="ops-actions">
                         ${c.status === 'CREATED' || c.status === 'SUSPENDED' ? `<button class="btn btn-emerald" onclick="ops.card360.status('ACTIVE')">Activar</button>` : ''}
                         ${c.status === 'ACTIVE' ? `<button class="btn btn-amber" onclick="ops.card360.status('SUSPENDED')">Suspender</button>` : ''}
@@ -169,6 +169,9 @@
             try {
                 const a = await api('GET', `/api/cards/${this.card.id}/core-account`);
                 this.coreBacked = !!a.coreBacked;
+                const hb = $('c360HeadBalance'), hn = $('c360HeadBalanceNote');
+                if (hb && a.coreBacked) { hb.textContent = money(a.available, this.card.currency); if (hn) hn.textContent = 'disponible en el core · cuenta ' + (a.externalAccountId || ''); }
+                else if (hn) hn.textContent = this.card.cardType === 'CREDIT' ? 'línea disponible' : 'ledger interno';
                 box.innerHTML = kv([['Respaldo', a.coreBacked ? '<span class="badge badge-emerald">Saldo en el core (Mifos)</span>' : '<span class="badge badge-cyan">Ledger interno / línea</span>'],
                     ['Cuenta del core', esc(a.externalAccountId)], ['Cliente del core', esc(a.externalClientId)],
                     ['Disponible', `<strong style="color:var(--accent-emerald)">${money(a.available)}</strong>`], ['Nota', esc(a.message)]]) +
