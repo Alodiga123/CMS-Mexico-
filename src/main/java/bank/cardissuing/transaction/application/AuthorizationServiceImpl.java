@@ -4,6 +4,9 @@ import bank.cardissuing.card.domain.Card;
 import bank.cardissuing.card.domain.CardStatus;
 import bank.cardissuing.card.infrastructure.CardRepository;
 import bank.cardissuing.common.exception.ResourceNotFoundException;
+import bank.cardissuing.fraud.application.FraudService;
+import bank.cardissuing.fraud.application.FraudService.Assessment;
+import bank.cardissuing.fraud.application.FraudService.Decision;
 import bank.cardissuing.funds.application.FundsRouter;
 import bank.cardissuing.funds.domain.AuthorizationHold;
 import bank.cardissuing.funds.domain.FundsPort;
@@ -31,12 +34,13 @@ import java.util.UUID;
  * funds (the port the router picks) — then a decision that reserves but never debits.
  *
  * <p>Order of checks, cheapest and most local first: card state → card controls
- * (channel, international, per-transaction cap) → velocity limits → funds. A decline
- * at any step answers without touching the steps after it, so a switched-off channel
- * never reaches the core.
+ * (channel, international, per-transaction cap) → online fraud → velocity limits →
+ * funds. A decline at any step answers without touching the steps after it, so a
+ * switched-off channel or a suspected fraud never reaches the core.
  *
  * <p>Declines are answers with an ISO code, not HTTP errors: a switch expects a 0110
  * for every 0100. Only "card does not exist" and infrastructure failures throw.
+ * Every decision, approved or not, is remembered for the fraud rules and the console.
  */
 @Slf4j
 @Service
@@ -50,10 +54,13 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private final CardRepository cardRepository;
     private final FundsRouter router;
     private final ControlsPolicy controls;
+    private final FraudService fraud;
     private final LimitsPolicy limits;
     private final AuthorizationHoldRepository holds;
     private final IdempotencyService idempotency;
     private final ObjectMapper json;
+
+    private record Outcome(AuthorizationResponse response, Assessment risk) { }
 
     @Override
     @Transactional
@@ -65,38 +72,54 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Card", "id", request.getCardId()));
         String cardType = card.getProduct() != null ? card.getProduct().getCardType().name() : null;
 
-        AuthorizationResponse response = decide(card, request, idempotencyKey, cardType);
-        remember(idempotencyKey, response);
-        log.info("Authorization {} card={} amount={} channel={} code={} merchant={}",
-                response.isApproved() ? "APPROVED" : "DECLINED", card.getId(), request.getAmount(),
-                request.channelOrDefault(), response.getResponseCode(), request.getMerchantName());
-        return response;
+        Outcome out = decide(card, request, idempotencyKey, cardType);
+        fraud.record(card, request, out.response(), out.risk());
+        remember(idempotencyKey, out.response());
+        log.info("Authorization {} card={} amount={} channel={} code={} risk={} merchant={}",
+                out.response().isApproved() ? "APPROVED" : "DECLINED", card.getId(), request.getAmount(),
+                request.channelOrDefault(), out.response().getResponseCode(), out.response().getRiskScore(), request.getMerchantName());
+        return out.response();
     }
 
-    private AuthorizationResponse decide(Card card, AuthorizationRequest request, String idempotencyKey, String cardType) {
+    private Outcome decide(Card card, AuthorizationRequest request, String idempotencyKey, String cardType) {
         if (card.getStatus() != CardStatus.ACTIVE) {
-            return AuthorizationResponse.decline(ResponseCode.RESTRICTED_CARD, "card is " + card.getStatus(), cardType);
+            return new Outcome(AuthorizationResponse.decline(ResponseCode.RESTRICTED_CARD, "card is " + card.getStatus(), cardType), null);
         }
         if (card.getExpiryDate() != null && card.getExpiryDate().isBefore(LocalDate.now())) {
-            return AuthorizationResponse.decline(ResponseCode.EXPIRED_CARD, "expired " + card.getExpiryDate(), cardType);
+            return new Outcome(AuthorizationResponse.decline(ResponseCode.EXPIRED_CARD, "expired " + card.getExpiryDate(), cardType), null);
         }
 
         Optional<Breach> control = controls.check(card, request);
         if (control.isPresent()) {
-            return AuthorizationResponse.decline(control.get().code(), control.get().detail(), cardType);
+            return new Outcome(AuthorizationResponse.decline(control.get().code(), control.get().detail(), cardType), null);
+        }
+
+        Assessment risk = fraud.assess(card, request);
+        if (risk.decision() == Decision.DECLINE) {
+            return new Outcome(AuthorizationResponse.decline(ResponseCode.SUSPECTED_FRAUD, risk.reasonsCsv(), cardType)
+                    .withRisk(risk.score(), risk.reasons()), risk);
+        }
+        if (risk.decision() == Decision.STEP_UP) {
+            AuthorizationResponse r = AuthorizationResponse.decline(ResponseCode.AUTHENTICATION_REQUIRED,
+                    "step-up required (" + risk.reasonsCsv() + ")", cardType).withRisk(risk.score(), risk.reasons());
+            r.setChallengeId(risk.challengeToken());
+            r.setOtpHint(risk.otpHint());
+            return new Outcome(r, risk);
         }
 
         FundsPort port = router.forCard(card);
 
         Optional<Breach> limit = limits.check(card, request.getAmount());
         if (limit.isPresent()) {
-            return AuthorizationResponse.decline(limit.get().code(), limit.get().detail(), cardType);
+            return new Outcome(AuthorizationResponse.decline(limit.get().code(), limit.get().detail(), cardType)
+                    .withRisk(risk.score(), risk.reasons()), risk);
         }
 
         BigDecimal available = port.available(card);
         if (available.compareTo(request.getAmount()) < 0) {
-            return AuthorizationResponse.decline(ResponseCode.INSUFFICIENT_FUNDS,
-                    "requested " + request.getAmount() + ", available " + available, cardType);
+            return new Outcome(AuthorizationResponse.decline(ResponseCode.INSUFFICIENT_FUNDS,
+                    "requested " + request.getAmount() + ", available " + available, cardType)
+                    .withRisk(risk.score(), risk.reasons()), risk);
         }
 
         AuthorizationHold hold = new AuthorizationHold(card, newApprovalCode(), request.getAmount(),
@@ -106,7 +129,8 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         port.hold(card, hold);
         holds.save(hold);
 
-        return AuthorizationResponse.approve(hold.getApprovalCode(), available.subtract(request.getAmount()), cardType);
+        return new Outcome(AuthorizationResponse.approve(hold.getApprovalCode(), available.subtract(request.getAmount()), cardType)
+                .withRisk(risk.score(), risk.reasons()), risk);
     }
 
     @Override

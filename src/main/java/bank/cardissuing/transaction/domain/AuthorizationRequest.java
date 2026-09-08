@@ -48,6 +48,10 @@ public class AuthorizationRequest {
     @Size(max = 3)
     private String countryCode;
 
+    /** Token of a step-up challenge the cardholder already passed, when retrying after a 1A. */
+    @Size(max = 80)
+    private String stepUpToken;
+
     public String transactionTypeOrDefault() {
         return transactionType == null || transactionType.isBlank() ? "PURCHASE" : transactionType;
     }

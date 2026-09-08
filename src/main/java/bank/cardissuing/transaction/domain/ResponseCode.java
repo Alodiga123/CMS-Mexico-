@@ -2,24 +2,32 @@ package bank.cardissuing.transaction.domain;
 
 import lombok.Getter;
 
-/** ISO 8583 field 39 codes the authorizer answers with. A decline is a response, not an error. */
+/**
+ * ISO 8583 field 39 codes the authorizer answers with. A decline is a response, not an
+ * error. Each carries the technical description and the words the cardholder should
+ * see -- the "explicación funcional de cada rechazo".
+ */
 @Getter
 public enum ResponseCode {
-    APPROVED("00", "Approved"),
-    INVALID_CARD("14", "Invalid card number"),
-    INSUFFICIENT_FUNDS("51", "Insufficient funds"),
-    EXPIRED_CARD("54", "Expired card"),
-    NOT_PERMITTED("57", "Transaction not permitted to cardholder"),
-    EXCEEDS_LIMIT("61", "Exceeds withdrawal amount limit"),
-    RESTRICTED_CARD("62", "Restricted card"),
-    DUPLICATE("94", "Duplicate transmission"),
-    SYSTEM_ERROR("96", "System malfunction");
+    APPROVED("00", "Approved", "Operación aprobada"),
+    INVALID_CARD("14", "Invalid card number", "Tarjeta inválida"),
+    AUTHENTICATION_REQUIRED("1A", "Additional customer authentication required", "Confirma la operación con el código que te enviamos"),
+    INSUFFICIENT_FUNDS("51", "Insufficient funds", "Fondos insuficientes"),
+    EXPIRED_CARD("54", "Expired card", "Tarjeta vencida"),
+    NOT_PERMITTED("57", "Transaction not permitted to cardholder", "Operación no permitida para esta tarjeta"),
+    SUSPECTED_FRAUD("59", "Suspected fraud", "Operación rechazada por seguridad; contacta a tu banco"),
+    EXCEEDS_LIMIT("61", "Exceeds withdrawal amount limit", "Excede el límite permitido"),
+    RESTRICTED_CARD("62", "Restricted card", "Tarjeta restringida"),
+    DUPLICATE("94", "Duplicate transmission", "Operación duplicada"),
+    SYSTEM_ERROR("96", "System malfunction", "Error del sistema, intenta más tarde");
 
     private final String code;
     private final String description;
+    private final String customerMessage;
 
-    ResponseCode(String code, String description) {
+    ResponseCode(String code, String description, String customerMessage) {
         this.code = code;
         this.description = description;
+        this.customerMessage = customerMessage;
     }
 }

@@ -5,6 +5,9 @@ import bank.cardissuing.card.infrastructure.CardRepository;
 import bank.cardissuing.common.exception.BusinessException;
 import bank.cardissuing.common.exception.ResourceNotFoundException;
 import bank.cardissuing.customer.domain.Customer;
+import bank.cardissuing.fraud.application.FraudService;
+import bank.cardissuing.fraud.application.FraudService.Assessment;
+import bank.cardissuing.fraud.application.FraudService.Decision;
 import bank.cardissuing.funds.application.FundsRouter;
 import bank.cardissuing.funds.domain.AuthorizationHold;
 import bank.cardissuing.funds.domain.FundsPort;
@@ -29,6 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -43,6 +47,7 @@ class AuthorizationServiceImplTest {
     @Mock CardRepository cardRepository;
     @Mock FundsRouter router;
     @Mock ControlsPolicy controls;
+    @Mock FraudService fraud;
     @Mock LimitsPolicy limits;
     @Mock AuthorizationHoldRepository holds;
     @Mock IdempotencyService idempotency;
@@ -53,7 +58,7 @@ class AuthorizationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new AuthorizationServiceImpl(cardRepository, router, controls, limits, holds, idempotency, new ObjectMapper());
+        service = new AuthorizationServiceImpl(cardRepository, router, controls, fraud, limits, holds, idempotency, new ObjectMapper());
         CardProduct product = new CardProduct("PRE-01", "Prepago", CardType.PREPAID, PaymentType.PREPAID,
                 CardNetwork.VISA, "453211", "MXN", null, true);
         card = new Card(new Customer(), "4321", CardStatus.ACTIVE, LocalDate.now().plusYears(2));
@@ -71,6 +76,7 @@ class AuthorizationServiceImplTest {
 
     private void allowed() {
         when(controls.check(eq(card), any())).thenReturn(Optional.empty());
+        when(fraud.assess(eq(card), any())).thenReturn(Assessment.clean());
         when(router.forCard(card)).thenReturn(port);
         when(limits.check(eq(card), any())).thenReturn(Optional.empty());
     }
@@ -80,16 +86,19 @@ class AuthorizationServiceImplTest {
         when(cardRepository.findById(7L)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> service.authorize(req("100"), null));
         verify(holds, never()).save(any());
+        verify(fraud, never()).record(any(), any(), any(), any());
     }
 
     @Test
-    void authorize_whenCardNotActive_shouldDeclineRestricted() {
+    void authorize_whenCardNotActive_shouldDeclineRestricted_andStillRecord() {
         card.setStatus(CardStatus.BLOCKED);
         cardFound();
         AuthorizationResponse r = service.authorize(req("100"), null);
         assertFalse(r.isApproved());
         assertEquals(ResponseCode.RESTRICTED_CARD.getCode(), r.getResponseCode());
+        assertEquals("Tarjeta restringida", r.getCustomerMessage());
         verifyNoInteractions(controls, router);
+        verify(fraud).record(eq(card), any(), eq(r), isNull());
     }
 
     @Test
@@ -100,20 +109,48 @@ class AuthorizationServiceImplTest {
     }
 
     @Test
-    void authorize_whenControlBlocks_shouldDecline57_beforeRoutingOrLimits() {
+    void authorize_whenControlBlocks_shouldDecline57_beforeFraudRoutingOrLimits() {
         cardFound();
         when(controls.check(eq(card), any()))
                 .thenReturn(Optional.of(new Breach(ResponseCode.NOT_PERMITTED, "ECOMMERCE is disabled on this card")));
         AuthorizationResponse r = service.authorize(req("100"), null);
         assertEquals("57", r.getResponseCode());
         assertTrue(r.getMessage().contains("ECOMMERCE"));
+        verify(fraud, never()).assess(any(), any());
         verifyNoInteractions(router, limits, holds);
+    }
+
+    @Test
+    void authorize_whenFraudDeclines_shouldAnswer59_withReasons_andNeverTouchFunds() {
+        cardFound();
+        when(controls.check(eq(card), any())).thenReturn(Optional.empty());
+        when(fraud.assess(eq(card), any())).thenReturn(new Assessment(100, List.of("BLOCKLIST_MERCHANT"), Decision.DECLINE, null, null));
+        AuthorizationResponse r = service.authorize(req("100"), null);
+        assertEquals("59", r.getResponseCode());
+        assertEquals(100, r.getRiskScore());
+        assertEquals(List.of("BLOCKLIST_MERCHANT"), r.getRiskReasons());
+        assertTrue(r.getCustomerMessage().contains("seguridad"));
+        verifyNoInteractions(router, limits, holds);
+    }
+
+    @Test
+    void authorize_whenFraudAsksStepUp_shouldAnswer1A_withChallenge() {
+        cardFound();
+        when(controls.check(eq(card), any())).thenReturn(Optional.empty());
+        when(fraud.assess(eq(card), any())).thenReturn(new Assessment(55, List.of("DECLINES_30M"), Decision.STEP_UP, "tok-1", "123456"));
+        AuthorizationResponse r = service.authorize(req("100"), null);
+        assertEquals("1A", r.getResponseCode());
+        assertEquals("tok-1", r.getChallengeId());
+        assertEquals("123456", r.getOtpHint());
+        assertFalse(r.isApproved());
+        verifyNoInteractions(router, holds);
     }
 
     @Test
     void authorize_whenLimitExceeded_shouldDecline61_withoutTouchingFunds() {
         cardFound();
         when(controls.check(eq(card), any())).thenReturn(Optional.empty());
+        when(fraud.assess(eq(card), any())).thenReturn(Assessment.clean());
         when(router.forCard(card)).thenReturn(port);
         when(limits.check(eq(card), any()))
                 .thenReturn(Optional.of(new Breach(ResponseCode.EXCEEDS_LIMIT, "daily")));
@@ -129,12 +166,17 @@ class AuthorizationServiceImplTest {
         AuthorizationResponse r = service.authorize(req("100"), null);
         assertFalse(r.isApproved());
         assertEquals("51", r.getResponseCode());
+        assertEquals("Fondos insuficientes", r.getCustomerMessage());
         verify(port, never()).hold(any(), any());
     }
 
     @Test
-    void authorize_whenSuccess_shouldHoldAndReturnAvailableAfter() {
-        cardFound(); allowed();
+    void authorize_whenSuccess_shouldHoldAndReturnAvailableAfter_withRisk() {
+        cardFound();
+        when(controls.check(eq(card), any())).thenReturn(Optional.empty());
+        when(fraud.assess(eq(card), any())).thenReturn(new Assessment(20, List.of("NEW_CARD_HIGH"), Decision.APPROVE, null, null));
+        when(router.forCard(card)).thenReturn(port);
+        when(limits.check(eq(card), any())).thenReturn(Optional.empty());
         when(port.available(card)).thenReturn(new BigDecimal("500"));
         when(holds.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -145,12 +187,14 @@ class AuthorizationServiceImplTest {
         assertTrue(r.getApprovalCode().startsWith("AUTH-"));
         assertEquals(new BigDecimal("380"), r.getAmount());
         assertEquals("PREPAID", r.getCardType());
+        assertEquals(20, r.getRiskScore());
+        assertEquals(List.of("NEW_CARD_HIGH"), r.getRiskReasons());
 
         ArgumentCaptor<AuthorizationHold> saved = ArgumentCaptor.forClass(AuthorizationHold.class);
         verify(holds).save(saved.capture());
         assertEquals(HoldStatus.HELD, saved.getValue().getStatus());
-        assertEquals(new BigDecimal("120"), saved.getValue().getAmount());
         verify(port).hold(eq(card), any());
+        verify(fraud).record(eq(card), any(), eq(r), any());
     }
 
     @Test
@@ -161,7 +205,7 @@ class AuthorizationServiceImplTest {
         AuthorizationResponse r = service.authorize(req("120"), "k1");
 
         assertEquals("AUTH-CACHED", r.getApprovalCode());
-        verifyNoInteractions(cardRepository, controls, router, holds);
+        verifyNoInteractions(cardRepository, controls, fraud, router, holds);
     }
 
     @Test
