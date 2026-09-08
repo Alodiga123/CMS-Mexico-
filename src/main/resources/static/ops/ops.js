@@ -419,12 +419,13 @@
                     }
                     if (!rows.length) { empty(tbody, 10, 'Sin alertas.'); return { total: 0 }; }
                     tbody.innerHTML = rows.map(a => `<tr><td>#${a.id}</td><td class="ops-mono">${dt(a.at || a.createdAt)}</td><td>${badge(a.type)}</td><td>${a.cardId ? `<a href="#" onclick="ops.card360.open(${a.cardId});return false">#${a.cardId}</a>` : '—'}</td><td style="min-width:150px">${esc(a.merchantName)}<div class="ops-muted">${esc(a.merchantId)}</div></td><td>${money(a.amount)}</td><td><strong>${a.riskScore}</strong></td><td class="ops-muted" style="max-width:190px;white-space:normal;word-break:break-word;font-size:11px">${esc((a.reasons || "").replace(/,/g, ", "))}</td><td>${badge(a.status)}${a.actionTaken ? '<div class="ops-muted">' + esc(a.actionTaken) + ' · ' + esc(a.reviewedBy) + '</div>' : ''}</td>
-                        <td class="ops-actions" style="min-width:250px;white-space:normal">${a.status === 'OPEN' ? `<button class="btn btn-primary" onclick="ops.fraud.review(${a.id},'REVIEWED')">Revisada</button> <button class="btn" onclick="ops.fraud.review(${a.id},'DISMISS')">Descartar</button>${a.merchantId ? ` <button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_MERCHANT')">Bloq. comercio</button>` : ''}${a.cardId ? ` <button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_CARD')">Bloq. tarjeta</button>` : ''}` : ''}</td></tr>`).join('');
+                        <td class="ops-actions">${a.status === 'OPEN' ? `<select class="form-control" style="min-width:150px;padding:4px 8px;font-size:12px" onchange="ops.fraud.act(${a.id}, this)"><option value="">Acción…</option><option value="REVIEWED">Marcar revisada</option><option value="DISMISS">Descartar</option>${a.merchantId ? `<option value="BLOCK_MERCHANT">Bloquear comercio</option>` : ''}${a.cardId ? `<option value="BLOCK_CARD">Bloquear tarjeta</option>` : ''}</select>` : ''}</td></tr>`).join('');
                     return { total: p.totalElements, page: p.page, size: p.size };
                 } catch (e) { errRow(tbody, 10, e); return { total: 0 }; }
             };
             if (first) await pager.server(tbody, load); else await tbody.__pager.reload(true);
         },
+        async act(id, sel) { const action = sel.value; sel.value = ''; if (action) await this.review(id, action); },
         async review(id, action) {
             const note = ask('Nota del analista'); if (note === null) return;
             try { await api('POST', `/api/fraud/alerts/${id}/review`, { action, note, by: who() }); toast('Alerta ' + action, 'ok'); await this.init(); } catch (e) { fail(e); }
