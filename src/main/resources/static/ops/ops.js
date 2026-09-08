@@ -176,7 +176,12 @@
                     ['Cuenta del core', esc(a.externalAccountId)], ['Cliente del core', esc(a.externalClientId)],
                     ['Disponible', `<strong style="color:var(--accent-emerald)">${money(a.available)}</strong>`], ['Nota', esc(a.message)]]) +
                     `<div class="ops-toolbar" style="margin-top:0.7rem"><input id="c360Recharge" class="form-control" type="number" step="0.01" placeholder="monto" style="width:130px"><button class="btn btn-emerald" onclick="ops.card360.recharge()">Recargar</button></div>`;
-            } catch (e) { box.innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; }
+            } catch (e) {
+                const transient = /unreachable|not reachable|CORE_UNAVAILABLE|stand-in/i.test(e.message || '');
+                box.innerHTML = `<div class="ops-error">${transient ? 'El core (Mifos) no respondió hace un momento; el autorizador sigue en stand-in mientras vuelve.' : esc(e.message)}</div>
+                    <div class="ops-muted" style="margin:0.4rem 0">${transient ? esc(e.message) : ''}</div>
+                    <button class="btn btn-primary" onclick="ops.card360.loadCore()">Reintentar</button>`;
+            }
         },
         async recharge() {
             const amount = Number($('c360Recharge').value); if (!amount) return;
