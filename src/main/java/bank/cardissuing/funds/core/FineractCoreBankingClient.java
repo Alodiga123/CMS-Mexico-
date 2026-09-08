@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -80,18 +81,8 @@ public class FineractCoreBankingClient implements CoreBankingClient {
     // ---------------------------------------------------------------- money
 
     @Override
-    @SuppressWarnings("unchecked")
     public BigDecimal availableBalance(String accountId) {
-        Map<String, Object> body = call(() -> http.get()
-                .uri("/savingsaccounts/{id}?associations=summary", accountId)
-                .retrieve().body(Map.class));
-        Map<String, Object> summary = (Map<String, Object>) body.get("summary");
-        Object available = summary != null ? summary.get("availableBalance") : null;
-        if (available == null) {
-            throw new BusinessException("CORE_UNEXPECTED_RESPONSE",
-                    "Fineract returned no availableBalance for account " + accountId, HttpStatus.BAD_GATEWAY);
-        }
-        return new BigDecimal(available.toString());
+        return balances(accountId).availableBalance();
     }
 
     @Override
@@ -208,7 +199,57 @@ public class FineractCoreBankingClient implements CoreBankingClient {
         }
     }
 
+    // ----------------------------------------------------------- statements
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<CoreTransaction> transactions(String accountId) {
+        Map<String, Object> body = account(accountId, "transactions");
+        List<Map<String, Object>> txs = (List<Map<String, Object>>) body.getOrDefault("transactions", List.of());
+        List<CoreTransaction> out = new ArrayList<>(txs.size());
+        for (Map<String, Object> t : txs) {
+            Map<String, Object> type = (Map<String, Object>) t.get("transactionType");
+            String code = type != null ? String.valueOf(type.get("code")) : "";
+            CoreTxType kind = code.endsWith(".onHold") ? CoreTxType.HOLD
+                    : code.endsWith(".release") ? CoreTxType.RELEASE
+                    : code.endsWith(".withdrawal") ? CoreTxType.WITHDRAWAL
+                    : code.endsWith(".deposit") ? CoreTxType.DEPOSIT
+                    : CoreTxType.OTHER;
+            Object rel = t.get("releaseTransactionId");
+            String releaseRef = rel != null && !"0".equals(String.valueOf(rel)) && !"null".equals(String.valueOf(rel))
+                    ? String.valueOf(rel) : null;
+            out.add(new CoreTransaction(
+                    String.valueOf(t.get("id")), kind,
+                    new BigDecimal(String.valueOf(t.get("amount"))),
+                    date((List<Number>) t.get("date")),
+                    Boolean.TRUE.equals(t.get("reversed")),
+                    releaseRef,
+                    t.get("note") != null ? String.valueOf(t.get("note")) : null));
+        }
+        return out;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public CoreBalances balances(String accountId) {
+        Map<String, Object> body = account(accountId, "summary");
+        Map<String, Object> summary = (Map<String, Object>) body.get("summary");
+        Object available = summary != null ? summary.get("availableBalance") : null;
+        Object balance = summary != null ? summary.get("accountBalance") : null;
+        if (available == null || balance == null) {
+            throw new BusinessException("CORE_UNEXPECTED_RESPONSE",
+                    "Fineract returned no balances for account " + accountId, HttpStatus.BAD_GATEWAY);
+        }
+        return new CoreBalances(new BigDecimal(balance.toString()), new BigDecimal(available.toString()));
+    }
+
     // -------------------------------------------------------------- helpers
+
+    private Map<String, Object> account(String accountId, String associations) {
+        return call(() -> http.get()
+                .uri("/savingsaccounts/{id}?associations={a}", accountId, associations)
+                .retrieve().body(Map.class));
+    }
 
     private String transact(String accountId, BigDecimal amount, String reference, String command) {
         Map<String, Object> payload = datedPayload(accountId, amount);
@@ -231,20 +272,20 @@ public class FineractCoreBankingClient implements CoreBankingClient {
     }
 
     /** The later of today (UTC) and the account's newest transaction date, as Fineract reports it. */
-    @SuppressWarnings("unchecked")
     LocalDate operationDate(String accountId) {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        Map<String, Object> body = call(() -> http.get()
-                .uri("/savingsaccounts/{id}?associations=transactions", accountId)
-                .retrieve().body(Map.class));
-        List<Map<String, Object>> txs = (List<Map<String, Object>>) body.getOrDefault("transactions", List.of());
-        LocalDate last = txs.stream()
-                .map(t -> (List<Number>) t.get("date"))
-                .filter(d -> d != null && d.size() == 3)
-                .map(d -> LocalDate.of(d.get(0).intValue(), d.get(1).intValue(), d.get(2).intValue()))
+        LocalDate last = transactions(accountId).stream()
+                .map(CoreTransaction::date)
+                .filter(d -> d != null)
                 .max(LocalDate::compareTo)
                 .orElse(today);
         return last.isAfter(today) ? last : today;
+    }
+
+    private static LocalDate date(List<Number> ymd) {
+        return ymd != null && ymd.size() == 3
+                ? LocalDate.of(ymd.get(0).intValue(), ymd.get(1).intValue(), ymd.get(2).intValue())
+                : null;
     }
 
     private static String todayUtc() {

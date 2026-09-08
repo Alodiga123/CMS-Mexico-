@@ -20,7 +20,8 @@ import java.time.LocalDateTime;
  * ledger stays append-only and the authorization never writes a debit by itself.
  *
  * <p>For core-backed debit cards the hold also exists in the core (see
- * {@code externalRef}); for prepaid and credit it lives only here.
+ * {@code externalRef}) and its capture is a core withdrawal (see {@code captureRef});
+ * for prepaid and credit it lives only here.
  */
 @Entity
 @Table(name = "authorization_holds", indexes = {
@@ -61,6 +62,10 @@ public class AuthorizationHold extends BaseEntity {
     /** Reference of the hold in the core, when the funds live there. */
     @Column(length = 80)
     private String externalRef;
+
+    /** Reference of the core debit that settled this hold, when the funds live there. */
+    @Column(length = 80)
+    private String captureRef;
 
     @Column(length = 120)
     private String idempotencyKey;

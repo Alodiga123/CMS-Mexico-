@@ -54,6 +54,7 @@ public class CoreDebitFunds implements FundsPort {
     public void capture(Card card, AuthorizationHold hold) {
         String account = accountOf(card);
         String txRef = core.withdraw(account, hold.getCapturedAmount(), hold.getApprovalCode());
+        hold.setCaptureRef(txRef);
         log.info("Captured {} on core account {} (core tx {})", hold.getCapturedAmount(), account, txRef);
         if (hold.getExternalRef() != null) {
             try {
@@ -65,10 +66,19 @@ public class CoreDebitFunds implements FundsPort {
         }
     }
 
+    /**
+     * Releasing is idempotent from the CMS's point of view: if the core already let the
+     * money go (a release done behind our back, reconciled as HOLD_MISSING_IN_CORE),
+     * marking the hold RELEASED here is exactly right, so a core refusal is logged, not raised.
+     */
     @Override
     public void release(Card card, AuthorizationHold hold) {
-        if (hold.getExternalRef() != null) {
+        if (hold.getExternalRef() == null) return;
+        try {
             core.releaseHold(accountOf(card), hold.getExternalRef());
+        } catch (BusinessException e) {
+            log.warn("Hold {} on core account {} could not be released ({}): treating as already released",
+                    hold.getExternalRef(), card.getExternalAccountId(), e.getMessage());
         }
     }
 

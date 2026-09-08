@@ -1,6 +1,8 @@
 package bank.cardissuing.funds.core;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -40,4 +42,28 @@ public interface CoreBankingClient {
 
     /** True when the account exists and can transact. */
     boolean accountIsActive(String accountId);
+
+    // ---- statements: what reconciliation uses ----
+
+    /** Every transaction the core has on the account, newest first. */
+    List<CoreTransaction> transactions(String accountId);
+
+    /** Ledger balance and what remains usable after holds. */
+    CoreBalances balances(String accountId);
+
+    enum CoreTxType { HOLD, RELEASE, WITHDRAWAL, DEPOSIT, OTHER }
+
+    /**
+     * @param id         the core's transaction id
+     * @param releaseRef for a HOLD, the id of the release that undid it; null while still active
+     * @param note       free text the core kept; the CMS writes its approval code there on withdrawals
+     */
+    record CoreTransaction(String id, CoreTxType type, BigDecimal amount, LocalDate date,
+                           boolean reversed, String releaseRef, String note) {
+        public boolean activeHold() { return type == CoreTxType.HOLD && !reversed && releaseRef == null; }
+    }
+
+    record CoreBalances(BigDecimal accountBalance, BigDecimal availableBalance) {
+        public BigDecimal onHold() { return accountBalance.subtract(availableBalance); }
+    }
 }
