@@ -72,6 +72,31 @@ public class AuthorizationHold extends BaseEntity {
 
     private LocalDateTime expiresAt;
 
+    /** Network references of the original message (ISO 8583 fields 37 and 11), for reversals and advices. */
+    @Column(length = 12)
+    private String rrn;
+
+    @Column(length = 6)
+    private String stan;
+
+    @Column(name = "acquirer_id", length = 11)
+    private String acquirerId;
+
+    /** Approved by the CMS while the core was unreachable; the reservation is owed to the core. */
+    @Column(name = "stand_in", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean standIn;
+
+    /** Still waiting to place the reservation in the core (only meaningful when standIn). */
+    @Column(name = "stand_in_pending", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean standInPending;
+
+    @Column(name = "stand_in_settled_at")
+    private LocalDateTime standInSettledAt;
+
+    /** The network stood in for us and told us afterwards (0120 / 0220 advice). */
+    @Column(name = "network_advice", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean networkAdvice;
+
     public AuthorizationHold(Card card, String approvalCode, BigDecimal amount,
                              String merchantName, String merchantId, String transactionType,
                              LocalDateTime expiresAt) {

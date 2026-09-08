@@ -52,13 +52,14 @@ class AuthorizationServiceImplTest {
     @Mock AuthorizationHoldRepository holds;
     @Mock IdempotencyService idempotency;
     @Mock FundsPort port;
+    @Mock bank.cardissuing.standin.StandInService standIn;
 
     AuthorizationServiceImpl service;
     Card card;
 
     @BeforeEach
     void setUp() {
-        service = new AuthorizationServiceImpl(cardRepository, router, controls, fraud, limits, holds, idempotency, new ObjectMapper());
+        service = new AuthorizationServiceImpl(cardRepository, router, controls, fraud, limits, holds, idempotency, new ObjectMapper(), standIn);
         CardProduct product = new CardProduct("PRE-01", "Prepago", CardType.PREPAID, PaymentType.PREPAID,
                 CardNetwork.VISA, "453211", "MXN", null, true);
         card = new Card(new Customer(), "4321", CardStatus.ACTIVE, LocalDate.now().plusYears(2));

@@ -52,6 +52,9 @@ public class FineractCoreBankingClient implements CoreBankingClient {
     private static final DateTimeFormatter FINERACT_DATE = DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH);
 
     private final RestClient http;
+    private final CoreOutageSwitch outage;
+    /** The same switch for the static transport helper. */
+    private static volatile CoreOutageSwitch OUTAGE;
     /** Fineract makes paymentTypeId mandatory on deposits and withdrawals. */
     private final long paymentTypeId;
     private final long savingsProductId;
@@ -65,7 +68,10 @@ public class FineractCoreBankingClient implements CoreBankingClient {
             @Value("${core.fineract.payment-type-id:1}") long paymentTypeId,
             @Value("${core.fineract.savings-product-id:1}") long savingsProductId,
             @Value("${core.fineract.office-id:1}") long officeId,
-            RestClient.Builder builder) {
+            RestClient.Builder builder,
+            CoreOutageSwitch outage) {
+        this.outage = outage;
+        OUTAGE = outage;
         this.http = builder
                 .baseUrl(baseUrl)
                 .defaultHeader("Fineract-Platform-TenantId", tenant)
@@ -82,11 +88,13 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     @Override
     public BigDecimal availableBalance(String accountId) {
+        outage.guard();
         return balances(accountId).availableBalance();
     }
 
     @Override
     public String holdAmount(String accountId, BigDecimal amount, String reference) {
+        outage.guard();
         Map<String, Object> payload = datedPayload(accountId, amount);
         payload.put("reasonForBlock", "Card authorization " + reference);
         Map<String, Object> body = call(() -> http.post()
@@ -98,6 +106,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     @Override
     public void releaseHold(String accountId, String holdRef) {
+        outage.guard();
         // releaseAmount takes no date: the core stamps it with its own day.
         call(() -> http.post()
                 .uri("/savingsaccounts/{id}/transactions/{tx}?command=releaseAmount", accountId, holdRef)
@@ -107,11 +116,13 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     @Override
     public String withdraw(String accountId, BigDecimal amount, String reference) {
+        outage.guard();
         return transact(accountId, amount, reference, "withdrawal");
     }
 
     @Override
     public String deposit(String accountId, BigDecimal amount, String reference) {
+        outage.guard();
         return transact(accountId, amount, reference, "deposit");
     }
 
@@ -132,6 +143,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     @Override
     public String createClient(String firstName, String lastName, String externalId) {
+        outage.guard();
         String today = todayUtc();
         Map<String, Object> p = new LinkedHashMap<>();
         p.put("locale", "en");
@@ -154,6 +166,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
 
     @Override
     public String openSavingsAccount(String clientId, String externalId) {
+        outage.guard();
         String today = todayUtc();
         Map<String, Object> p = new LinkedHashMap<>();
         p.put("locale", "en");
@@ -302,6 +315,7 @@ public class FineractCoreBankingClient implements CoreBankingClient {
             throw new BusinessException("CORE_REJECTED",
                     "Fineract responded " + e.getStatusCode().value() + ": " + e.getResponseBodyAsString(), status);
         } catch (RuntimeException e) {
+            if (OUTAGE != null) OUTAGE.reportUnreachable();
             throw new BusinessException("CORE_UNAVAILABLE",
                     "Fineract not reachable: " + e.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
         }

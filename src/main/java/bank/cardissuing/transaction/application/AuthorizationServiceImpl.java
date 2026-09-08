@@ -59,6 +59,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private final AuthorizationHoldRepository holds;
     private final IdempotencyService idempotency;
     private final ObjectMapper json;
+    private final bank.cardissuing.standin.StandInService standIn;
 
     private record Outcome(AuthorizationResponse response, Assessment risk) { }
 
@@ -115,22 +116,69 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                     .withRisk(risk.score(), risk.reasons()), risk);
         }
 
-        BigDecimal available = port.available(card);
-        if (available.compareTo(request.getAmount()) < 0) {
-            return new Outcome(AuthorizationResponse.decline(ResponseCode.INSUFFICIENT_FUNDS,
-                    "requested " + request.getAmount() + ", available " + available, cardType)
-                    .withRisk(risk.score(), risk.reasons()), risk);
-        }
-
         AuthorizationHold hold = new AuthorizationHold(card, newApprovalCode(), request.getAmount(),
                 request.getMerchantName(), request.getMerchantId(), request.transactionTypeOrDefault(),
                 LocalDateTime.now().plusDays(holdDays));
         hold.setIdempotencyKey(idempotencyKey);
-        port.hold(card, hold);
+        hold.setRrn(request.getRrn());
+        hold.setStan(request.getStan());
+        hold.setAcquirerId(request.getAcquirerId());
+
+        BigDecimal available;
+        try {
+            available = port.available(card);
+            if (available.compareTo(request.getAmount()) < 0) {
+                return new Outcome(AuthorizationResponse.decline(ResponseCode.INSUFFICIENT_FUNDS,
+                        "requested " + request.getAmount() + ", available " + available, cardType)
+                        .withRisk(risk.score(), risk.reasons()), risk);
+            }
+            port.hold(card, hold);
+        } catch (bank.cardissuing.common.exception.BusinessException e) {
+            if (!"CORE_UNAVAILABLE".equals(e.getErrorCode())) throw e;
+            // The core cannot be asked: decide alone within the stand-in limits, and owe it the reservation.
+            java.util.Optional<bank.cardissuing.standin.StandInService.Refusal> refusal = standIn.refuse(card, request.getAmount(), request.channelOrDefault());
+            if (refusal.isPresent()) {
+                log.warn("Core unavailable and stand-in refused for card {}: {}", card.getId(), refusal.get().reason());
+                return new Outcome(AuthorizationResponse.decline(ResponseCode.ISSUER_UNAVAILABLE, "core unavailable; " + refusal.get().reason(), cardType)
+                        .withRisk(risk.score(), risk.reasons()), risk);
+            }
+            standIn.markStandIn(hold);
+            holds.save(hold);
+            log.warn("STAND-IN approval {} for card {} amount {} (core unavailable: {})", hold.getApprovalCode(), card.getId(), request.getAmount(), e.getMessage());
+            AuthorizationResponse r = AuthorizationResponse.approve(hold.getApprovalCode(), null, cardType).withRisk(risk.score(), risk.reasons());
+            r.setHoldStatus("HELD_STAND_IN");
+            r.setMessage("Approved in stand-in (core unavailable)");
+            return new Outcome(r, risk);
+        }
         holds.save(hold);
 
         return new Outcome(AuthorizationResponse.approve(hold.getApprovalCode(), available.subtract(request.getAmount()), cardType)
                 .withRisk(risk.score(), risk.reasons()), risk);
+    }
+
+    @Override
+    @Transactional
+    public AuthorizationHold recordAdvice(Card card, AuthorizationRequest request, String networkApprovalId) {
+        AuthorizationHold hold = new AuthorizationHold(card, newApprovalCode(), request.getAmount(),
+                request.getMerchantName(), request.getMerchantId(), request.transactionTypeOrDefault(),
+                LocalDateTime.now().plusDays(holdDays));
+        hold.setNetworkAdvice(true);
+        hold.setRrn(request.getRrn());
+        hold.setStan(request.getStan());
+        hold.setAcquirerId(request.getAcquirerId());
+        hold.setIdempotencyKey(networkApprovalId != null ? "ADVICE:" + networkApprovalId + ":" + request.getRrn() : null);
+        try {
+            router.forCard(card).hold(card, hold);
+        } catch (bank.cardissuing.common.exception.BusinessException e) {
+            // the network already approved; the reservation is owed to the core like a stand-in
+            standIn.markStandIn(hold);
+            log.warn("Advice {} recorded without core reservation ({}): pending settlement", hold.getApprovalCode(), e.getErrorCode());
+        }
+        AuthorizationResponse view = AuthorizationResponse.approve(hold.getApprovalCode(), null, card.getProduct() != null ? card.getProduct().getCardType().name() : null);
+        view.setMessage("Network advice");
+        fraud.record(card, request, view, null);
+        log.info("Network advice recorded as {} for card {} amount {}", hold.getApprovalCode(), card.getId(), request.getAmount());
+        return holds.save(hold);
     }
 
     @Override

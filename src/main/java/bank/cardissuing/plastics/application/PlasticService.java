@@ -44,6 +44,10 @@ public class PlasticService {
     private final PlasticSettings settings;
     private final AuditService audit;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.hsm.application.CardCryptoService cardCrypto;
+
     // ------------------------------------------------------------ request
 
     @Transactional
@@ -88,7 +92,17 @@ public class PlasticService {
             Card card = p.getCard();
             String bin = card.getProduct() != null ? card.getProduct().getBin() : "";
             String pvv = null, cvv2 = null;
-            try {
+            if (cardCrypto != null && card.getPanEncrypted() != null) {
+                String pan = cardCrypto.panOf(card).orElse(null);
+                if (card.getPvv() == null) {
+                    bank.cardissuing.hsm.application.CardCryptoService.Provisioned prov = cardCrypto.provisionPin(pan);
+                    card.setPvv(prov.pvv()); card.setPvki(prov.pvki()); card.setCryptoProvisionedAt(java.time.LocalDateTime.now());
+                    cards.save(card);
+                    cardCrypto.rememberTestPin(card.getId(), prov.pin());
+                }
+                pvv = card.getPvv();
+                cvv2 = cardCrypto.cvvs(pan, p.getExpiry() != null ? p.getExpiry() : card.getExpiryDate(), settings.getServiceCode()).cvv2();
+            } else try {
                 HsmService.HsmCardCryptoResult crypto = hsm.generateCardCryptograms(bin, card.getLast4(),
                         card.getProduct() != null ? card.getProduct().getPinBlockFormat() : "ISO-0",
                         card.getProduct() != null ? card.getProduct().getPvkIndex() : "PVK-01");

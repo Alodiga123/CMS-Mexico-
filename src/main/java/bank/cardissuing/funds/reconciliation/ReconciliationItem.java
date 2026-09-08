@@ -38,7 +38,9 @@ public class ReconciliationItem extends BaseEntity {
         /** A debit in the core that no CMS capture explains. */
         UNKNOWN_CORE_DEBIT,
         /** Sum of CMS holds differs from what the core reports as on hold. */
-        HOLD_TOTAL_MISMATCH
+        HOLD_TOTAL_MISMATCH,
+        /** Approved in stand-in while the core was down; when it came back it refused the reservation. */
+        STAND_IN_REJECTED
     }
 
     public enum Status { OPEN, RESOLVED }

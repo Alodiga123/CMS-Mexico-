@@ -15,6 +15,8 @@ public class IdempotencyRecord {
     @Column(unique = true, nullable = false)
     private String idempotencyKey;
 
+    @Column(name = "response_payload", columnDefinition = "text")
+
     private String responsePayload;
 
     private LocalDateTime createdAt;

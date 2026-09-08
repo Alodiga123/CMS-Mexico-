@@ -32,6 +32,9 @@ import java.util.concurrent.atomic.AtomicLong;
 @ConditionalOnProperty(name = "core.mode", havingValue = "simulated", matchIfMissing = true)
 public class SimulatedCoreBankingClient implements CoreBankingClient {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private CoreOutageSwitch outage;
+
     private static final class SimTx {
         final String id; final CoreTxType type; final BigDecimal amount; final LocalDate date; final String note;
         String releaseRef;
@@ -64,12 +67,14 @@ public class SimulatedCoreBankingClient implements CoreBankingClient {
 
     @Override
     public BigDecimal availableBalance(String accountId) {
+        if (outage != null) outage.guard();
         BigDecimal balance = balances.computeIfAbsent(accountId, k -> defaultBalance);
         return balance.subtract(heldByAccount.getOrDefault(accountId, BigDecimal.ZERO));
     }
 
     @Override
     public synchronized String holdAmount(String accountId, BigDecimal amount, String reference) {
+        if (outage != null) outage.guard();
         if (availableBalance(accountId).compareTo(amount) < 0) {
             throw new BusinessException("CORE_INSUFFICIENT_FUNDS",
                     "Core reports insufficient funds on account " + accountId, HttpStatus.UNPROCESSABLE_ENTITY);
@@ -82,6 +87,7 @@ public class SimulatedCoreBankingClient implements CoreBankingClient {
 
     @Override
     public synchronized void releaseHold(String accountId, String holdRef) {
+        if (outage != null) outage.guard();
         String[] h = holds.remove(holdRef);
         if (h == null) return; // already released or never existed: releasing is idempotent
         heldByAccount.merge(h[0], new BigDecimal(h[1]).negate(), BigDecimal::add);
@@ -92,23 +98,27 @@ public class SimulatedCoreBankingClient implements CoreBankingClient {
 
     @Override
     public synchronized String withdraw(String accountId, BigDecimal amount, String reference) {
+        if (outage != null) outage.guard();
         balances.merge(accountId, amount.negate(), BigDecimal::add);
         return journal(accountId, CoreTxType.WITHDRAWAL, amount, reference).id;
     }
 
     @Override
     public synchronized String deposit(String accountId, BigDecimal amount, String reference) {
+        if (outage != null) outage.guard();
         balances.merge(accountId, amount, BigDecimal::add);
         return journal(accountId, CoreTxType.DEPOSIT, amount, reference).id;
     }
 
     @Override
     public Optional<String> findClientByExternalId(String externalId) {
+        if (outage != null) outage.guard();
         return Optional.ofNullable(clientsByExternalId.get(externalId));
     }
 
     @Override
     public String createClient(String firstName, String lastName, String externalId) {
+        if (outage != null) outage.guard();
         String id = String.valueOf(nextClient.getAndIncrement());
         clientsByExternalId.put(externalId, id);
         return id;
@@ -116,6 +126,7 @@ public class SimulatedCoreBankingClient implements CoreBankingClient {
 
     @Override
     public String openSavingsAccount(String clientId, String externalId) {
+        if (outage != null) outage.guard();
         String id = String.valueOf(nextAccount.getAndIncrement());
         balances.put(id, BigDecimal.ZERO); // a new account has no money until someone deposits
         return id;
@@ -123,16 +134,19 @@ public class SimulatedCoreBankingClient implements CoreBankingClient {
 
     @Override
     public boolean accountIsActive(String accountId) {
+        if (outage != null) outage.guard();
         return accountId != null && !accountId.isBlank();
     }
 
     @Override
     public synchronized List<CoreTransaction> transactions(String accountId) {
+        if (outage != null) outage.guard();
         return journal.getOrDefault(accountId, List.of()).stream().map(SimTx::view).toList();
     }
 
     @Override
     public CoreBalances balances(String accountId) {
+        if (outage != null) outage.guard();
         BigDecimal balance = balances.computeIfAbsent(accountId, k -> defaultBalance);
         return new CoreBalances(balance, balance.subtract(heldByAccount.getOrDefault(accountId, BigDecimal.ZERO)));
     }

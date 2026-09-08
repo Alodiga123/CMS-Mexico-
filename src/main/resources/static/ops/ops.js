@@ -217,7 +217,20 @@
     // ------------------------------------------------------------------ AUTORIZADOR
     const authorizer = {
         lastChallenge: null,
+        async loadIso() {
+            try {
+                const [iso, si, core] = await Promise.all([api('GET', '/api/iso/status'), api('GET', '/api/standin/status'), api('GET', '/api/core/outage')]);
+                $('isoKpis').innerHTML = kpi('Canal ISO', iso.listening ? 'escuchando :' + iso.port : 'apagado', iso.listening ? 'ok' : 'bad') + kpi('Enlaces', iso.connections) + kpi('HSM', iso.hsmUp ? 'arriba' : 'caído', iso.hsmUp ? 'ok' : 'bad')
+                    + kpi('Core', core.down ? (core.forced ? 'caída simulada' : 'sin respuesta') : 'arriba', core.down ? 'bad' : 'ok') + kpi('Stand-in pendiente', si.pendingSettlement, si.pendingSettlement ? 'warn' : '') + kpi('Monto pendiente', money(si.pendingAmount)) + kpi('Máx. stand-in', money(si.maxAmount) + ' · ' + si.maxCountPerCardDaily + '/día');
+                const rows = await api('GET', '/api/iso/recent');
+                const tbody = $('isoRecent');
+                if (!rows.length) return empty(tbody, 7, 'Sin tramas todavía.');
+                tbody.innerHTML = rows.slice(0, 30).map(t => `<tr><td class="ops-mono">${dt(t.at)}</td><td class="ops-mono">${esc(t.mti)}</td><td class="ops-mono">${esc(t.pan || '')}</td><td>${t.amount ? (Number(t.amount) / 100).toFixed(2) : ''}</td><td>${rc(t.code, t.code === '00')}</td><td class="ops-muted">${esc(t.note)}</td><td>${t.millis}</td></tr>`).join('');
+            } catch (e) { $('isoKpis').innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; }
+        },
+        async settleStandIn() { try { const r = await api('POST', '/api/standin/settle'); toast('Reservas asentadas en el core: ' + r.settled, 'ok'); await this.loadIso(); } catch (e) { fail(e); } },
         async init() {
+            this.loadIso();
             const sel = $('auCard');
             try {
                 const cards = await allCards(true);

@@ -64,6 +64,9 @@ public class SecurityConfig {
                 // administration: products, promotions, HSM keys
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/promotions/**", "/api/hsm/**").hasAuthority(Permissions.READ)
                 .requestMatchers("/api/products/**", "/api/promotions/**", "/api/hsm/**").hasAuthority(Permissions.ADMIN)
+                // the breaker in front of the core: administration only
+                .requestMatchers(HttpMethod.GET, "/api/core/**", "/api/iso/**", "/api/standin/**").hasAuthority(Permissions.READ)
+                .requestMatchers("/api/core/**").hasAuthority(Permissions.ADMIN)
                 // fraud and industry antifraud
                 .requestMatchers(HttpMethod.GET, "/api/fraud/**", "/api/guild/**").hasAuthority(Permissions.READ)
                 .requestMatchers("/api/fraud/**", "/api/guild/**").hasAuthority(Permissions.FRAUD)

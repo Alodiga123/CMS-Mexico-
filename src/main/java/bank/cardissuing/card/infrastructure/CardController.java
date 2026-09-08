@@ -43,6 +43,9 @@ public class CardController {
     private final CardRepository cardRepository;
     private final PlasticService plasticService;
     private final AuditService auditService;
+    private final bank.cardissuing.card.application.PanVault panVault;
+    private final bank.cardissuing.funds.application.FundsRouter fundsRouter;
+    private final bank.cardissuing.hsm.application.CardCryptoService cardCrypto;
     private final CardProductRepository cardProductRepository;
     private final CustomerRepository customerRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
@@ -140,10 +143,26 @@ public class CardController {
         card.setStatus(CardStatus.ACTIVE);
         card.setCardCategory(request.getCardCategory() != null ? CardCategory.valueOf(request.getCardCategory().toUpperCase()) : CardCategory.PHYSICAL);
         card.setExpiryDate(LocalDate.now().plusYears(3));
+        // The PAN lives only in the vault; the PIN never lives anywhere: its PVV does.
+        String pan = bank.cardissuing.card.application.PanVault.generatePan(bin, last4);
+        card.setPanEncrypted(panVault.encrypt(pan));
+        card.setPanHash(panVault.hash(pan));
+        card.setServiceCode("201");
+        String testPin = null;
+        try {
+            bank.cardissuing.hsm.application.CardCryptoService.Provisioned p = cardCrypto.provisionPin(pan);
+            card.setPvv(p.pvv());
+            card.setPvki(p.pvki());
+            card.setCryptoProvisionedAt(java.time.LocalDateTime.now());
+            testPin = p.pin();
+        } catch (BusinessException e) {
+            log.warn("Card issued without PVV (HSM: {}): PIN operations will decline until re-provisioned", e.getErrorCode());
+        }
         BigDecimal requestedDeposit = request.getInitialDeposit() != null ? request.getInitialDeposit() : BigDecimal.ZERO;
         // Debit-with-core products get their account in the core here, before anything is saved locally.
         boolean linkedToCore = coreAccountLinker.link(card, customer, request.getExternalAccountId(), requestedDeposit);
         card = cardRepository.save(card);
+        if (testPin != null) cardCrypto.rememberTestPin(card.getId(), testPin);
         if (card.getCardCategory() == CardCategory.PHYSICAL) {
             plasticService.request(card, Plastic.Reason.NEW, null, true, "ISSUANCE");
         }
@@ -238,6 +257,44 @@ public class CardController {
                 "message", "Card status updated successfully"
         ));
     }
+    /** Test benches only (hsm.host.expose-test-secrets=true): what a terminal or a chip would know about this card. */
+    @GetMapping("/{id}/test-secrets")
+    public ResponseEntity<Map<String, Object>> testSecrets(@PathVariable Long id) {
+        if (!cardCrypto.exposesTestSecrets()) throw new BusinessException("TEST_SECRETS_OFF", "hsm.host.expose-test-secrets is off", HttpStatus.NOT_FOUND);
+        Card card = cardRepository.findById(id).orElseThrow(() -> new BusinessException("CARD_NOT_FOUND", "Card " + id + " not found", HttpStatus.NOT_FOUND));
+        String pan = cardCrypto.panOf(card).orElseThrow(() -> new BusinessException("CARD_WITHOUT_PAN", "Card " + id + " was issued before the PAN vault", HttpStatus.UNPROCESSABLE_ENTITY));
+        String svc = card.getServiceCode() != null ? card.getServiceCode() : "201";
+        bank.cardissuing.hsm.application.CardCryptoService.Cvvs cvvs = cardCrypto.cvvs(pan, card.getExpiryDate(), svc);
+        String yymm = card.getExpiryDate().format(java.time.format.DateTimeFormatter.ofPattern("yyMM"));
+        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("cardId", card.getId());
+        m.put("pan", pan);
+        m.put("expiryYYMM", yymm);
+        m.put("serviceCode", svc);
+        m.put("panSequence", card.getPanSequence());
+        m.put("pvki", card.getPvki());
+        m.put("pvv", card.getPvv());
+        m.put("pin", cardCrypto.testPin(card.getId()).orElse(null));
+        m.put("cvv", cvvs.cvv());
+        m.put("cvv2", cvvs.cvv2());
+        m.put("icvv", cvvs.icvv());
+        m.put("track2", pan + "=" + yymm + svc + (card.getPvki() != null ? card.getPvki() : "0") + (card.getPvv() != null ? card.getPvv() : "0000") + cvvs.cvv());
+        return ResponseEntity.ok(m);
+    }
+
+    /** Credit the card's funds where they live (the core account for debit-with-core, the ledger otherwise): manual adjustments and test benches. */
+    @PostMapping("/{id}/core-deposit")
+    public ResponseEntity<Map<String, Object>> coreDeposit(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        Card card = cardRepository.findById(id).orElseThrow(() -> new BusinessException("CARD_NOT_FOUND", "Card " + id + " not found", HttpStatus.NOT_FOUND));
+        BigDecimal amount = new BigDecimal(String.valueOf(body.getOrDefault("amount", "0")));
+        if (amount.signum() <= 0) throw new BusinessException("INVALID_AMOUNT", "amount must be positive", HttpStatus.BAD_REQUEST);
+        String reference = String.valueOf(body.getOrDefault("reference", "CMS-DEPOSIT-" + id));
+        String ref = fundsRouter.forCard(card).credit(card, amount, reference);
+        auditService.log("CORE_DEPOSIT", "Card", card.getId().toString(), String.valueOf(body.getOrDefault("by", "API")));
+        return ResponseEntity.ok(Map.of("cardId", card.getId(), "amount", amount, "reference", ref != null ? ref : reference,
+                "available", fundsRouter.forCard(card).available(card)));
+    }
+
     /** Where a card's money lives in the core, if anywhere. */
     @GetMapping("/{id}/core-account")
     public ResponseEntity<java.util.Map<String, Object>> coreAccount(@PathVariable Long id) {

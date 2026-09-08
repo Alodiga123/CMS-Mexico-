@@ -48,6 +48,16 @@ public class AuthorizationRequest {
     @Size(max = 3)
     private String countryCode;
 
+    /** ISO 8583 references when the request came over the network: retrieval reference (37), STAN (11), acquirer (32). */
+    @Size(max = 12)
+    private String rrn;
+
+    @Size(max = 6)
+    private String stan;
+
+    @Size(max = 11)
+    private String acquirerId;
+
     /** Token of a step-up challenge the cardholder already passed, when retrying after a 1A. */
     @Size(max = 80)
     private String stepUpToken;

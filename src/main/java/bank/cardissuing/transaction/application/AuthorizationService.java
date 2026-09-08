@@ -18,4 +18,7 @@ public interface AuthorizationService {
     AuthorizationHold reverse(String approvalCode);
 
     AuthorizationHold get(String approvalCode);
+
+    /** The network stood in for us and reports an approval after the fact (0120 / 0220): record it as a hold. */
+    AuthorizationHold recordAdvice(bank.cardissuing.card.domain.Card card, AuthorizationRequest request, String networkApprovalId);
 }

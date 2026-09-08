@@ -36,6 +36,14 @@ public class CardServiceImpl implements CardService {
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.card.application.PanVault panVault;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.hsm.application.CardCryptoService cardCrypto;
+
     @Override
     @Transactional
     public Card issueCard(Long customerId, String idempotencyKey) {
@@ -67,6 +75,17 @@ public class CardServiceImpl implements CardService {
         card.setLast4(generateLast4());
         card.setStatus(CardStatus.CREATED);
         card.setExpiryDate(LocalDate.now().plusYears(1));
+        if (panVault != null) {
+            String pan = bank.cardissuing.card.application.PanVault.generatePan(null, card.getLast4());
+            card.setPanEncrypted(panVault.encrypt(pan));
+            card.setPanHash(panVault.hash(pan));
+            if (cardCrypto != null) {
+                try {
+                    bank.cardissuing.hsm.application.CardCryptoService.Provisioned p = cardCrypto.provisionPin(pan);
+                    card.setPvv(p.pvv()); card.setPvki(p.pvki()); card.setCryptoProvisionedAt(java.time.LocalDateTime.now());
+                } catch (RuntimeException e) { log.warn("Card issued without PVV: {}", e.getMessage()); }
+            }
+        }
 
         Card savedCard = cardRepository.save(card);
 

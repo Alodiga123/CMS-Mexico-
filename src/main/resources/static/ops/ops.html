@@ -46,6 +46,12 @@
 
 <!-- ===================== AUTORIZADOR ===================== -->
 <div id="tab-authorizer" class="tab-content">
+    <div class="card">
+        <div class="card-header"><div><div class="ops-card-title">Canal ISO 8583 · HSM · stand-in</div><div class="ops-card-sub">El conmutador entra por TCP; el PIN, el CVV y el criptograma del chip se verifican en el HSM; si el core no responde, el CMS decide solo dentro de sus límites</div></div>
+            <div class="ops-toolbar"><button class="btn btn-amber" onclick="ops.authorizer.settleStandIn()">Asentar stand-in en el core</button><button class="btn btn-primary" onclick="ops.authorizer.loadIso()">🔄</button></div></div>
+        <div class="ops-kpis" id="isoKpis"></div>
+        <div class="table-container"><table class="ops-compact"><thead><tr><th>Hora</th><th>Mensaje</th><th>Tarjeta</th><th>Monto</th><th>Código</th><th>Nota</th><th>ms</th></tr></thead><tbody id="isoRecent"></tbody></table></div>
+    </div>
     <div class="ops-grid-2">
         <div class="card">
             <div class="card-header"><div><div class="ops-card-title">Autorizador multiproducto</div><div class="ops-card-sub">Prepago (ledger), débito (saldo del core) y crédito (línea). Respuesta con código del campo 39 de ISO 8583</div></div></div>
@@ -90,6 +96,8 @@
     </div>
 </div>
 
+<!-- ===================== ISO 8583 · HSM · STAND-IN (dentro del autorizador) ===================== -->
+<div id="isoPanel" class="tab-content" style="display:none"></div>
 <!-- ===================== CONCILIACIÓN ===================== -->
 <div id="tab-reconciliation" class="tab-content">
     <div class="card">

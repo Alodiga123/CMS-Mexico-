@@ -34,4 +34,15 @@ public interface AuthorizationHoldRepository extends JpaRepository<Authorization
     List<AuthorizationHold> findByStatusAndExpiresAtBefore(HoldStatus status, LocalDateTime before);
 
     List<AuthorizationHold> findByCardOrderByCreatedAtDesc(Card card);
+
+    Optional<AuthorizationHold> findFirstByRrnOrderByCreatedAtDesc(String rrn);
+
+    Optional<AuthorizationHold> findFirstByStanAndAcquirerIdAndCreatedAtAfterOrderByCreatedAtDesc(String stan, String acquirerId, LocalDateTime after);
+
+    List<AuthorizationHold> findByStandInTrueAndStandInPendingTrueOrderByCreatedAtAsc();
+
+    @Query("SELECT COALESCE(SUM(h.amount), 0) FROM AuthorizationHold h WHERE h.card = :card AND h.standIn = true AND h.createdAt >= :since")
+    BigDecimal standInAmountSince(@Param("card") Card card, @Param("since") LocalDateTime since);
+
+    long countByCardAndStandInTrueAndCreatedAtAfter(Card card, LocalDateTime since);
 }

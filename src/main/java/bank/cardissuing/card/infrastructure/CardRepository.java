@@ -18,4 +18,5 @@ public interface CardRepository extends JpaRepository<Card, Long> {
                                                       @org.springframework.data.repository.query.Param("last4") String last4,
                                                       @org.springframework.data.repository.query.Param("productId") Long productId,
                                                       org.springframework.data.domain.Pageable pageable);
+    java.util.Optional<Card> findByPanHash(String panHash);
 }
