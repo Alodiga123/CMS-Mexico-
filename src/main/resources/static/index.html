@@ -1611,6 +1611,12 @@
                     <div class="card">
                         <div class="card-header">
                             <span>Logs de Auditoría y Seguridad del Sistema</span>
+                            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+                                <select id="auditEntity" class="form-control" onchange="loadAuditLogs()" style="width:150px;"><option value="">Toda entidad</option></select>
+                                <select id="auditAction" class="form-control" onchange="loadAuditLogs()" style="width:200px;"><option value="">Toda acción</option></select>
+                                <select id="auditUser" class="form-control" onchange="loadAuditLogs()" style="width:150px;"><option value="">Todo usuario</option></select>
+                                <input id="auditEntityId" class="form-control" placeholder="id de entidad" style="width:120px;" onkeydown="if(event.key==='Enter')loadAuditLogs()">
+                            </div>
                             <button class="btn btn-primary" onclick="loadAuditLogs()">🔄 Actualizar Logs</button>
                         </div>
                         <div class="table-container">
@@ -3357,20 +3363,44 @@
                 `).join('');
             }
 
+            let auditFacetsLoaded = false;
+            async function loadAuditFacets() {
+                if (auditFacetsLoaded) return;
+                try {
+                    const f = await (await fetch('/api/audit/facets')).json();
+                    const fill = (id, values) => { const s = document.getElementById(id); const keep = s.value; s.innerHTML = s.options[0].outerHTML + values.map(v => `<option>${v}</option>`).join(''); s.value = keep; };
+                    fill('auditEntity', f.entities || []); fill('auditAction', f.actions || []); fill('auditUser', f.users || []);
+                    auditFacetsLoaded = true;
+                } catch (e) { /* the filters stay empty; the log still loads */ }
+            }
             async function loadAuditLogs() {
                 const tbody = document.getElementById('auditTableBody');
-                const res = await fetch('/api/audit');
-                const data = await res.json();
-                tbody.innerHTML = data.map(log => `
+                await loadAuditFacets();
+                const q = () => `entity=${encodeURIComponent(document.getElementById('auditEntity').value)}&action=${encodeURIComponent(document.getElementById('auditAction').value)}&user=${encodeURIComponent(document.getElementById('auditUser').value)}&entityId=${encodeURIComponent(document.getElementById('auditEntityId').value.trim())}`;
+                const fmt = (ts) => (ts || '').replace('T', ' ').replace(/\.\d+$/, '');
+                const esc = (v) => String(v ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+                const load = async (page, size) => {
+                    try {
+                        const res = await fetch(`/api/audit?page=${page}&size=${size}&${q()}`);
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        const p = await res.json();
+                        const rows = p.content || [];
+                        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">Sin registros con esos filtros.</td></tr>'; return { total: 0 }; }
+                        tbody.innerHTML = rows.map(log => `
                     <tr>
                         <td><strong>#${log.id}</strong></td>
-                        <td><strong>${log.action}</strong></td>
-                        <td><span class="badge badge-cyan">${log.entityName}</span></td>
-                        <td>ID: ${log.entityId}</td>
-                        <td>${log.username}</td>
-                        <td>${log.timestamp}</td>
-                    </tr>
-                `).join('');
+                        <td><strong>${esc(log.action)}</strong></td>
+                        <td><span class="badge badge-cyan">${esc(log.entityName)}</span></td>
+                        <td>ID: ${esc(log.entityId)}</td>
+                        <td>${esc(log.username)}</td>
+                        <td style="font-family: ui-monospace, monospace; font-size: 12px;">${fmt(log.timestamp)}</td>
+                    </tr>`).join('');
+                        return { total: p.totalElements, page: p.page, size: p.size };
+                    } catch (e) { tbody.innerHTML = `<tr><td colspan="6" style="color: var(--accent-red); padding: 1rem;">${esc(e.message)}</td></tr>`; return { total: 0 }; }
+                };
+                if (window.pager && pager.server) {
+                    if (!(tbody.__pager && tbody.__pager.server)) await pager.server(tbody, load); else await tbody.__pager.reload(true);
+                } else await load(0, 20);
             }
 
             // --- EMV 3D CARD FLIP & COMPLIANCE INSPECTOR ---

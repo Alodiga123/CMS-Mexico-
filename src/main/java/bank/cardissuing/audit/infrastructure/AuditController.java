@@ -8,7 +8,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import bank.cardissuing.common.api.PageResponse;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -17,6 +22,30 @@ import java.util.stream.Collectors;
 public class AuditController {
 
     private final AuditLogRepository auditLogRepository;
+
+    /** Paged, newest first, with filters. Without page/size the whole log comes back as before. */
+    @GetMapping(params = {"page"})
+    public ResponseEntity<PageResponse<AuditLogResponse>> page(@RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
+                                                               @RequestParam(required = false) String entity, @RequestParam(required = false) String action,
+                                                               @RequestParam(required = false) String user, @RequestParam(required = false) String entityId) {
+        return ResponseEntity.ok(PageResponse.of(auditLogRepository.search(blank(entity), blank(action), blank(user), blank(entityId), PageResponse.pageable(page, size)), AuditController::view));
+    }
+
+    /** The distinct values the filters can take. */
+    @GetMapping("/facets")
+    public ResponseEntity<Map<String, List<String>>> facets() {
+        Map<String, List<String>> m = new LinkedHashMap<>();
+        m.put("entities", auditLogRepository.entities()); m.put("actions", auditLogRepository.actions()); m.put("users", auditLogRepository.users());
+        return ResponseEntity.ok(m);
+    }
+
+    private static String blank(String s) { return s == null || s.isBlank() ? null : s.trim(); }
+
+    static AuditLogResponse view(AuditLog log) {
+        return new AuditLogResponse(log.getId(), log.getAction() != null ? log.getAction() : "N/A", log.getEntityName() != null ? log.getEntityName() : "N/A",
+                log.getEntityId() != null ? log.getEntityId() : "N/A", log.getUsername() != null ? log.getUsername() : "SYSTEM",
+                log.getTimestamp() != null ? log.getTimestamp().toString() : "N/A");
+    }
 
     @GetMapping
     public ResponseEntity<List<AuditLogResponse>> getAuditLogs() {
