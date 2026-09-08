@@ -1411,13 +1411,12 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>ID Promoción</th>
-                                    <th>Nombre & Campaña</th>
-                                    <th>Tipo & Rubro MCC</th>
-                                    <th>Cashback / Descuento</th>
-                                    <th>Requisitos (Mínimo / Tope)</th>
+                                    <th>#</th>
+                                    <th>Promoción</th>
+                                    <th>Tipo · rubro</th>
+                                    <th>Beneficio</th>
+                                    <th>Mín · tope</th>
                                     <th>Vigencia</th>
-                                    <th>Tarjeta Aplicable</th>
                                     <th>Estado</th>
                                     <th style="text-align:center;">Acciones</th>
                                 </tr>
@@ -3168,24 +3167,21 @@
                     tbody.innerHTML = data.map(p => `
                         <tr>
                             <td><strong>#${p.id}</strong></td>
-                            <td>
+                            <td style="min-width:240px; max-width:320px;">
                                 <strong style="color:var(--text-main);">${p.name}</strong>
-                                <div style="font-size:0.75rem; color:var(--text-muted);">${p.description}</div>
+                                <div style="font-size:0.75rem; color:var(--text-muted); white-space:normal;">${p.description}</div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Aplica a: <strong>${p.targetProduct ? p.targetProduct.productName : 'todas las tarjetas'}</strong></div>
                             </td>
-                            <td>
+                            <td style="white-space:nowrap;">
                                 <span class="badge badge-purple">${p.promotionType || 'CASHBACK'}</span>
-                                <div style="font-size:0.72rem; color:var(--accent-cyan); margin-top:2px;">MCC: ${p.merchantCategory || 'ALL_MERCHANTS'}</div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">${(p.merchantCategory || 'ALL_MERCHANTS').replace(/_/g, ' ').toLowerCase()}</div>
                             </td>
                             <td>
                                 ${p.cashbackPercentage > 0 ? `<span class="badge badge-emerald">${p.cashbackPercentage}% Cashback</span> ` : ''}
                                 ${p.discountPercentage > 0 ? `<span class="badge badge-cyan">${p.discountPercentage}% OFF</span>` : ''}
                             </td>
-                            <td>
-                                <div style="font-size:0.75rem;">Mín: <strong>$${p.minPurchaseAmount || 0}</strong></div>
-                                <div style="font-size:0.75rem; color:var(--accent-emerald);">Tope: <strong>$${p.maxBenefitCap || 100}</strong></div>
-                            </td>
-                            <td><span class="badge badge-key" style="font-size:0.68rem;">${p.startDate || '2026-01-01'} a ${p.endDate || '2026-12-31'}</span></td>
-                            <td><span class="badge badge-cyan">${p.targetProduct ? p.targetProduct.productName : 'Todas las Tarjetas'}</span></td>
+                            <td style="white-space:nowrap; font-size:0.75rem;">mín $${p.minPurchaseAmount || 0} · tope <strong>$${p.maxBenefitCap || 100}</strong></td>
+                            <td style="white-space:nowrap; font-size:0.72rem; font-family: ui-monospace, monospace;">${p.startDate || '2026-01-01'}<br>${p.endDate || '2026-12-31'}</td>
                             <td><span class="badge ${p.active ? 'badge-emerald' : 'badge-red'}">${p.active ? 'ACTIVA' : 'INACTIVA'}</span></td>
                             <td>
                                 <div class="btn-group" style="justify-content:center;">
