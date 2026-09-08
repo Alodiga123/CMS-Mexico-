@@ -404,7 +404,7 @@
 
     // ------------------------------------------------------------------ FRAUDE
     const fraud = {
-        async init() { await Promise.all([this.loadAlerts(), this.loadBlocklist()]); },
+        async init() { await Promise.all([this.loadAlerts(), this.loadBlocklist(), this.loadChallenges()]); },
         async loadAlerts() {
             const tbody = $('frRows');
             const first = !(tbody.__pager && tbody.__pager.server);
@@ -418,8 +418,8 @@
                         $('frKpis').innerHTML = kpi(st === 'OPEN' ? 'Abiertas' : 'Alertas (' + st.toLowerCase() + ')', p.totalElements, open ? 'warn' : 'ok') + kpi('Enumeración en la página', rows.filter(a => a.type === 'ENUMERATION').length, 'bad') + kpi('Declinadas en la página', rows.filter(a => a.type === 'DECLINED').length) + kpi('Verificación reforzada en la página', rows.filter(a => a.type === 'STEP_UP').length);
                     }
                     if (!rows.length) { empty(tbody, 10, 'Sin alertas.'); return { total: 0 }; }
-                    tbody.innerHTML = rows.map(a => `<tr><td>#${a.id}</td><td class="ops-mono">${dt(a.at || a.createdAt)}</td><td>${badge(a.type)}</td><td>${a.cardId ? `<a href="#" onclick="ops.card360.open(${a.cardId});return false">#${a.cardId}</a>` : '—'}</td><td>${esc(a.merchantName)}<div class="ops-muted">${esc(a.merchantId)}</div></td><td>${money(a.amount)}</td><td><strong>${a.riskScore}</strong></td><td class="ops-muted">${esc(a.reasons)}</td><td>${badge(a.status)}${a.actionTaken ? '<div class="ops-muted">' + esc(a.actionTaken) + ' · ' + esc(a.reviewedBy) + '</div>' : ''}</td>
-                        <td class="ops-actions">${a.status === 'OPEN' ? `<button class="btn btn-primary" onclick="ops.fraud.review(${a.id},'REVIEWED')">Revisada</button><button class="btn btn-purple" style="background:rgba(168,85,247,0.2)" onclick="ops.fraud.review(${a.id},'DISMISS')">Descartar</button>${a.merchantId ? `<button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_MERCHANT')">Bloquear comercio</button>` : ''}${a.cardId ? `<button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_CARD')">Bloquear tarjeta</button>` : ''}` : ''}</td></tr>`).join('');
+                    tbody.innerHTML = rows.map(a => `<tr><td>#${a.id}</td><td class="ops-mono">${dt(a.at || a.createdAt)}</td><td>${badge(a.type)}</td><td>${a.cardId ? `<a href="#" onclick="ops.card360.open(${a.cardId});return false">#${a.cardId}</a>` : '—'}</td><td style="min-width:150px">${esc(a.merchantName)}<div class="ops-muted">${esc(a.merchantId)}</div></td><td>${money(a.amount)}</td><td><strong>${a.riskScore}</strong></td><td class="ops-muted" style="max-width:190px;white-space:normal;word-break:break-word;font-size:11px">${esc((a.reasons || "").replace(/,/g, ", "))}</td><td>${badge(a.status)}${a.actionTaken ? '<div class="ops-muted">' + esc(a.actionTaken) + ' · ' + esc(a.reviewedBy) + '</div>' : ''}</td>
+                        <td class="ops-actions" style="min-width:250px;white-space:normal">${a.status === 'OPEN' ? `<button class="btn btn-primary" onclick="ops.fraud.review(${a.id},'REVIEWED')">Revisada</button> <button class="btn" onclick="ops.fraud.review(${a.id},'DISMISS')">Descartar</button>${a.merchantId ? ` <button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_MERCHANT')">Bloq. comercio</button>` : ''}${a.cardId ? ` <button class="btn btn-red" onclick="ops.fraud.review(${a.id},'BLOCK_CARD')">Bloq. tarjeta</button>` : ''}` : ''}</td></tr>`).join('');
                     return { total: p.totalElements, page: p.page, size: p.size };
                 } catch (e) { errRow(tbody, 10, e); return { total: 0 }; }
             };
@@ -441,13 +441,29 @@
             try { await api('POST', '/api/fraud/blocklist', { type: $('blType').value, value: $('blValue').value.trim(), reason: $('blReason').value, by: who() }); toast('Bloqueado', 'ok'); $('blValue').value = ''; await this.loadBlocklist(); } catch (e) { fail(e); }
         },
         async unblock(id) { try { await api('DELETE', '/api/fraud/blocklist/' + id); toast('Quitado de la lista', 'ok'); await this.loadBlocklist(); } catch (e) { fail(e); } },
+        async loadChallenges() {
+            const tbody = $('chRows'); if (!tbody) return;
+            const first = !(tbody.__pager && tbody.__pager.server);
+            const load = async (page, size) => {
+                try {
+                    const p = await api('GET', `/api/fraud/challenges?status=${$('chStatus').value}&page=${page}&size=${size}`);
+                    const rows = p.content || [];
+                    if (!rows.length) { empty(tbody, 10, 'Sin retos.'); return { total: 0 }; }
+                    tbody.innerHTML = rows.map(c => `<tr><td class="ops-mono">${dt(c.createdAt)}</td><td><a href="#" class="ops-mono" onclick="ops.fraud.pick('${esc(c.token)}');return false">${esc(c.token.slice(0, 12))}…</a></td><td>${badge(c.status)}${c.status === 'PENDING' && c.expired ? ' <span class="ops-muted">vencido</span>' : ''}</td><td>${c.cardId ? `<a href="#" onclick="ops.card360.open(${c.cardId});return false">#${c.cardId}</a>` : '—'}</td><td>${money(c.amount)}</td><td class="ops-muted">${esc(c.merchantId)}</td><td>${badge(c.channel)}</td><td>${c.attempts}</td><td class="ops-mono">${dt(c.expiresAt)}</td>
+                        <td class="ops-actions">${c.status === 'PENDING' && !c.expired ? `<button class="btn btn-emerald" onclick="ops.fraud.pick('${esc(c.token)}', true)">Verificar</button>` : ''}</td></tr>`).join('');
+                    return { total: p.totalElements, page: p.page, size: p.size };
+                } catch (e) { errRow(tbody, 10, e); return { total: 0 }; }
+            };
+            if (first) await pager.server(tbody, load); else await tbody.__pager.reload(true);
+        },
+        async pick(token, focusOtp) { $('chToken').value = token; await this.challenge(); if (focusOtp) $('chOtp').focus(); $('chDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
         async challenge() {
             const box = $('chDetail'); const t = $('chToken').value.trim(); if (!t) return;
-            try { const c = await api('GET', '/api/fraud/challenges/' + t); box.style.display = ''; box.innerHTML = kv([['Token', '<span class="ops-mono">' + esc(c.token) + '</span>'], ['Estado', badge(c.status)], ['Tarjeta', c.cardId ? `<a href="#" onclick="ops.card360.open(${c.cardId});return false">#${c.cardId}</a>` : '—'], ['Monto', money(c.amount)], ['Comercio', esc(c.merchantName)], ['Intentos', c.attempts], ['Vence', dt(c.expiresAt)]]); } catch (e) { box.style.display = ''; box.innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; }
+            try { const c = await api('GET', '/api/fraud/challenges/' + t); box.style.display = ''; box.innerHTML = kv([['Token', '<span class="ops-mono">' + esc(c.token) + '</span>'], ['Estado', badge(c.status)], ['Tarjeta', c.cardId ? `<a href="#" onclick="ops.card360.open(${c.cardId});return false">#${c.cardId}</a>` : '—'], ['Monto', money(c.amount)], ['Comercio', esc(c.merchantId)], ['Canal', esc(c.channel)], ['Intentos', c.attempts], ['Creado', dt(c.createdAt)], ['Vence', dt(c.expiresAt) + (c.expired ? ' · vencido' : '')]]); } catch (e) { box.style.display = ''; box.innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; }
         },
         async verify() {
             const t = $('chToken').value.trim(); if (!t) return;
-            try { const r = await api('POST', `/api/fraud/challenges/${t}/verify`, { otp: $('chOtp').value }); toast('Verificado · token para reintentar: ' + (r.token || t), 'ok'); await this.challenge(); } catch (e) { fail(e); }
+            try { const r = await api('POST', `/api/fraud/challenges/${t}/verify`, { otp: $('chOtp').value }); toast('Verificado · token para reintentar: ' + (r.token || t), 'ok'); await this.challenge(); await this.loadChallenges(); } catch (e) { fail(e); }
         }
     };
 

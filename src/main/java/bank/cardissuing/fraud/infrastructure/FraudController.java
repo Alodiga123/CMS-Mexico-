@@ -74,6 +74,13 @@ public class FraudController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/challenges")
+    public ResponseEntity<PageResponse<Map<String, Object>>> challenges(@RequestParam(required = false) String status,
+                                                                       @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
+        StepUpChallenge.Status s = status == null || status.isBlank() || "ALL".equalsIgnoreCase(status) ? null : StepUpChallenge.Status.valueOf(status.toUpperCase());
+        return ResponseEntity.ok(PageResponse.of(service.challenges(s, PageResponse.pageable(page, size)), FraudController::view));
+    }
+
     @GetMapping("/challenges/{token}")
     public ResponseEntity<Map<String, Object>> challenge(@PathVariable String token) {
         return ResponseEntity.ok(view(service.challenge(token)));
@@ -145,6 +152,8 @@ public class FraudController {
         m.put("channel", c.getChannel());
         m.put("expiresAt", c.getExpiresAt());
         m.put("attempts", c.getAttempts());
+        m.put("createdAt", c.getCreatedAt());
+        m.put("expired", c.getExpiresAt() != null && c.getExpiresAt().isBefore(java.time.LocalDateTime.now()));
         return m;
     }
 }

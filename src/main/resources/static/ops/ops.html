@@ -182,6 +182,9 @@
             <button class="btn btn-emerald" onclick="ops.fraud.verify()">Verificar</button>
         </div>
         <div id="chDetail" class="ops-detail" style="display:none"></div>
+        <div class="card-header" style="margin-top:1rem"><div><div class="ops-card-title">Retos emitidos</div><div class="ops-card-sub">Cada verificación reforzada que pidió el autorizador: pendiente, verificada, consumida, vencida o fallida</div></div>
+            <div class="ops-toolbar"><select id="chStatus" class="form-control" onchange="ops.fraud.loadChallenges()"><option value="">Todos</option><option>PENDING</option><option>VERIFIED</option><option>CONSUMED</option><option>EXPIRED</option><option>FAILED</option></select><button class="btn btn-primary" onclick="ops.fraud.loadChallenges()">🔄</button></div></div>
+        <div class="table-container"><table class="ops-compact"><thead><tr><th>Creado</th><th>Token</th><th>Estado</th><th>Tarjeta</th><th>Monto</th><th>Comercio</th><th>Canal</th><th>Intentos</th><th>Vence</th><th></th></tr></thead><tbody id="chRows"></tbody></table></div>
     </div>
 </div>
 

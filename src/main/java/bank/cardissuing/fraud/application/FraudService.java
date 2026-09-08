@@ -242,6 +242,11 @@ public class FraudService {
         return new Assessment(0, List.of("STEP_UP_VERIFIED"), Decision.APPROVE, c.getToken(), null);
     }
 
+    /** The challenges the analysts watch: newest first, by status if asked. */
+    public org.springframework.data.domain.Page<StepUpChallenge> challenges(StepUpChallenge.Status status, org.springframework.data.domain.Pageable p) {
+        return status == null ? challenges.findAllByOrderByCreatedAtDesc(p) : challenges.findByStatusOrderByCreatedAtDesc(status, p);
+    }
+
     public StepUpChallenge challenge(String token) {
         return challenges.findByToken(token).orElseThrow(() -> new ResourceNotFoundException("StepUpChallenge", "token", token));
     }
