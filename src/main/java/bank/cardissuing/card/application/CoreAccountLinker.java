@@ -90,7 +90,7 @@ public class CoreAccountLinker {
     }
 
     /** "Ana María Pérez López" -> first "Ana María", last "Pérez López"; a single word is both. */
-    static String[] splitName(String fullName) {
+    public static String[] splitName(String fullName) {
         String n = fullName == null ? "" : fullName.trim().replaceAll("\\s+", " ");
         if (n.isEmpty()) return new String[]{"Cliente", "CMS"};
         String[] parts = n.split(" ");
