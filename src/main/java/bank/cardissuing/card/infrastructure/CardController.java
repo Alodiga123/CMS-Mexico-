@@ -17,6 +17,9 @@ import jakarta.transaction.Transactional;
 import lombok.Data;
 import bank.cardissuing.plastics.application.PlasticService;
 import bank.cardissuing.plastics.domain.Plastic;
+import bank.cardissuing.audit.application.AuditService;
+import bank.cardissuing.common.exception.BusinessException;
+import org.springframework.http.HttpStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +40,7 @@ public class CardController {
 
     private final CardRepository cardRepository;
     private final PlasticService plasticService;
+    private final AuditService auditService;
     private final CardProductRepository cardProductRepository;
     private final CustomerRepository customerRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
@@ -48,37 +52,47 @@ public class CardController {
     @GetMapping
     public ResponseEntity<List<CardResponse>> getAllCards() {
         List<Card> cards = cardRepository.findAll();
-        List<CardResponse> responses = cards.stream().map(card -> {
-            Customer customer = card.getCustomer();
-            CardProduct product = card.getProduct();
-            BigDecimal balance = BigDecimal.ZERO;
-            LedgerAccount account = ledgerAccountRepository.findByCard(card).orElse(null);
-            if (account != null) {
-                balance = ledgerEntryRepository.calculateBalance(account);
-            }
-            return new CardResponse(
-                    card.getId(),
-                    customer != null ? customer.getId() : null,
-                    customer != null ? customer.getFullName() : "N/A",
-                    card.getEmbossedName() != null ? card.getEmbossedName() : (customer != null ? customer.getFullName().toUpperCase() : "CARDHOLDER"),
-                    product != null ? product.getProductName() : "Standard Card",
-                    product != null ? product.getCardType().name() : "DEBIT",
-                    product != null ? product.getPaymentType().name() : "PREPAID",
-                    product != null ? product.getNetwork().name() : "VISA",
-                    card.getLast4(),
-                    card.getCardCategory() != null ? card.getCardCategory().name() : "PHYSICAL",
-                    card.getStatus().name(),
-                    card.getExpiryDate() != null ? card.getExpiryDate().toString() : "N/A",
-                    balance,
-                    product != null ? product.getCurrency() : "USD",
-                    product != null && product.getCountry() != null ? product.getCountry() : "USA",
-                    product != null && product.getDailyLimit() != null ? product.getDailyLimit() : new BigDecimal("1000"),
-                    product != null && product.getWeeklyLimit() != null ? product.getWeeklyLimit() : new BigDecimal("5000"),
-                    product != null && product.getMonthlyLimit() != null ? product.getMonthlyLimit() : new BigDecimal("20000")
-            );
-        }).collect(Collectors.toList());
+        List<CardResponse> responses = cards.stream().map(this::toResponse).collect(Collectors.toList());
 
         return ResponseEntity.ok(responses);
+    }
+
+    /** One card, same shape as the list. */
+    @GetMapping("/{id}")
+    public ResponseEntity<CardResponse> getCard(@PathVariable Long id) {
+        Card card = cardRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("CARD_NOT_FOUND", "Card " + id + " not found", HttpStatus.NOT_FOUND));
+        return ResponseEntity.ok(toResponse(card));
+    }
+
+    private CardResponse toResponse(Card card) {
+        Customer customer = card.getCustomer();
+        CardProduct product = card.getProduct();
+        BigDecimal balance = BigDecimal.ZERO;
+        LedgerAccount account = ledgerAccountRepository.findByCard(card).orElse(null);
+        if (account != null) {
+            balance = ledgerEntryRepository.calculateBalance(account);
+        }
+        return new CardResponse(
+                card.getId(),
+                customer != null ? customer.getId() : null,
+                customer != null ? customer.getFullName() : "N/A",
+                card.getEmbossedName() != null ? card.getEmbossedName() : (customer != null ? customer.getFullName().toUpperCase() : "CARDHOLDER"),
+                product != null ? product.getProductName() : "Standard Card",
+                product != null ? product.getCardType().name() : "DEBIT",
+                product != null ? product.getPaymentType().name() : "PREPAID",
+                product != null ? product.getNetwork().name() : "VISA",
+                card.getLast4(),
+                card.getCardCategory() != null ? card.getCardCategory().name() : "PHYSICAL",
+                card.getStatus().name(),
+                card.getExpiryDate() != null ? card.getExpiryDate().toString() : "N/A",
+                balance,
+                product != null ? product.getCurrency() : "USD",
+                product != null && product.getCountry() != null ? product.getCountry() : "USA",
+                product != null && product.getDailyLimit() != null ? product.getDailyLimit() : new BigDecimal("1000"),
+                product != null && product.getWeeklyLimit() != null ? product.getWeeklyLimit() : new BigDecimal("5000"),
+                product != null && product.getMonthlyLimit() != null ? product.getMonthlyLimit() : new BigDecimal("20000")
+        );
     }
 
     @PostMapping("/issue")
@@ -202,8 +216,12 @@ public class CardController {
                 .orElseThrow(() -> new RuntimeException("Card not found with ID: " + id));
 
         CardStatus newStatus = CardStatus.valueOf(request.getStatus().toUpperCase());
+        CardStatus previous = card.getStatus();
         card.setStatus(newStatus);
         cardRepository.save(card);
+        auditService.log("CARD_STATUS_" + newStatus.name(), "Card", card.getId().toString(),
+                request.getBy() != null && !request.getBy().isBlank() ? request.getBy() : "API");
+        log.info("Card {} status {} -> {}", card.getId(), previous, newStatus);
 
         return ResponseEntity.ok(Map.of(
                 "cardId", card.getId(),
@@ -247,6 +265,7 @@ public class CardController {
     @Data
     public static class StatusUpdateRequest {
         private String status;
+        private String by;
     }
 
     @Data
