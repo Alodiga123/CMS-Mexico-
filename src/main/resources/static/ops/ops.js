@@ -168,6 +168,7 @@
             const box = $('c360Core');
             try {
                 const a = await api('GET', `/api/cards/${this.card.id}/core-account`);
+                this.coreBacked = !!a.coreBacked;
                 box.innerHTML = kv([['Respaldo', a.coreBacked ? '<span class="badge badge-emerald">Saldo en el core (Mifos)</span>' : '<span class="badge badge-cyan">Ledger interno / línea</span>'],
                     ['Cuenta del core', esc(a.externalAccountId)], ['Cliente del core', esc(a.externalClientId)],
                     ['Disponible', `<strong style="color:var(--accent-emerald)">${money(a.available)}</strong>`], ['Nota', esc(a.message)]]) +
@@ -176,7 +177,7 @@
         },
         async recharge() {
             const amount = Number($('c360Recharge').value); if (!amount) return;
-            try { await api('POST', `/api/cards/${this.card.id}/recharge`, { amount, note: 'consola' }); toast('Recarga aplicada', 'ok'); await this.loadCore(); const c = await api('GET', '/api/cards/' + this.card.id); this.card = c; } catch (e) { fail(e); }
+            try { if (this.coreBacked) { await api('POST', `/api/cards/${this.card.id}/core-deposit`, { amount, reference: 'CONSOLA-DEPOSITO' }); toast('Depósito aplicado en la cuenta del core', 'ok'); } else { await api('POST', `/api/cards/${this.card.id}/recharge`, { amount, note: 'consola' }); toast('Recarga aplicada', 'ok'); } await this.loadCore(); const c = await api('GET', '/api/cards/' + this.card.id); this.card = c; } catch (e) { fail(e); }
         },
         async loadAttempts() {
             const tbody = $('c360Attempts');
