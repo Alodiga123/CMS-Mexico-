@@ -11,4 +11,5 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
     java.util.List<Card> findByExternalAccountIdIsNotNull();
     java.util.List<Card> findByStatusAndExpiryDateBefore(bank.cardissuing.card.domain.CardStatus status, java.time.LocalDate before);
+    java.util.List<Card> findByLast4(String last4);
 }

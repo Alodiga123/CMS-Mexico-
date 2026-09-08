@@ -62,6 +62,11 @@ public class FraudService {
     private final StepUpChallengeRepository challenges;
     private final CardRepository cards;
 
+    /** The industry antifraud connection; optional so the engine also runs without it (unit tests). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.fraud.guild.application.GuildService guild;
+
     // ------------------------------------------------------------ scoring
 
     @Transactional
@@ -85,6 +90,14 @@ public class FraudService {
         }
         if (blocklist.findByTypeAndValueAndActiveTrue(BlockedEntity.Type.CARD, String.valueOf(card.getId())).isPresent()) {
             reasons.add("BLOCKLIST_CARD"); score = 100;
+        }
+        // The guild's online list (SVL): asked at most once per window, cached, never blocking on an outage.
+        if (score < 100 && guild != null) {
+            try {
+                if (guild.cardListed(card)) { reasons.add("GUILD_SVL_LISTED"); score = 100; }
+            } catch (Exception e) {
+                log.warn("Guild verification skipped for card {}: {}", card.getId(), e.getMessage());
+            }
         }
 
         if (score < 100) {
@@ -164,6 +177,14 @@ public class FraudService {
         alerts.save(new FraudAlert(null, req.getMerchantId(), req.getMerchantName(), FraudAlert.Type.ENUMERATION, s.getEnumeration().getWeight(),
                 "ENUMERATION: many distinct cards declined at this merchant within " + s.getEnumeration().getWindowMin() + " min", null));
         log.warn("Enumeration suspected at merchant {} ({})", req.getMerchantId(), req.getMerchantName());
+        if (guild != null) {
+            try {
+                guild.reportEnumeration(req.getMerchantId(), req.getMerchantName(), s.getEnumeration().getWeight(),
+                        "Card-testing pattern: many distinct cards declined at this merchant within " + s.getEnumeration().getWindowMin() + " min");
+            } catch (Exception e) {
+                log.warn("Guild not notified of enumeration at {}: {}", req.getMerchantId(), e.getMessage());
+            }
+        }
     }
 
     // ------------------------------------------------------------ step-up

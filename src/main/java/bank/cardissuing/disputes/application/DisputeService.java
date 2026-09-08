@@ -58,6 +58,11 @@ public class DisputeService {
     private final FundsRouter router;
     private final AuditService audit;
 
+    /** Early notice of chargebacks to the guild (SPC); optional so the service also runs without it. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @lombok.Setter
+    private bank.cardissuing.fraud.guild.application.GuildService guild;
+
     public record OpenRequest(Long cardId, String approvalCode, BigDecimal amount, String reasonCode,
                               String description, boolean provisionalCredit, String openedBy) { }
 
@@ -113,7 +118,12 @@ public class DisputeService {
         Status from = d.getStatus();
         d.sendChargeback(LocalDate.now().plusDays(d.getReason().getRepresentmentDays()), acquirerCaseRef);
         event(d, "CHARGEBACK_SENT", from, d.getStatus(), acquirerCaseRef != null ? "acquirer case " + acquirerCaseRef : null, by(by));
-        return disputes.save(d);
+        d = disputes.save(d);
+        if (guild != null) {
+            try { guild.preventChargeback(d.getId(), d.getCard(), d.getAmount(), d.getReason().getCode(), d.getApprovalCode(), by(by)); }
+            catch (Exception e) { log.warn("Guild not notified of chargeback on dispute {}: {}", d.getId(), e.getMessage()); }
+        }
+        return d;
     }
 
     @Transactional
