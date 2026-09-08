@@ -57,15 +57,19 @@ public class ReconciliationService {
     public record AccountSummary(String accountId, List<Long> cardIds, BigDecimal cmsHeld,
                                  BigDecimal coreOnHold, BigDecimal coreAvailable, List<ReconciliationItem> openItems) { }
 
+    /** The proxy of this bean, so each account runs in its own transaction and one bad account does not poison the run. */
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private ReconciliationService self;
+
     /** Every core account any card is linked to. */
-    @Transactional
     public RunResult reconcileAll() {
         Set<String> accounts = cards.findByExternalAccountIdIsNotNull().stream()
                 .map(Card::getExternalAccountId).collect(Collectors.toCollection(TreeSet::new));
         int opened = 0, still = 0, resolved = 0;
         for (String account : accounts) {
             try {
-                RunResult r = reconcileAccount(account);
+                RunResult r = (self != null ? self : this).reconcileAccount(account);
                 opened += r.opened(); still += r.stillOpen(); resolved += r.resolved();
             } catch (RuntimeException e) {
                 log.warn("Reconciliation of core account {} skipped: {}", account, e.getMessage());
@@ -173,7 +177,7 @@ public class ReconciliationService {
 
         for (Finding f : findings) {
             String key = f.key(accountId);
-            seen.add(key);
+            if (!seen.add(key)) continue;   // two core movements can collapse into one key; one item is enough
             ReconciliationItem existing = openByKey.get(key);
             if (existing != null) {
                 existing.seenAgain(f.cmsAmount(), f.coreAmount(), f.detail());
@@ -182,7 +186,7 @@ public class ReconciliationService {
             } else {
                 // A previously resolved item that reappears is a new item: the old one keeps its history.
                 items.findByItemKey(key).filter(i -> i.getStatus() == Status.RESOLVED)
-                        .ifPresent(i -> { i.setItemKey(i.getItemKey() + "#" + i.getId()); items.save(i); });
+                        .ifPresent(i -> { i.setItemKey(i.getItemKey() + "#" + i.getId()); items.saveAndFlush(i); });   // flush: Hibernate would otherwise insert the new row before renaming the old one
                 items.save(new ReconciliationItem(key, accountId, f.cardId(), f.approvalCode(), f.coreRef(),
                         f.type(), f.cmsAmount(), f.coreAmount(), f.detail()));
                 opened++;
