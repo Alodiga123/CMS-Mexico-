@@ -2746,6 +2746,36 @@
                 applyProductPreset('alodiga_debit');
             }
 
+            // Faltaban en la pagina: el paso 2 nunca llenaba sus catalogos
+            async function loadProductsForSelect() {
+                const select = document.getElementById('issueProductId');
+                if (!select) return;
+                try {
+                    const res = await fetch('/api/products');
+                    const data = await res.json();
+                    globalProducts = data;
+                    const active = data.filter(p => p.active !== false);
+                    select.innerHTML = active.length
+                        ? active.map(p => `<option value="${p.id}">${p.productName} · ${p.productCode} · BIN ${p.bin} · ${p.cardType}/${p.paymentType}</option>`).join('')
+                        : '<option value="">No hay productos activos: crea uno en el paso 1</option>';
+                    updateMockupProductDetails();
+                    updateMockupNumber();
+                } catch (err) { select.innerHTML = `<option value="">Error al cargar productos: ${err.message}</option>`; }
+            }
+
+            async function loadCustomersForSelect() {
+                const select = document.getElementById('issueCustomerId');
+                if (!select) return;
+                try {
+                    const res = await fetch('/api/customers');
+                    const data = await res.json();
+                    select.innerHTML = data.length
+                        ? data.map(c => `<option value="${c.id}">${c.fullName} (ID: ${c.id})</option>`).join('')
+                        : '<option value="">No hay clientes: crea uno en "Clientes & KYC"</option>';
+                    updateMockupNameFromCustomer();
+                } catch (err) { select.innerHTML = `<option value="">Error al cargar clientes: ${err.message}</option>`; }
+            }
+
             function updateMockupNameFromCustomer() {
                 const select = document.getElementById('issueCustomerId');
                 if (select && select.selectedOptions.length > 0) {

@@ -160,3 +160,31 @@ a:hover { text-decoration-color: var(--accent); }
 .tab-content.active, .modal-overlay.active { animation: none !important; }
 .ops-kpi .v { font-size: 22px; line-height: 1.15; word-break: break-word; }
 .ops-kpi .v:not(:empty) { min-height: 26px; }
+
+/* ── paneles oscuros escritos en linea en las pantallas heredadas (crear, emitir, promociones, normativa) ── */
+.tab-content div[style*="background: rgba(15, 23, 42"], .tab-content div[style*="background:rgba(15, 23, 42"],
+.tab-content div[style*="background: rgba(9, 14, 26"], .tab-content div[style*="background:rgba(9, 14, 26"],
+.tab-content div[style*="background: rgba(30, 41, 59"], .tab-content div[style*="background:rgba(30, 41, 59"],
+.tab-content div[style*="rgba(9,14,26"], .tab-content div[style*="rgba(15,23,42"],
+.tab-content div[style*="background: rgba(16, 185, 129, 0.0"], .tab-content div[style*="background:rgba(16, 185, 129, 0.0"] {
+    background: var(--surface-2) !important; border-color: var(--line) !important; color: var(--ink) !important; box-shadow: none !important;
+}
+.tab-content span[style*="-webkit-background-clip: text"], .tab-content span[style*="-webkit-background-clip:text"],
+.tab-content h2[style*="-webkit-background-clip"], .tab-content div[style*="-webkit-background-clip"] {
+    background: none !important; -webkit-text-fill-color: var(--ink) !important; color: var(--ink) !important;
+}
+.tab-content [style*="color:#fff"], .tab-content [style*="color: #fff"], .tab-content [style*="color:#ffffff"], .tab-content [style*="color: white"] { color: var(--ink) !important; }
+.card-mockup [style*="color:#fff"], .card-mockup [style*="color: #fff"], .card-mockup [style*="color:#ffffff"], .card-mockup *, #cardMockupBg * { color: #fff !important; }
+#binDetailsPanel, #binDetailsPanel * { color: #fff !important; }
+.tab-content [style*="color:var(--accent-cyan)"], .tab-content [style*="color: var(--accent-cyan)"] { color: var(--ink) !important; }
+.tab-content [style*="color:#94a3b8"], .tab-content [style*="color: #94a3b8"] { color: var(--muted) !important; }
+label, .form-group label { display: block; }
+.tab-content .form-control[style*="color:var(--accent-emerald)"] { color: var(--ok) !important; }
+
+/* ── ajustes de disposicion ── */
+.btn { white-space: nowrap; }
+.console-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+.console-split > * { min-width: 0; }
+.main-content { min-width: 0; overflow-x: hidden; }
+.form-step-nav { flex-wrap: wrap; gap: 6px; }
+.form-step-btn { white-space: nowrap; }
