@@ -102,6 +102,16 @@ vtx = (vd or {}).get("data") or {}
 h = hold(tx.get("rrn"))
 check("el adquirente anula (00) y la retencion del CMS queda RELEASED", vtx.get("codigoRespuesta") == "00" and vtx.get("switchProcesador") == "CMS_ISSUER" and h and h["status"] == "RELEASED", (vd, h))
 
+print("== 4b. preautorizacion y captura diferida (0100 / 0220) ==")
+st, pa = pos("POST", "/transactions/pre-authorize", {"pan": PAN, "amount": 50.00, "currency": "MXN", "channel": "punto_fisico", "redMarca": "Visa", "terminalId": 1, "comercioId": 1})
+ptx = (pa or {}).get("data") or {}
+hp = hold(ptx.get("rrn"))
+check("preautorizacion de 50 on-us: HELD en el CMS, sin mover fondos", ptx.get("codigoRespuesta") == "00" and ptx.get("switchProcesador") == "CMS_ISSUER" and hp and hp["status"] == "HELD" and hp["amount"] == 50 and ledger() == 500, (pa, hp, ledger()))
+st, cp = pos("POST", "/transactions/capture", {"uuidPreautorizacion": ptx.get("uuidTransaccion"), "monto": 45.00})
+ctx = (cp or {}).get("data") or {}
+hp = hold(ptx.get("rrn"))
+check("captura de 45 por 0220 con el RRN: el CMS captura parcial y el ledger baja a 455", st == 200 and ctx.get("codigoRespuesta") == "00" and ctx.get("switchProcesador") == "CMS_ISSUER" and hp and hp["status"] == "CAPTURED" and ledger() == 455, (cp, hp, ledger()))
+
 print("== 5. otra venta y la compensacion on-us ==")
 st, v4 = pos("POST", "/transactions/charge", {"pan": PAN, "amount": 80.00, "currency": "MXN", "channel": "punto_fisico", "redMarca": "Visa", "terminalId": 1, "comercioId": 1})
 tx4 = (v4 or {}).get("data") or {}
@@ -117,7 +127,9 @@ if cmsb.get("id"):
     mine = [r for r in (recs or []) if r.get("rrn") == tx4.get("rrn")]
 check("la presentacion de 80 caso por RRN (PAN enmascarado) y se capturo: MATCHED_CAPTURED", mine and mine[0]["outcome"] == "MATCHED_CAPTURED" and mine[0]["cardId"] == C, mine)
 h4 = hold(tx4.get("rrn"))
-check("retencion CAPTURED y ledger 420 (500 - 80)", h4 and h4["status"] == "CAPTURED" and ledger() == 420, (h4, ledger()))
+check("retencion CAPTURED y ledger 375 (455 - 80)", h4 and h4["status"] == "CAPTURED" and ledger() == 375, (h4, ledger()))
+cap = [r for r in (recs or []) if r.get("rrn") == ptx.get("rrn")] if cmsb.get("id") else None
+check("la captura de 45 hecha por 0220 se presenta en el archivo y casa sin excepcion (capturada antes)", cap and cap[0]["outcome"] == "MATCHED_CAPTURED" and float(cap[0]["amount"]) == 45 and "captured earlier" in (cap[0].get("detail") or ""), cap)
 st, cycles = cms("GET", "/clearing/settlement/cycles")
 cyc = [c for c in (cycles or []) if c["id"] == cmsb.get("settlementCycleId")]
 check("el ciclo de liquidacion suma la presentacion sin intercambio (on-us)", cyc and float(cyc[0]["presentmentsAmount"]) >= 80 and float(cyc[0]["interchangeAmount"]) == 0, cyc)
@@ -125,15 +137,17 @@ print("== 5b. devolucion parcial de la venta compensada -> abono al titular ==")
 st, rf = pos("POST", "/transactions/refund", {"uuidTransaccionOriginal": tx4["uuidTransaccion"], "monto": 30.00, "motivo": "producto devuelto"})
 rtx = (rf or {}).get("data") or {}
 check("el adquirente devuelve 30 por la ruta on-us y el emisor abona (00)", st == 200 and rtx.get("codigoRespuesta") == "00" and rtx.get("switchProcesador") == "CMS_ISSUER" and "Devoluci" in (rtx.get("estatus") or ""), (st, rf))
-check("ledger 450 (420 + 30 devueltos)", ledger() == 450, ledger())
+check("ledger 405 (375 + 30 devueltos)", ledger() == 405, ledger())
 st, rf2 = pos("POST", "/transactions/refund", {"uuidTransaccionOriginal": tx4["uuidTransaccion"], "monto": 500.00, "motivo": "mas que la venta"})
 check("devolver mas que la venta se rechaza (el adquirente o el emisor con 13)", st != 200 or ((rf2 or {}).get("data") or {}).get("codigoRespuesta") in ("13", None), rf2)
 st, cl2 = pos("POST", "/clearing/cms/submit")
 d2 = (cl2 or {}).get("data") or {}
-check("volver a compensar el mismo dia: el CMS rechaza el archivo duplicado o no hay nada nuevo", st in (200, 502) and ((d2.get("batch") or {}).get("totalRecords", 0) == 0 or "ya" in json.dumps(cl2).lower() or "duplic" in json.dumps(cl2).lower() or "already" in json.dumps(cl2).lower()), cl2)
+c2 = d2.get("cms") or {}
+check("volver a compensar el mismo dia: archivo identico rechazado, o lo re-presentado queda como duplicado en excepciones sin cobrar dos veces", (st == 502 and ("duplic" in json.dumps(cl2).lower() or "already" in json.dumps(cl2).lower())) or (st == 200 and ((d2.get("batch") or {}).get("totalRecords", 0) == 0 or (c2.get("matchedCount", 1) == 0 and c2.get("exceptionCount", 0) >= 1))), cl2)
+check("el ledger no cambio con la segunda presentacion", ledger() == 405, ledger())
 
 print("== 6. limpieza ==")
-subprocess.run([PSQL, "-h", "localhost", "-U", "postgres", "-d", "adquiriencia_pos", "-c", "delete from transacciones where rrn in ('%s') or uuid_transaccion in ('%s')" % ("','".join(x for x in [tx.get("rrn"), tx2.get("rrn"), tx3.get("rrn"), tx4.get("rrn"), vtx.get("rrn")] if x), "','".join(x for x in [tx.get("uuidTransaccion"), tx2.get("uuidTransaccion"), tx3.get("uuidTransaccion"), tx4.get("uuidTransaccion"), vtx.get("uuidTransaccion")] if x))], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
+subprocess.run([PSQL, "-h", "localhost", "-U", "postgres", "-d", "adquiriencia_pos", "-c", "delete from transacciones where rrn in ('%s') or uuid_transaccion in ('%s')" % ("','".join(x for x in [tx.get("rrn"), tx2.get("rrn"), tx2b.get("rrn"), tx3.get("rrn"), tx4.get("rrn"), vtx.get("rrn"), ptx.get("rrn"), ctx.get("rrn"), rtx.get("rrn")] if x), "','".join(x for x in [tx.get("uuidTransaccion"), tx2.get("uuidTransaccion"), tx2b.get("uuidTransaccion"), tx3.get("uuidTransaccion"), tx4.get("uuidTransaccion"), vtx.get("uuidTransaccion"), ptx.get("uuidTransaccion"), ctx.get("uuidTransaccion"), rtx.get("uuidTransaccion")] if x))], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
 bid = cmsb.get("id")
 subprocess.run([PSQL, "-h", "localhost", "-U", "postgres", "-d", "cms_mexico", "-c", """
 with cu as (select id from customers where full_name = 'Onus %s'),

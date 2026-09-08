@@ -161,8 +161,22 @@ public class ClearingService {
         AuthorizationHold h = hold.get();
         r.setApprovalCode(h.getApprovalCode());
         if (h.getStatus() == HoldStatus.CAPTURED) {
-            r.setOutcome(Outcome.ALREADY_CAPTURED); r.setDetail("already settled (" + h.getCapturedAmount() + ")");
-            item(r, ReconciliationItem.Type.CLEARING_DUPLICATE, h, "second presentment of " + h.getApprovalCode());
+            // Captured before the file arrived (a completion advice, the console, a capture by API): the first
+            // presentment settles it; only a presentment that was already presented is a duplicate.
+            boolean presentedBefore = records.countByApprovalCodeAndOutcomeIn(h.getApprovalCode(), EnumSet.of(Outcome.MATCHED_CAPTURED, Outcome.AMOUNT_MISMATCH, Outcome.FORCE_POSTED)) > 0;
+            if (presentedBefore) {
+                r.setOutcome(Outcome.ALREADY_CAPTURED); r.setDetail("already settled (" + h.getCapturedAmount() + ")");
+                item(r, ReconciliationItem.Type.CLEARING_DUPLICATE, h, "second presentment of " + h.getApprovalCode());
+                return;
+            }
+            BigDecimal captured = h.getCapturedAmount() != null ? h.getCapturedAmount() : h.getAmount();
+            if (l.amount().compareTo(captured) != 0) {
+                r.setOutcome(Outcome.AMOUNT_MISMATCH);
+                r.setDetail("presented " + l.amount() + " against " + captured + " captured earlier: " + l.amount().subtract(captured).abs() + " to reconcile");
+                item(r, ReconciliationItem.Type.CLEARING_AMOUNT_MISMATCH, h, r.getDetail());
+                return;
+            }
+            r.setOutcome(Outcome.MATCHED_CAPTURED); r.setDetail("captured earlier (completion) for " + captured + "; presented now");
             return;
         }
         if (h.getStatus() != HoldStatus.HELD) {

@@ -31,8 +31,11 @@ cierre del día ───▶ POST /clearing/cms/submit ──CMS-CLR (RRN + foli
   preautorización y anulación del mismo día. La devolución de una venta on-us va al CMS
   como 0200 con código de proceso 20xxxx y el RRN de la venta original: el CMS ubica la
   tarjeta por ese RRN, comprueba que no supere el monto original y abona por el mismo puerto
-  de fondos (ledger, core o línea). La captura diferida de una preautorización on-us no
-  viaja como 0220: se liquida con el archivo de compensación.
+  de fondos (ledger, core o línea). La captura diferida de una preautorización on-us viaja
+  como 0220 con el RRN y el monto final: el CMS captura la retención (parcial si el monto
+  es menor) y responde 00; cuando esa captura se presenta después en el archivo de
+  compensación, el CMS la reconoce como capturada antes y la casa sin excepción (solo una
+  segunda presentación se marca como duplicado).
 - **PAN**: el backend solo persiste el PAN enmascarado. El PAN completo del cargo se mantiene
   en memoria (`Transaccion.panClaro`, transitorio) el tiempo de la autorización, que es lo
   que el emisor necesita para ubicar la tarjeta. El reverso lleva el RRN de la venta
@@ -72,8 +75,9 @@ Configuración (`application.yml`):
 `python scripts/verify_acquiring_onus.py` con el CMS en 8085 y el backend de adquirencia con
 la ruta on-us en `POS_URL` (por defecto `http://localhost:4100/api/v1`; en local se levanta
 con `SERVER_PORT=4100 MANAGEMENT_PORT=9405 CMS_API_KEY=dev-api-key DB_URL=jdbc:postgresql://localhost:5432/adquiriencia_pos DB_USERNAME=postgres DB_PASSWORD=... mvn spring-boot:run`).
-19 comprobaciones: venta aprobada on-us con folio y RRN reflejados en la retención del CMS,
+23 comprobaciones: venta aprobada on-us con folio y RRN reflejados en la retención del CMS,
 51 por fondos, 61 por límite diario, tarjeta ajena por la ruta de la marca, anulación que
-libera, archivo CMS-CLR aceptado y casado por RRN con captura, ciclo sin intercambio,
-devolución parcial abonada al titular y rechazada cuando supera la venta, y rechazo del
-archivo repetido. Borra sus datos en las dos bases.
+libera, preautorización y captura parcial por 0220, archivo CMS-CLR aceptado y casado por
+RRN con captura (la captura previa se reconoce sin excepción), ciclo sin intercambio,
+devolución parcial abonada al titular y rechazada cuando supera la venta, y segunda
+presentación tratada como duplicado sin cobrar dos veces. Borra sus datos en las dos bases.

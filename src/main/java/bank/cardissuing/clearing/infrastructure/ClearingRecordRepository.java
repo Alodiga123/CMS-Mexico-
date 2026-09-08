@@ -10,5 +10,6 @@ public interface ClearingRecordRepository extends JpaRepository<ClearingRecord, 
     List<ClearingRecord> findByBatchOrderByLineNoAsc(ClearingBatch batch);
     List<ClearingRecord> findByBatchAndOutcomeOrderByLineNoAsc(ClearingBatch batch, ClearingRecord.Outcome outcome);
     List<ClearingRecord> findTop200ByOutcomeInOrderByCreatedAtDesc(java.util.Collection<ClearingRecord.Outcome> outcomes);
+    long countByApprovalCodeAndOutcomeIn(String approvalCode, java.util.Collection<ClearingRecord.Outcome> outcomes);
     long countByBatchAndOutcomeNotIn(ClearingBatch batch, java.util.Collection<ClearingRecord.Outcome> outcomes);
 }

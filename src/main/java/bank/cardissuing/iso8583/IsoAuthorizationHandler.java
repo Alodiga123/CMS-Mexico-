@@ -226,6 +226,21 @@ public class IsoAuthorizationHandler {
     private Object[] advice(Iso8583Message req) {
         Iso8583Message resp = req.reply();
         String pan = req.get(2);
+        // A completion without PAN but with the RRN of a pre-authorization we hold: capture it (partial amounts allowed).
+        if ((pan == null || !pan.matches("\\d{12,19}")) && req.has(37)) {
+            Optional<AuthorizationHold> pre = holds.findFirstByRrnOrderByCreatedAtDesc(req.get(37));
+            if (pre.isEmpty()) return new Object[] {resp.set(39, ResponseCode.UNABLE_TO_LOCATE.getCode()), "completion: original not found"};
+            AuthorizationHold h = pre.get();
+            if (h.getStatus() == bank.cardissuing.funds.domain.HoldStatus.CAPTURED) return new Object[] {resp.set(39, "00").set(38, approvalId(h.getApprovalCode())), "completion: already captured"};
+            BigDecimal amount = new BigDecimal(req.get(4)).movePointLeft(minorUnits(req.get(49)));
+            try {
+                AuthorizationHold c = authorizer.capture(h.getApprovalCode(), amount);
+                return new Object[] {resp.set(39, "00").set(38, approvalId(c.getApprovalCode())), "completion captured " + amount + " of " + h.getAmount()};
+            } catch (BusinessException e) {
+                String code = "HOLD_INVALID_STATE".equals(e.getErrorCode()) ? ResponseCode.UNABLE_TO_LOCATE.getCode() : "13";
+                return new Object[] {resp.set(39, code), "completion refused: " + e.getMessage()};
+            }
+        }
         Optional<Card> found = pan == null ? Optional.empty() : cards.findByPanHash(vault.hash(pan));
         if (found.isEmpty()) return new Object[] {resp.set(39, ResponseCode.INVALID_CARD.getCode()), "unknown PAN"};
         Card card = found.get();
