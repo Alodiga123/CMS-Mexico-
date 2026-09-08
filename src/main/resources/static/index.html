@@ -1484,6 +1484,7 @@
                         </div>
                     </div>
                 </div>
+                </div><!-- cierre de tab-accounting: faltaba y anidaba auditoria y normativa dentro de contabilidad -->
 
                 <!-- TAB 8: AUDIT LOGS -->
                 <div id="tab-audit" class="tab-content">
@@ -1960,6 +1961,7 @@
                 }
                 const targetTab = document.getElementById(tabId);
                 if (targetTab) targetTab.classList.add('active');
+                window.scrollTo({ top: 0, behavior: 'auto' });
 
                 updateWorkflowBanner(tabId);
 

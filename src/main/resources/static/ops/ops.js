@@ -86,6 +86,16 @@
             } catch (e) { $('c360Summary').innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; $('c360Body').style.display = 'none'; fail(e); }
         },
         async open(id) { $('c360Query').value = id; switchTab({ target: null }, 'tab-card360'); await this.search(); },
+        /** Nothing chosen yet: the newest cards as quick picks, so the screen is never empty. */
+        async recent() {
+            const box = $('c360Summary');
+            try {
+                const p = await api('GET', '/api/cards?page=0&size=12');
+                const rows = p.content || [];
+                box.innerHTML = `<div class="ops-muted" style="margin-bottom:0.6rem">Busca por id o últimos cuatro, o elige una de las últimas tarjetas emitidas:</div>
+                    <div class="table-container"><table class="ops-compact"><thead><tr><th>ID</th><th>Titular</th><th>Producto</th><th>Últimos 4</th><th>Estado</th><th>Saldo</th><th></th></tr></thead><tbody>${rows.map(c => `<tr><td>#${c.id}</td><td>${esc(c.embossedName)}</td><td>${esc(c.productName)}</td><td class="ops-mono">**** ${esc(c.last4)}</td><td>${badge(c.status)}</td><td>${money(c.balance, c.currency)}</td><td><button class="btn btn-primary" style="padding:0.3rem 0.7rem;font-size:0.72rem" onclick="ops.card360.open(${c.id})">Ver 360</button></td></tr>`).join('')}</tbody></table></div>`;
+            } catch (e) { box.innerHTML = `<div class="ops-error">${esc(e.message)}</div>`; }
+        },
         async show(card) {
             this.card = card;
             const c = card;
@@ -576,7 +586,7 @@
 
     // ------------------------------------------------------------------ wiring
     const tabs = {
-        'tab-card360': () => { if (card360.card) card360.show(card360.card); },
+        'tab-card360': () => { if (card360.card) card360.show(card360.card); else card360.recent(); },
         'tab-authorizer': () => authorizer.init(),
         'tab-reconciliation': () => recon.load(),
         'tab-disputes': () => disputes.init(),
