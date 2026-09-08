@@ -264,3 +264,6 @@ body.login-open > header, body.login-open > .app-layout { filter: blur(3px); poi
 
 /* selects con opciones largas: nunca más anchos que su celda */
 select.form-control { max-width: 100%; text-overflow: ellipsis; }
+
+/* catálogo en ventana modal: los títulos de producto en tinta, como en el panel desplegable (la tarjeta de muestra conserva su texto blanco) */
+.modal-card .created-card-item > div > div > strong[style*="color:#fff"], .modal-card .created-card-item > div > strong[style*="color:#fff"] { color: var(--ink) !important; }

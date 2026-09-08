@@ -2744,6 +2744,28 @@
                 }
             }
 
+            // --- catálogo de productos: modal y panel desplegable ---
+            function openCatalogModal() {
+                const m = document.getElementById('catalogModal');
+                if (!m) return;
+                m.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                loadProducts();
+            }
+            function closeCatalogModal() {
+                const m = document.getElementById('catalogModal');
+                if (m) m.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            function toggleCatalogCollapse() {
+                const c = document.getElementById('catalogCollapsibleContainer');
+                if (!c) return;
+                const open = c.style.display === 'none' || getComputedStyle(c).display === 'none';
+                c.style.display = open ? 'block' : 'none';
+                if (open) { loadProducts(); c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            }
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCatalogModal(); });
+
             async function loadProducts() {
                 const grid = document.getElementById('createdCardsVisualGrid');
                 const modalGrid = document.getElementById('modalCardsVisualGrid');
@@ -3008,7 +3030,7 @@
                 const res = await fetch('/api/products');
                 const data = await res.json();
                 select.innerHTML = '<option value="">Filtrar por Todas las Tarjetas</option>' + 
-                    data.map(p => `<option value="${p.id}">${p.productName} · ${p.productCode}</option>`).join('');
+                    (Array.isArray(data) ? data : (data.content || [])).map(p => `<option value="${p.id}">${p.productName} · ${p.productCode}</option>`).join('');
             }
 
             // Tarjetas emitidas: paginadas en el servidor (GET /api/cards?page&size&productId)
