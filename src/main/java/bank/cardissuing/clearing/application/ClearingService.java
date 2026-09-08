@@ -248,9 +248,22 @@ public class ClearingService {
 
     // ------------------------------------------------------------ lookups
 
+    /** The card of a line: by PAN when the file carries it whole; otherwise (a masked PAN from an
+     *  on-us acquirer) through the authorization the line points at, by RRN or by approval id. */
     private Optional<Card> findCard(Line l) {
-        if (l.pan() == null) return Optional.empty();
-        return cards.findByPanHash(vault.hash(l.pan()));
+        if (l.pan() != null && l.pan().matches("\\d{12,19}")) {
+            Optional<Card> byPan = cards.findByPanHash(vault.hash(l.pan()));
+            if (byPan.isPresent()) return byPan;
+        }
+        Optional<AuthorizationHold> h = Optional.empty();
+        if (l.rrn() != null && !l.rrn().isBlank()) h = holds.findFirstByRrnOrderByCreatedAtDesc(l.rrn());
+        if (h.isEmpty() && l.approvalId() != null && !l.approvalId().isBlank()) h = holds.findFirstByApprovalCodeEndingWithOrderByCreatedAtDesc(l.approvalId());
+        if (h.isPresent() && l.pan() != null) {
+            String last4 = l.pan().replaceAll("\\D", "");
+            last4 = last4.length() >= 4 ? last4.substring(last4.length() - 4) : last4;
+            if (!last4.isEmpty() && h.get().getCard().getLast4() != null && !h.get().getCard().getLast4().endsWith(last4)) return Optional.empty();
+        }
+        return h.map(AuthorizationHold::getCard);
     }
 
     private Optional<AuthorizationHold> findHold(Line l, Card card) {

@@ -82,6 +82,7 @@ el historial de git; esa contraseña debe considerarse comprometida y rotarse en
 
 ## Documentación
 
+- [Adquirencia y emisor: ruta on-us y compensación](docs/adquirencia-onus.md)
 - [Compensación y liquidación con los archivos de la red](docs/compensacion-liquidacion.md)
 - [Contratos con terceros](docs/contratos-terceros.md)
 - [Demostración del CMS y el autorizador, paso a paso](docs/demo-paso-a-paso.md)
