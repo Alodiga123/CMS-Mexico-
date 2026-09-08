@@ -54,10 +54,10 @@ public class CardProduct extends BaseEntity {
 
     private String country;
 
-    @Column(name = "card_color", length = 500)
+    @Column(name = "card_color", columnDefinition = "text")
     private String cardColor;
 
-    @Column(name = "logo_url", length = 500)
+    @Column(name = "logo_url", columnDefinition = "text")
     private String logoUrl;
 
     @Column(name = "pin_block_format")

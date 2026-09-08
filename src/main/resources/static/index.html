@@ -2709,7 +2709,11 @@
                         });
                     }
 
-                    if (!res.ok) throw new Error("Error al guardar la tarjeta");
+                    if (!res.ok) {
+                        let why = 'HTTP ' + res.status;
+                        try { const e = await res.json(); why = e.message || e.errorCode || why; } catch (ignored) { /* sin cuerpo */ }
+                        throw new Error("No se pudo guardar la tarjeta: " + why);
+                    }
                     const savedProd = await res.json();
 
                     // Save associated promotion if filled
