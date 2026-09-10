@@ -25,9 +25,16 @@ cierre del día ───▶ POST /clearing/cms/submit ──CMS-CLR (RRN + foli
   contacto, 812 comercio electrónico), condición (25), adquirente (32), RRN (37), terminal
   (41), afiliación (42), nombre y país (43) y moneda (49). Lee 39, 38 y 37 de la respuesta.
   La salud se mide con un eco 0800/0810.
-- **Enrutamiento**: `SmartRoutingServiceImpl` consulta primero `esOnUs(bin)` del adaptador
-  (`switch.cms.bins`). Si el BIN es nuestro y el CMS responde, la ruta es `ON_US_ISSUER` con
-  intercambio cero; si el CMS no responde, sigue la ruta de la marca. Aplica a venta,
+- **Enrutamiento**: `SmartRoutingServiceImpl` consulta primero `esOnUs(bin)` del adaptador.
+  Si el BIN es nuestro y el CMS responde, la ruta es `ON_US_ISSUER` con intercambio cero; si
+  el CMS no responde, sigue la ruta de la marca.
+- **BIN sincronizados desde el CMS**: `CmsBinDirectory` pide al CMS su catálogo
+  (`GET /api/products/bins`, con `cms.api.key`) al arrancar y cada
+  `switch.cms.bin-sync.interval-ms` (5 minutos). Hasta la primera respuesta vale la semilla
+  `switch.cms.bins`; después manda el CMS: un producto nuevo se reconoce en el siguiente ciclo
+  sin reiniciar ni tocar configuración, y uno desactivado deja de ir on-us. Si el CMS se cae se
+  conserva la última lista buena. `GET /api/v1/switches/cms/bins` muestra la lista, la fuente y
+  la última sincronización; `POST /api/v1/switches/cms/bins/refresh` (administrador) la fuerza. Aplica a venta,
   preautorización y anulación del mismo día. La devolución de una venta on-us va al CMS
   como 0200 con código de proceso 20xxxx y el RRN de la venta original: el CMS ubica la
   tarjeta por ese RRN, comprueba que no supere el monto original y abona por el mismo puerto
@@ -53,12 +60,17 @@ Configuración (`application.yml`):
 | `SWITCH_CMS_ENABLED` | `true` | apaga la ruta on-us |
 | `SWITCH_CMS_HOST` / `SWITCH_CMS_PORT` | `127.0.0.1` / `8583` | canal ISO del CMS |
 | `SWITCH_CMS_TIMEOUT` | `3000` | ms por mensaje |
-| `SWITCH_CMS_BINS` | `453211,453212,453213,601100,541234` | BIN de los productos del CMS |
+| `SWITCH_CMS_BINS` | `453211,453212,453213,601100,541234` | semilla de BIN, válida hasta que el CMS responda |
+| `SWITCH_CMS_BIN_SYNC_ENABLED` / `SWITCH_CMS_BIN_SYNC_INTERVAL_MS` | `true` / `300000` | sincronización del catálogo de BIN con el CMS |
 | `SWITCH_CMS_ACQUIRER_ID` | `4800684` | campo 32 |
 | `CMS_API_URL` / `CMS_API_KEY` | `http://127.0.0.1:8085` / vacío | entrega del archivo de compensación |
 
 ## Lado del emisor (CMS)
 
+- **Catálogo de BIN para adquirentes**: `GET /api/products/bins?activeOnly=true` (permiso de
+  lectura o clave de API de sistemas) devuelve BIN, red, tipo, código y nombre de cada producto
+  activo. Es lo que el adquirente propio sincroniza; sirve igual para cualquier switch que deba
+  reconocer nuestras tarjetas.
 - El canal ISO 8583 y el autorizador no cambian: el mensaje del adquirente entra como
   cualquier otro (controles, fraude, límites, fondos), con RRN, STAN y adquirente guardados en
   la retención.
@@ -70,12 +82,30 @@ Configuración (`application.yml`):
   cero: la posición neta refleja solo lo que se movió entre tarjetahabientes y comercios de la
   misma casa.
 
+## Portal publicado
+
+El frontend del adquirente (`FrontendAdquiriencia`, Next.js) está publicado en
+**https://ac.alocashfintech.com/pos/login** sobre el mismo servidor del CMS. Comparte dominio
+con la consola, así que se construye con `NEXT_BASE_PATH=/pos` (nuevo `basePath` en
+`next.config.mjs`), `NEXT_PUBLIC_API_URL=/pos/api/v1` y `API_BASE_URL=http://127.0.0.1:4000`:
+el navegador solo habla con `ac.alocashfintech.com` y es el propio Next quien reenvía
+`/pos/api/v1/*` al backend de adquirencia, por lo que no hace falta CORS ni abrir 4000. Corre
+como `pos-frontend.service` (usuario `cms`, `/opt/cms/pos-frontend`, `node server.js` en
+127.0.0.1:3100) y nginx lo sirve en `location ^~ /pos` del sitio `cms-mexico`. Acceso de
+demostración: `mesa@finsus.mx` (contraseña en el archivo de credenciales del servidor).
+
+Para republicarlo: en `FrontendAdquiriencia` exportar esas tres variables, `npx next build`,
+empaquetar `.next/standalone` + `.next/static` (en `.next/static` dentro del standalone) +
+`public`, subir a `/opt/cms/pos-frontend` y `systemctl restart pos-frontend`. Si algún día se le
+da su propio subdominio (registro A a 54.86.249.232), basta construir sin `NEXT_BASE_PATH`,
+con `NEXT_PUBLIC_API_URL=/api/v1`, y darle su sitio de nginx con certbot.
+
 ## Verificación
 
 `python scripts/verify_acquiring_onus.py` con el CMS en 8085 y el backend de adquirencia con
 la ruta on-us en `POS_URL` (por defecto `http://localhost:4100/api/v1`; en local se levanta
 con `SERVER_PORT=4100 MANAGEMENT_PORT=9405 CMS_API_KEY=dev-api-key DB_URL=jdbc:postgresql://localhost:5432/adquiriencia_pos DB_USERNAME=postgres DB_PASSWORD=... mvn spring-boot:run`).
-23 comprobaciones: venta aprobada on-us con folio y RRN reflejados en la retención del CMS,
+28 comprobaciones: BIN on-us tomados del catálogo del CMS (producto nuevo reconocido tras sincronizar y enrutado on-us, desactivado sale de la lista), venta aprobada on-us con folio y RRN reflejados en la retención del CMS,
 51 por fondos, 61 por límite diario, tarjeta ajena por la ruta de la marca, anulación que
 libera, preautorización y captura parcial por 0220, archivo CMS-CLR aceptado y casado por
 RRN con captura (la captura previa se reconoce sin excepción), ciclo sin intercambio,

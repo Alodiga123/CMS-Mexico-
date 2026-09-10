@@ -64,6 +64,24 @@ d = (lg or {}).get("data") or lg or {}
 TOKEN = d.get("token") or d.get("accessToken") or ""
 check("sesion en el backend de adquirencia", st == 200 and TOKEN, (st, lg))
 
+print("== 0b. BIN on-us sincronizados desde el catalogo del CMS ==")
+st, bl = pos("GET", "/switches/cms/bins")
+bd = (bl or {}).get("data") or {}
+check("el adquirente toma sus BIN on-us del CMS (fuente CMS) y 453212 esta entre ellos", st == 200 and bd.get("fuente") == "CMS" and "453212" in (bd.get("bins") or []), (st, bd.get("fuente"), bd.get("bins"), bd.get("ultimoError")))
+NEWBIN = "97" + RUN.zfill(5)[-4:]
+st, np_ = cms("POST", "/products", {"productCode": "ONUS-" + RUN, "productName": "Onus sync " + RUN, "cardType": "PREPAID", "paymentType": "PREPAID", "network": "VISA", "bin": NEWBIN, "currency": "MXN", "country": "MX", "by": "scripts"})
+NEWPID = (np_ or {}).get("id")
+check("un producto nuevo en el CMS con BIN %s" % NEWBIN, st == 201 and NEWPID, (st, np_))
+st, rf_ = pos("POST", "/switches/cms/bins/refresh")
+rd = (rf_ or {}).get("data") or {}
+check("tras sincronizar, el adquirente ya conoce el BIN nuevo sin reiniciar ni tocar configuracion", st == 200 and NEWBIN in (rd.get("bins") or []), (st, rd.get("bins"), rd.get("ultimoError")))
+st, ev = pos("POST", "/switches/evaluate-route", {"redMarca": "VISA", "bin": NEWBIN, "tipoOperacion": "VENTA", "monto": "10.00"})
+evd = (ev or {}).get("data") or {}
+check("el enrutador manda ese BIN on-us al CMS (ON_US_ISSUER, intercambio 0)", st == 200 and (evd.get("switchSeleccionado") or evd.get("switch") or evd.get("switchType") or json.dumps(evd)).__str__().find("CMS_ISSUER") >= 0 and "ON_US" in json.dumps(evd), ev)
+st, _ = cms("PUT", "/products/%s" % NEWPID, {"active": False, "by": "scripts"})
+st2, rf2_ = pos("POST", "/switches/cms/bins/refresh")
+check("desactivado el producto en el CMS, el BIN sale de la lista on-us en la siguiente sincronizacion", st == 200 and st2 == 200 and NEWBIN not in (((rf2_ or {}).get("data") or {}).get("bins") or []), (st, st2, ((rf2_ or {}).get("data") or {}).get("bins")))
+
 print("== 1. una tarjeta del emisor ==")
 ppre = int(sql("select id from card_products where product_code='PRE-MX'"))
 st, cu = cms("POST", "/customers", {"fullName": "Onus " + RUN, "phoneNumber": "5550000073", "cardLast4": "0000", "initialDeposit": 10})
@@ -169,6 +187,7 @@ with cu as (select id from customers where full_name = 'Onus %s'),
  d12 as (delete from cards where id in (select id from c)),
  d13 as (delete from kyc where customer_id in (select id from cu))
 delete from customers where id in (select id from cu)""" % (RUN, bid if bid else "0", (batch.get("batchId") or "-") + ".clr")], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
+sql("delete from card_products where product_code='ONUS-%s'" % RUN)
 check("datos de prueba borrados en ambos lados", sql("select count(*) from cards where id=%d" % C) == "0", "")
 
 print(f"\nRESULTADO: {ok} OK, {bad} FAIL")

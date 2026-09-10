@@ -3,7 +3,10 @@
 Guion para mostrar, en una sola sesión, todo lo que hace el CMS Mexico y su autorizador,
 en el mismo orden en que lo probamos. Dura unos 45 minutos si se recorre completo.
 
-**Dónde:** https://ac.alocashfintech.com (o http://localhost:8085 en local).
+**Dónde:** https://ac.alocashfintech.com (o http://localhost:8085 en local). El portal del
+adquirente (terminales, ventas on-us contra nuestras tarjetas) está en
+https://ac.alocashfintech.com/pos/login con `mesa@finsus.mx`; ver
+[adquirencia-onus.md](adquirencia-onus.md).
 **Entrar con:** `admin.cms` / `AdminCms.2026!` (acceso total). Otros perfiles para mostrar
 la separación de funciones: `mesa.cms`, `fraude.cms`, `auditor.cms` (contraseñas en
 [seguridad-iam.md](seguridad-iam.md)).

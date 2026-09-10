@@ -26,6 +26,27 @@ public class CardProductController {
     @GetMapping("/by-code/{code}")
     public ResponseEntity<CardProduct> getByCode(@PathVariable String code) { return ResponseEntity.ok(service.byCode(code)); }
 
+    /**
+     * BIN ranges this issuer owns, for acquirers and switches that must recognise our cards
+     * (on-us routing). Lightweight on purpose: no limits, fees or key indexes. Active products
+     * only unless {@code activeOnly=false}.
+     */
+    @GetMapping("/bins")
+    public ResponseEntity<List<BinInfo>> bins(@RequestParam(defaultValue = "true") boolean activeOnly) {
+        List<BinInfo> out = service.all().stream()
+                .filter(p -> !activeOnly || p.isActive())
+                .filter(p -> p.getBin() != null && !p.getBin().isBlank())
+                .map(p -> new BinInfo(p.getBin(), p.getNetwork() != null ? p.getNetwork().name() : null,
+                        p.getCardType() != null ? p.getCardType().name() : null,
+                        p.getPaymentType() != null ? p.getPaymentType().name() : null,
+                        p.getProductCode(), p.getProductName(), p.getCurrency(), p.isActive()))
+                .toList();
+        return ResponseEntity.ok(out);
+    }
+
+    public record BinInfo(String bin, String network, String cardType, String paymentType, String productCode,
+                          String productName, String currency, boolean active) { }
+
     @GetMapping("/{id}")
     public ResponseEntity<CardProduct> getProductById(@PathVariable Long id) { return ResponseEntity.ok(service.get(id)); }
 
