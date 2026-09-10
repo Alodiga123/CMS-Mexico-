@@ -5,8 +5,9 @@ en el mismo orden en que lo probamos. Dura unos 45 minutos si se recorre complet
 
 **Dónde:** https://ac.alocashfintech.com (o http://localhost:8085 en local). El portal del
 adquirente (terminales, ventas on-us contra nuestras tarjetas) está en
-https://ac.alocashfintech.com/pos/login con `mesa@finsus.mx`; ver
-[adquirencia-onus.md](adquirencia-onus.md).
+https://ac.alocashfintech.com/pos/login con `mesa@finsus.mx`; su **POS virtual** (Motor de
+Adquirencia → POS virtual) cobra con el PAN de una tarjeta emitida aquí y la autorización llega a
+este CMS; ver [adquirencia-onus.md](adquirencia-onus.md).
 **Entrar con:** `admin.cms` / `AdminCms.2026!` (acceso total). Otros perfiles para mostrar
 la separación de funciones: `mesa.cms`, `fraude.cms`, `auditor.cms` (contraseñas en
 [seguridad-iam.md](seguridad-iam.md)).

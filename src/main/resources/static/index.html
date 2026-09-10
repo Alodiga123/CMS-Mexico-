@@ -2302,6 +2302,57 @@
                 document.getElementById('hsmDetailsModal').classList.remove('active');
             }
 
+            // Lo que una terminal sabría de la tarjeta (PAN, vencimiento, CVV2, PIN) para probarla en el
+            // POS virtual del adquirente. Solo existe con HSM_EXPOSE_TEST_SECRETS=true (bancos de prueba).
+            async function viewCardTestData(cardId) {
+                document.getElementById('hsmDetailsModal').classList.add('active');
+                const body = document.getElementById('hsmModalBodyContent');
+                body.innerHTML = '<div style="text-align:center; padding: 2.5rem; color: var(--accent-cyan);">Recuperando los datos de prueba de la tarjeta #' + cardId + '...</div>';
+                try {
+                    const res = await fetch(`/api/cards/${cardId}/test-secrets`);
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        body.innerHTML = `<div style="padding:1.5rem; border:1px solid rgba(245,158,11,0.4); background:rgba(245,158,11,0.08); border-radius:14px; color:var(--text-main);">
+                            <div style="font-weight:800; margin-bottom:0.4rem;">Datos de prueba no disponibles en este entorno</div>
+                            <div style="font-size:0.9rem; color:var(--text-muted);">${err.code === 'TEST_SECRETS_OFF' ? 'El servidor tiene apagada la exposición de secretos de prueba (HSM_EXPOSE_TEST_SECRETS). Actívala solo en ambientes de demostración.' : (err.message || 'HTTP ' + res.status)}</div>
+                        </div>`;
+                        return;
+                    }
+                    const d = await res.json();
+                    const mmyy = d.expiryYYMM ? d.expiryYYMM.slice(2, 4) + '/' + d.expiryYYMM.slice(0, 2) : '';
+                    const pan4 = (d.pan || '').replace(/(\d{4})(?=\d)/g, '$1 ');
+                    const campo = (label, value, color) => `
+                        <div class="form-group">
+                            <label>${label}</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="text" class="form-control" value="${value ?? ''}" readonly style="font-family:'JetBrains Mono',monospace; color:${color}; font-weight:700;" />
+                                <button type="button" class="btn btn-secondary" style="white-space:nowrap;" onclick="navigator.clipboard && navigator.clipboard.writeText('${String(value ?? '').replace(/\s/g, '')}')">Copiar</button>
+                            </div>
+                        </div>`;
+                    body.innerHTML = `
+                        <div style="display:flex; flex-direction:column; gap:1.2rem;">
+                            <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3); padding:1rem; border-radius:14px;">
+                                <div style="font-size:0.8rem; font-weight:700; color:var(--accent-emerald); text-transform:uppercase;">Tarjeta de prueba #${d.cardId}</div>
+                                <div style="font-size:0.9rem; color:var(--text-muted); margin-top:0.2rem;">Copia el PAN en el POS virtual del portal de adquirencia (Motor de Adquirencia → POS virtual) y cobra: el adquirente reconoce el BIN como nuestro y la autorización llega a este CMS.</div>
+                            </div>
+                            <div class="form-grid">
+                                ${campo('PAN', pan4, 'var(--accent-cyan)')}
+                                ${campo('Vencimiento (MM/AA)', mmyy, 'var(--accent-emerald)')}
+                                ${campo('CVV2', d.cvv2, 'var(--accent-amber)')}
+                                ${campo('PIN', d.pin, 'var(--accent-amber)')}
+                                ${campo('Código de servicio', d.serviceCode, 'var(--text-main)')}
+                                ${campo('PVKI / PVV', (d.pvki ?? '') + ' / ' + (d.pvv ?? ''), 'var(--text-main)')}
+                                <div class="form-group" style="grid-column: 1/-1;">
+                                    <label>Track 2</label>
+                                    <input type="text" class="form-control" value="${d.track2 ?? ''}" readonly style="font-family:'JetBrains Mono',monospace;" />
+                                </div>
+                            </div>
+                        </div>`;
+                } catch (e) {
+                    body.innerHTML = `<div style="padding:1.5rem; color:#ef4444;">No se pudieron recuperar los datos: ${e.message}</div>`;
+                }
+            }
+
             async function viewHsmCardDetails(cardId) {
                 document.getElementById('hsmDetailsModal').classList.add('active');
                 const body = document.getElementById('hsmModalBodyContent');
@@ -3076,6 +3127,7 @@
                 const v = sel.value; sel.value = '';
                 if (v === '360') { if (window.ops && ops.card360) ops.card360.open(id); else location.hash = '#tab-card360/' + id; }
                 else if (v === 'HSM') viewHsmCardDetails(id);
+                else if (v === 'POS') viewCardTestData(id);
                 else if (v) changeCardStatus(id, v);
             };
             const rowOf = (card) => {
@@ -3083,7 +3135,7 @@
                         if (card.status === 'SUSPENDED') badgeClass = 'badge-amber';
                         if (card.status === 'BLOCKED' || card.status === 'CLOSED') badgeClass = 'badge-red';
                         const money = (v) => Number(v || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        const opts = [`<option value="">Acción…</option>`, `<option value="360">Ver tarjeta 360</option>`, `<option value="HSM">Detalles HSM</option>`];
+                        const opts = [`<option value="">Acción…</option>`, `<option value="360">Ver tarjeta 360</option>`, `<option value="HSM">Detalles HSM</option>`, `<option value="POS">Datos para POS de prueba</option>`];
                         if (card.status === 'CREATED' || card.status === 'SUSPENDED') opts.push(`<option value="ACTIVE">Activar</option>`);
                         if (card.status === 'ACTIVE') opts.push(`<option value="SUSPENDED">Suspender</option>`);
                         if (card.status === 'ACTIVE' || card.status === 'SUSPENDED') opts.push(`<option value="BLOCKED">Bloquear</option>`);

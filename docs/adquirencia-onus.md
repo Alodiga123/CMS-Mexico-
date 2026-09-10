@@ -82,6 +82,28 @@ Configuración (`application.yml`):
   cero: la posición neta refleja solo lo que se movió entre tarjetahabientes y comercios de la
   misma casa.
 
+## Prueba integral con el POS virtual
+
+El portal del adquirente tiene un **POS virtual** (Motor de Adquirencia → POS virtual,
+`/dashboard/adquirencia/pos-virtual`): una terminal emulada que manda al backend lo mismo que
+una terminal física (PAN completo, monto, canal, terminal y comercio) y muestra lo que la
+terminal imprimiría: código de respuesta, folio, RRN y la ruta (on-us al CMS o la red). Desde
+el ticket de cada operación se captura una preautorización, se anula o se devuelve. Recorrido
+completo terminal → adquirencia → CMS autorizador → core:
+
+1. En la consola del CMS, pestaña 3, emitir una tarjeta (o usar una existente) y elegir en su
+   fila la acción **"Datos para POS de prueba"**: muestra PAN, vencimiento, CVV2 y PIN. Solo
+   existe con `HSM_EXPOSE_TEST_SECRETS=true` (bancos de prueba y demostración).
+2. En el POS virtual, pegar el PAN: el portal avisa que el BIN es del CMS y que se autorizará
+   on-us. Elegir terminal (el comercio se toma de la terminal), monto y modo de entrada.
+3. **Venta**: el adquirente enruta al CMS por ISO 8583; el CMS valida, retiene contra el saldo
+   (ledger, core o línea) y responde 00 con folio y RRN. En el CMS la retención aparece HELD
+   con ese RRN (pestaña 6 o vista 360 de la tarjeta).
+4. **Anular** desde el ticket → 0400 al CMS → retención RELEASED. **Preautorización** →
+   **Capturar** (parcial permitida) → 0220 → CAPTURED. **Devolver** una venta → abono al titular.
+5. Cierre del día: `POST /api/v1/clearing/cms/submit` (o la pestaña Compensación & Clearing)
+   entrega el CMS-CLR y el CMS captura y liquida sin intercambio.
+
 ## Portal publicado
 
 El frontend del adquirente (`FrontendAdquiriencia`, Next.js) está publicado en
