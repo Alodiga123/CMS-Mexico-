@@ -170,10 +170,15 @@
                 const a = await api('GET', `/api/cards/${this.card.id}/core-account`);
                 this.coreBacked = !!a.coreBacked;
                 const hb = $('c360HeadBalance'), hn = $('c360HeadBalanceNote');
-                if (hb && a.coreBacked) { hb.textContent = money(a.available, this.card.currency); if (hn) hn.textContent = 'disponible en el core · cuenta ' + (a.externalAccountId || ''); }
-                else if (hn) hn.textContent = this.card.cardType === 'CREDIT' ? 'línea disponible' : 'ledger interno';
+                const held = Number(a.held || 0);
+                // Lo que la tarjeta puede gastar ahora: saldo (core, ledger o línea) menos lo retenido por autorizaciones vivas
+                if (hb && a.available != null) hb.textContent = money(a.available, this.card.currency);
+                if (hn) hn.textContent = (a.coreBacked ? 'disponible en el core · cuenta ' + (a.externalAccountId || '') : this.card.cardType === 'CREDIT' ? 'disponible de la línea' : 'disponible del ledger interno')
+                    + (held > 0 ? ` · ${money(held, this.card.currency)} retenidos en ${a.heldCount || ''} autorización(es)` : '');
                 box.innerHTML = kv([['Respaldo', a.coreBacked ? '<span class="badge badge-emerald">Saldo en el core</span>' : '<span class="badge badge-cyan">Ledger interno / línea</span>'],
                     ['Cuenta del core', esc(a.externalAccountId)], ['Cliente del core', esc(a.externalClientId)],
+                    [a.coreBacked ? 'Saldo en el core' : this.card.cardType === 'CREDIT' ? 'Línea de crédito' : 'Saldo del ledger', money(a.balance)],
+                    ['Retenido (autorizaciones HELD)', held > 0 ? `<strong style="color:var(--accent-amber)">${money(held)}</strong> <span class="ops-muted">· ${a.heldCount} pendiente(s) de captura</span>` : money(0)],
                     ['Disponible', `<strong style="color:var(--accent-emerald)">${money(a.available)}</strong>`], ['Nota', esc(a.message)]]) +
                     `<div class="ops-toolbar" style="margin-top:0.7rem"><input id="c360Recharge" class="form-control" type="number" step="0.01" placeholder="monto" style="width:130px"><button class="btn btn-emerald" onclick="ops.card360.recharge()">Recargar</button></div>`;
             } catch (e) {

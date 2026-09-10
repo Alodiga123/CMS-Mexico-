@@ -53,6 +53,7 @@ public class CardController {
     private final bank.cardissuing.hsm.infrastructure.HsmService hsmService;
     private final CoreAccountLinker coreAccountLinker;
     private final CoreBankingClient coreBankingClient;
+    private final bank.cardissuing.funds.infrastructure.AuthorizationHoldRepository holdRepository;
 
     @GetMapping
     public ResponseEntity<?> getAllCards(@RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
@@ -305,7 +306,21 @@ public class CardController {
         m.put("coreBacked", coreAccountLinker.isCoreBacked(card.getProduct()));
         m.put("externalAccountId", card.getExternalAccountId());
         m.put("externalClientId", card.getCustomer() != null ? card.getCustomer().getExternalClientId() : null);
-        m.put("available", card.getExternalAccountId() != null ? coreBankingClient.availableBalance(card.getExternalAccountId()) : null);
+        // Saldo bruto (core, ledger o línea), lo retenido por autorizaciones vivas y lo que de verdad puede gastar
+        BigDecimal held = holdRepository.sumByCardAndStatus(card, bank.cardissuing.funds.domain.HoldStatus.HELD);
+        if (held == null) held = BigDecimal.ZERO;
+        long heldCount = holdRepository.findByCardOrderByCreatedAtDesc(card).stream()
+                .filter(h -> h.getStatus() == bank.cardissuing.funds.domain.HoldStatus.HELD).count();
+        BigDecimal available = null;
+        try { available = fundsRouter.forCard(card).available(card); } catch (RuntimeException e) { m.put("message", e.getMessage()); }
+        BigDecimal balance = available != null ? available.add(held) : null;
+        if (Boolean.TRUE.equals(m.get("coreBacked")) && card.getExternalAccountId() != null) {
+            try { balance = coreBankingClient.availableBalance(card.getExternalAccountId()); } catch (RuntimeException ignored) { }
+        }
+        m.put("balance", balance);
+        m.put("held", held);
+        m.put("heldCount", heldCount);
+        m.put("available", available);
         return ResponseEntity.ok(m);
     }
 
