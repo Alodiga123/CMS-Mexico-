@@ -87,6 +87,8 @@ for name, desc, perms in ROLES:
 # 4. users
 st, users = call("GET", "/users", tok=tok)
 existing = {u["username"]: u for u in users}
+if os.environ.get("IAM_SKIP_DEMO_USERS") == "1":
+    USERS = []  # IAM corporativo: solo proyecto, permisos y roles; los usuarios reales se asignan desde el IAM
 for username, email, first, last, password, rnames in USERS:
     rids = sorted(role_ids[r] for r in rnames)
     if username in existing:
