@@ -5,6 +5,7 @@ Plays the terminal and the chip through the HSM simulator's lab endpoints (PIN b
 zone key, ARQC with the issuer key). Needs the CMS started with HSM_EXPOSE_TEST_SECRETS=true and
 CORE_ALLOW_SIMULATED_OUTAGE=true, the simulator on 1500/8080 and the system API key."""
 import os, json, time, socket, struct, subprocess, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 HSM = "http://localhost:8080"
@@ -145,7 +146,7 @@ pdeb = int(sql("select id from card_products where product_code='DEB-CORE-MX'"))
 
 
 def new_card(product, name, deposit=500, external=None):
-    st, c = http("POST", "/customers", {"fullName": name, "phoneNumber": "5550000060", "cardLast4": "0000", "initialDeposit": 10})
+    st, c = http("POST", "/customers", {**identity(name), "fullName": name, "phoneNumber": "5550000060", "cardLast4": "0000", "initialDeposit": 10})
     body = {"customerId": c["id"], "productId": product, "embossedName": name.upper(), "cardCategory": "VIRTUAL", "initialDeposit": deposit}
     if external: body["externalAccountId"] = external
     st, k = http("POST", "/cards/issue", body)

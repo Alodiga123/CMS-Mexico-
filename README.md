@@ -88,5 +88,6 @@ el historial de git; esa contraseña debe considerarse comprometida y rotarse en
 - [Demostración del CMS y el autorizador, paso a paso](docs/demo-paso-a-paso.md)
 - [Conexión con los sistemas antifraude del gremio (ACT-094)](docs/guild-antifraude.md)
 - [Canal ISO 8583, validación criptográfica y stand-in](docs/iso8583-criptografia-standin.md)
+- [KYC del titular: alta de clientes con verificación](docs/kyc-clientes.md)
 - [RFP-FINSUS-TDC-CORP-2025 · Anexo B: matriz de cobertura](docs/rfp-finsus-tdc-corporativa-anexo-b.md)
 - [Seguridad de la consola y la API con el IAM](docs/seguridad-iam.md)

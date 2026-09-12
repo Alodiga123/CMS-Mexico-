@@ -3,6 +3,7 @@
 contracts are edited and audited, and the messaging port carries the step-up code, the plastic
 notices and the dispute outcome through the simulated provider, with an outage and a retry."""
 import os, json, time, subprocess, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -66,7 +67,7 @@ def check(label, cond, detail=""):
 print("== 1. el registro de terceros ==")
 st, tp = http("GET", "/thirdparties")
 keys = [t["key"] for t in tp]
-check("13 terceros en el registro, cada uno con salud y contrato sembrado", st == 200 and len(tp) == 13 and all(t["health"] and t["contract"] for t in tp), (st, keys))
+check("14 terceros en el registro, cada uno con salud y contrato sembrado", st == 200 and len(tp) == 14 and all(t["health"] and t["contract"] for t in tp), (st, keys))
 by = {t["key"]: t for t in tp}
 check("core bancario en modo fineract y sin señales de caída", by["CORE_BANKING"]["mode"] == "fineract" and by["CORE_BANKING"]["health"]["up"], by["CORE_BANKING"]["health"])
 check("HSM responde al diagnóstico", by["HSM"]["health"]["up"], by["HSM"]["health"])
@@ -97,7 +98,7 @@ check("mensaje de prueba entregado por el simulador, destinatario enmascarado", 
 st, nt = http("POST", "/thirdparties/messages/test", {"to": "", "text": "x"}); check("sin destinatario -> 400", st == 400, st)
 
 ppre = int(sql("select id from card_products where product_code='PRE-MX'"))
-st, cu = http("POST", "/customers", {"fullName": "Terceros " + RUN, "phoneNumber": "5550000071", "cardLast4": "0000", "initialDeposit": 10})
+st, cu = http("POST", "/customers", {**identity("Terceros " + RUN), "fullName": "Terceros " + RUN, "phoneNumber": "5550000071", "cardLast4": "0000", "initialDeposit": 10})
 st, k = http("POST", "/cards/issue", {"customerId": cu["id"], "productId": ppre, "embossedName": "TERCEROS " + RUN, "cardCategory": "VIRTUAL", "initialDeposit": 5})
 C = k["id"]
 for i in range(3):
@@ -123,7 +124,7 @@ tpl = {m["template"]: m for m in pm["content"]}
 check("avisos de envío (con guía) y entrega al cliente", "CARD_SHIPPED" in tpl and "MX-" + RUN in tpl["CARD_SHIPPED"]["text"] and "DHL" in tpl["CARD_SHIPPED"]["text"] and "CARD_DELIVERED" in tpl and tpl["CARD_DELIVERED"]["status"] == "DELIVERED", list(tpl))
 
 # a clean card for the dispute (the first one carries the fraud engine's memory of its declines)
-st, cu2 = http("POST", "/customers", {"fullName": "Terceros B " + RUN, "phoneNumber": "5550000072", "cardLast4": "0000", "initialDeposit": 10})
+st, cu2 = http("POST", "/customers", {**identity("Terceros B " + RUN), "fullName": "Terceros B " + RUN, "phoneNumber": "5550000072", "cardLast4": "0000", "initialDeposit": 10})
 st, k2 = http("POST", "/cards/issue", {"customerId": cu2["id"], "productId": ppre, "embossedName": "TERCEROS B " + RUN, "cardCategory": "VIRTUAL", "initialDeposit": 100})
 C2 = k2["id"]
 sql("update cards set created_at = now() - interval '30 days' where id=%d" % C2)

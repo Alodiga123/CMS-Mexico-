@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """End-to-end check of disputes: prepaid via the ledger, debit-with-core via Mifos."""
 import os, json, base64, ssl, subprocess, hashlib, time, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 MIFOS = "https://corebancario.alocashfintech.com:4433/fineract-provider/api/v1"
@@ -67,7 +68,7 @@ check("12 codigos sembrados", st == 200 and len(rs) == 12, len(rs) if isinstance
 
 print("== A. PREPAGO (ledger): abono provisional, evidencia sellada, ciclo completo, gana el comercio ==")
 ppre = int(sql("select id from card_products where card_type='PREPAID' order by id desc limit 1"))
-st, c = cms("POST", "/customers", {"fullName": "Prueba Aclaracion", "phoneNumber": "5550000008", "cardLast4": "9012", "initialDeposit": 300})
+st, c = cms("POST", "/customers", {**identity("Prueba Aclaracion"), "fullName": "Prueba Aclaracion", "phoneNumber": "5550000008", "cardLast4": "9012", "initialDeposit": 300})
 st, k = cms("POST", "/cards/issue", {"customerId": c["id"], "productId": ppre, "embossedName": "PRUEBA ACLARACION", "cardCategory": "VIRTUAL", "last4": "9012", "initialDeposit": 300})
 card = k["id"]; cms("POST", f"/cards/{card}/status", {"status": "ACTIVE"})
 code = auth_capture(card, 120)

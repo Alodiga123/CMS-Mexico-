@@ -7,6 +7,7 @@ acquirer hands to the CMS, which captures and settles.
 Needs: the CMS on :8085 (CMS_API_KEY=dev-api-key, HSM_EXPOSE_TEST_SECRETS=true) and the acquiring
 backend with the on-us route (POS_URL, default http://localhost:4100/api/v1) pointing at the CMS."""
 import os, json, time, subprocess, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = os.environ.get("CMS_URL", "http://localhost:8085/api")
 POS = os.environ.get("POS_URL", "http://localhost:4100/api/v1")
@@ -84,7 +85,7 @@ check("desactivado el producto en el CMS, el BIN sale de la lista on-us en la si
 
 print("== 1. una tarjeta del emisor ==")
 ppre = int(sql("select id from card_products where product_code='PRE-MX'"))
-st, cu = cms("POST", "/customers", {"fullName": "Onus " + RUN, "phoneNumber": "5550000073", "cardLast4": "0000", "initialDeposit": 10})
+st, cu = cms("POST", "/customers", {**identity("Onus " + RUN), "fullName": "Onus " + RUN, "phoneNumber": "5550000073", "cardLast4": "0000", "initialDeposit": 10})
 st, k = cms("POST", "/cards/issue", {"customerId": cu["id"], "productId": ppre, "embossedName": "ONUS " + RUN, "cardCategory": "VIRTUAL", "initialDeposit": 500})
 C = k["id"]
 sql("update cards set created_at = now() - interval '30 days' where id=%d" % C)

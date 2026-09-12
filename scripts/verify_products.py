@@ -2,6 +2,7 @@
 """End-to-end check of card products: productCode honoured, generated when absent, unique,
 validated input, rename, deactivate, lookup by code, audit."""
 import os, json, time, subprocess, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -90,7 +91,7 @@ au = sql("select count(*) from audit_logs where action='UPDATE_PRODUCT' and enti
 check("las actualizaciones quedan auditadas", int(au) >= 3, au)
 
 print("== 5. el producto sigue siendo usable: una tarjeta sobre el generado ==")
-st, c = http("POST", "/customers", {"fullName": "Titular " + RUN, "phoneNumber": "5550000030", "cardLast4": "7" + RUN[-3:], "initialDeposit": 10})
+st, c = http("POST", "/customers", {**identity("Titular " + RUN), "fullName": "Titular " + RUN, "phoneNumber": "5550000030", "cardLast4": "7" + RUN[-3:], "initialDeposit": 10})
 st, k = http("POST", "/cards/issue", {"customerId": c["id"], "productId": g1["id"], "embossedName": "TITULAR", "cardCategory": "VIRTUAL", "last4": "7" + RUN[-3:], "initialDeposit": 100})
 check("tarjeta emitida sobre PRE-MX-NNN", st in (200, 201) and k.get("id"), (st, k))
 

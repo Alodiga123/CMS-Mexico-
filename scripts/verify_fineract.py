@@ -7,6 +7,7 @@ test savings account: never point it at a real customer's account.
 Env: FINERACT_USER, FINERACT_PASSWORD, FINERACT_URL (api/v1 base), FINERACT_SAVINGS_ID
 """
 import os, json, base64, ssl, subprocess, sys, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = os.environ.get("CMS_URL", "http://localhost:8085/api")
 MIFOS = os.environ["FINERACT_URL"].rstrip("/")
@@ -45,7 +46,7 @@ def check(l, c, d=""):
     else: bad += 1; print(f"  FAIL {l}  {str(d)[:300]}")
 
 pid = sql("select id from card_products where card_type='DEBIT' and payment_type='POSTPAID' and daily_limit>=10000 order by id desc limit 1") or "1"
-st, c = cms("POST", "/customers", {"fullName": "Prueba Fineract", "phoneNumber": "5550000000", "cardLast4": "9009", "initialDeposit": 0})
+st, c = cms("POST", "/customers", {**identity("Prueba Fineract"), "fullName": "Prueba Fineract", "phoneNumber": "5550000000", "cardLast4": "9009", "initialDeposit": 0})
 st, k = cms("POST", "/cards/issue", {"customerId": c["id"], "productId": int(pid), "embossedName": "PRUEBA FINERACT", "cardCategory": "VIRTUAL", "last4": "9009", "initialDeposit": 0})
 card = k["id"]; cms("POST", f"/cards/{card}/status", {"status": "ACTIVE"}); sql(f"update cards set external_account_id='{SID}' where id={card}")
 a0 = avail(); print(f"  card {card} -> Mifos savings {SID}; available = {a0}")

@@ -48,6 +48,7 @@ public class CardController {
     private final bank.cardissuing.hsm.application.CardCryptoService cardCrypto;
     private final CardProductRepository cardProductRepository;
     private final CustomerRepository customerRepository;
+    private final bank.cardissuing.customer.infrastructure.KYCRepository kycRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final bank.cardissuing.hsm.infrastructure.HsmService hsmService;
@@ -115,6 +116,12 @@ public class CardController {
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new RuntimeException("Customer not found with ID: " + request.getCustomerId()));
+        // KYC gate: no card for a cardholder whose file is not VERIFIED (pending, under review or rejected)
+        bank.cardissuing.customer.domain.KYC kycFile = kycRepository.findByCustomer(customer).orElse(null);
+        if (kycFile == null || kycFile.getStatus() != bank.cardissuing.customer.domain.KYCStatus.VERIFIED) {
+            String st = kycFile == null || kycFile.getStatus() == null ? "PENDING" : kycFile.getStatus().name();
+            throw new BusinessException("KYC_NOT_VERIFIED", "El cliente no tiene KYC verificado (estado " + st + "): no se puede emitir la tarjeta", HttpStatus.UNPROCESSABLE_ENTITY);
+        }
 
         CardProduct product = null;
         if (request.getProductId() != null) {

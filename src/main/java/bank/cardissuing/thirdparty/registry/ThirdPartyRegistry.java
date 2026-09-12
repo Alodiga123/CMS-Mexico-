@@ -74,6 +74,10 @@ public class ThirdPartyRegistry {
                     "BackendAdquiriencia (puntos-adquisicion-pos)", List.of("MERCHANT_PORTAL_URL", "MERCHANT_PORTAL_API_KEY"),
                     List.of("Credencial de integración con rol COMERCIOS emitida en el portal", "Ruta /merchants habilitada para X-API-Key", "Acuerdo de uso del padrón de comercios (datos de RFC)", "Sincronización de altas y bajas (webhook o consulta periódica)"),
                     "contratos-terceros.md"),
+            new Definition("KYC_SCREENING", "Listas restringidas y PEP (KYC)", "Consulta de OFAC, ONU, PLD nacional y personas políticamente expuestas al registrar un titular; decide si el KYC se verifica, se revisa o se rechaza", Integration.ONLINE,
+                    "Proveedor de listas PLD (p. ej. Dow Jones, LexisNexis, Bridger) o motor PLD corporativo", List.of("KYC_SCREENING_MODE", "KYC_SCREENING_URL", "KYC_SCREENING_API_KEY"),
+                    List.of("Contrato con el proveedor de listas y frecuencia de actualización", "Clave de API y URL de consulta por persona (nombre, CURP, RFC, fecha de nacimiento)", "Umbral de coincidencia y tratamiento de falsos positivos", "Bitácora de consultas para la CNBV (PLD)", "Prueba: nombre de la lista de prueba rechazado, PEP a revisión"),
+                    "kyc-clientes.md"),
             new Definition("PERSO_BUREAU", "Bureau de personalización (plásticos)", "Recibe el archivo de emboce cifrado, produce y entrega los plásticos y el PIN mailer", Integration.FILE,
                     "IDEMIA / Thales / bureau local", List.of("PLASTICS_MANUFACTURER", "PLASTICS_MANUFACTURER_KEY", "PLASTICS_CHIP_PROFILE"),
                     List.of("Llave AES del archivo de emboce intercambiada en ceremonia", "Perfil de chip aprobado por la red (EMV) y datos de personalización", "Canal SFTP con llaves y ventana de corte", "Prueba de lote: archivo, acuse, producción, embarque", "Certificación PCI Card Production"),
@@ -113,6 +117,7 @@ public class ThirdPartyRegistry {
     private final GuildClient guild;
     private final MessagingProvider messaging;
     private final bank.cardissuing.thirdparty.merchants.MerchantDirectoryClient merchants;
+    private final bank.cardissuing.customer.application.KycScreeningClient kycScreening;
     private final Environment env;
     private final AuditService audit;
 
@@ -162,6 +167,7 @@ public class ThirdPartyRegistry {
             case "GUILD" -> guild.mode();
             case "MESSAGING" -> messaging.mode();
             case "MERCHANT_PORTAL" -> merchants.mode();
+            case "KYC_SCREENING" -> kycScreening.simulated() ? "simulated" : "http";
             case "HSM" -> env.getProperty("HSM_HOST", "localhost") + ":" + env.getProperty("HSM_PORT", "1500");
             case "IAM" -> Boolean.parseBoolean(env.getProperty("security.enabled", "true")) ? "introspection" : "disabled";
             case "PERSO_BUREAU" -> DEV_PERSO_KEY.equals(env.getProperty("plastics.manufacturer-key-base64", DEV_PERSO_KEY)) ? "dev-key" : "own-key";
@@ -192,6 +198,11 @@ public class ThirdPartyRegistry {
                     if (!merchants.configured()) return new Health(false, "sin credencial: el selector de comercios queda en captura manual", now);
                     if (!probe) { var l = merchants.all(); return new Health(l.available(), l.available() ? l.merchants().size() + " comercios (" + l.detail() + ")" : l.detail(), now); }
                     return merchants.ping() ? new Health(true, "responde: " + merchants.all().merchants().size() + " comercios", now) : new Health(false, "no responde: " + merchants.lastError(), now);
+                }
+                case "KYC_SCREENING": {
+                    if (!probe && kycScreening.simulated()) return new Health(true, "simulado: coincide con " + kycScreening.getSimulatedHits().replace(";", ", "), now);
+                    var h = kycScreening.health();
+                    return new Health(h.available(), h.detail(), now);
                 }
                 case "PERSO_BUREAU": return "dev-key".equals(mode(d)) ? new Health(true, "clave de desarrollo: sustituir por la del bureau antes de producción", now) : new Health(true, "clave propia configurada", now);
                 case "COURIER": return new Health(true, "manual: la guía se captura al despachar", now);

@@ -3,6 +3,7 @@
 tracking to activation, replacement, renewal. Needs the HSM simulator on 8080 and the CMS
 started with plastics.expose-plaintext=true."""
 import os, json, time, subprocess, hashlib, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -44,7 +45,7 @@ seq = [9000 + int(time.time()) % 900]  # fresh last4 per run
 
 def new_card(category, name):
     seq[0] += 1
-    st, c = http("POST", "/customers", {"fullName": name, "phoneNumber": "5550000010", "cardLast4": str(seq[0]), "initialDeposit": 10})
+    st, c = http("POST", "/customers", {**identity(name), "fullName": name, "phoneNumber": "5550000010", "cardLast4": str(seq[0]), "initialDeposit": 10})
     st, k = http("POST", "/cards/issue", {"customerId": c["id"], "productId": ppre, "embossedName": name.upper(), "cardCategory": category, "last4": str(seq[0]), "initialDeposit": 10})
     return k["id"]
 

@@ -25,10 +25,17 @@ el IAM, el gremio y la mensajería aparecen como "responde". Si el core marca ca
    cuatro pasos (datos, apariencia con color y logo, límites y tarifas, criptografía y
    promoción) y guarda. Muestra la ficha de BIN (emisor, oficina, jurisdicción) y el
    catálogo con "Abrir catálogo de tarjetas creadas".
-2. **Emitir a un cliente** (pestaña 2). Selecciona el producto nuevo y un cliente (o crea
-   uno en la pestaña 5 con nombre y teléfono). Nombre estampado, categoría física, "Auto"
-   para los últimos cuatro, depósito inicial 1,000, y "Emitir y cifrar con HSM". La vista
-   previa de la derecha cambia en vivo.
+2. **Registrar al cliente con KYC** (pestaña 5). Captura nombre, apellidos, fecha de
+   nacimiento, CURP, RFC, identificación con vigencia, correo, teléfono y domicilio, y pulsa
+   "Registrar y verificar KYC": el expediente se abre con las ocho comprobaciones (CURP, RFC,
+   edad, documento, unicidad, contacto, listas restringidas y PEP) y el resultado. Para
+   mostrar los otros caminos: un nombre que contenga "Lista Negra" queda rechazado con riesgo
+   alto y no se puede aprobar; marcar "persona políticamente expuesta" lo manda a revisión y un
+   analista lo aprueba con motivo desde el mismo expediente. Ver [kyc-clientes.md](kyc-clientes.md).
+   **Emitir a un cliente** (pestaña 2). Selecciona el producto nuevo y un cliente verificado
+   (los que no lo están aparecen en gris con el motivo). Nombre estampado, categoría física,
+   "Auto" para los últimos cuatro, depósito inicial 1,000, y "Emitir y cifrar con HSM". La
+   vista previa de la derecha cambia en vivo.
 3. **Ver la tarjeta** (pestaña 3). Filtra por el producto; en la fila, "Detalles HSM" abre el
    PVV, el CVV2 y las llaves con las que se cifró; el selector de acciones lleva a
    suspender, bloquear o a "Ver tarjeta 360".

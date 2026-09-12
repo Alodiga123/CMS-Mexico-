@@ -4,6 +4,7 @@ in-memory simulator: outbox with folio and retries, SVL hit declining in the aut
 and fail-open, inbound alerts blocking cards and listing merchants with deadlines, SPC notice on
 chargeback, deadline expiry (assumed loss). Needs the CMS with guild.mode=simulated (default)."""
 import os, json, time, subprocess, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -44,7 +45,7 @@ seq = [7000 + int(time.time()) % 900]
 
 def new_card(name, deposit=500):
     seq[0] += 1
-    st, c = http("POST", "/customers", {"fullName": name, "phoneNumber": "5550000040", "cardLast4": str(seq[0]), "initialDeposit": 10})
+    st, c = http("POST", "/customers", {**identity(name), "fullName": name, "phoneNumber": "5550000040", "cardLast4": str(seq[0]), "initialDeposit": 10})
     st, k = http("POST", "/cards/issue", {"customerId": c["id"], "productId": ppre, "embossedName": name.upper(), "cardCategory": "VIRTUAL", "last4": str(seq[0]), "initialDeposit": deposit})
     card = k["id"]; http("POST", f"/cards/{card}/status", {"status": "ACTIVE"})
     sql("update cards set created_at = now() - interval '30 days' where id=%d" % card)

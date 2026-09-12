@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """End-to-end check of the multi-product authorizer over HTTP (CMS-Mexico on 8085)."""
 import json, os, subprocess, sys, time, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 B = "http://localhost:8085/api"
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -47,7 +48,7 @@ def set_limits(pid, daily=None, weekly=None, monthly=None):
     sql(f"update card_products set daily_limit={daily or 'NULL'}, weekly_limit={weekly or 'NULL'}, monthly_limit={monthly or 'NULL'} where id={pid}")
 
 def new_card(pid, deposit, last4):
-    st, c = http("POST", "/customers", {"fullName": f"Titular {last4}", "phoneNumber": "5550000000",
+    st, c = http("POST", "/customers", {**identity(f"Titular {last4}"), "fullName": f"Titular {last4}", "phoneNumber": "5550000000",
                                          "cardLast4": last4, "initialDeposit": deposit})
     cid = c["id"]
     st, k = http("POST", "/cards/issue", {"customerId": cid, "productId": pid, "embossedName": f"TITULAR {last4}",

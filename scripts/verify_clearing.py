@@ -3,6 +3,7 @@
 a clearing file with the usual anomalies, the CMS matches, posts, flags and reverses, and the
 settlement cycle nets the position, closes with a sealed file and is marked paid."""
 import os, json, time, hashlib, subprocess, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -66,7 +67,7 @@ def check(label, cond, detail=""):
 
 
 ppre = int(sql("select id from card_products where product_code='PRE-MX'"))
-st, c = http("POST", "/customers", {"fullName": "Clearing " + RUN, "phoneNumber": "5550000070", "cardLast4": "0000", "initialDeposit": 10})
+st, c = http("POST", "/customers", {**identity("Clearing " + RUN), "fullName": "Clearing " + RUN, "phoneNumber": "5550000070", "cardLast4": "0000", "initialDeposit": 10})
 st, k = http("POST", "/cards/issue", {"customerId": c["id"], "productId": ppre, "embossedName": "CLEARING " + RUN, "cardCategory": "VIRTUAL", "initialDeposit": 500})
 C = k["id"]
 sql("update cards set created_at = now() - interval '30 days' where id=%d" % C)

@@ -2,6 +2,7 @@
 """End-to-end check of the online fraud engine on prepaid cards (no core needed).
 Needs the CMS started with fraud.step-up.expose-otp=true."""
 import os, json, subprocess, time, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 RUN = str(int(time.time()))[-6:]
 
 CMS = "http://localhost:8085/api"
@@ -44,7 +45,7 @@ seq = [9020]
 
 def new_card(deposit, name):
     seq[0] += 1
-    st, c = http("POST", "/customers", {"fullName": name, "phoneNumber": "5550000009", "cardLast4": str(seq[0]), "initialDeposit": deposit})
+    st, c = http("POST", "/customers", {**identity(name), "fullName": name, "phoneNumber": "5550000009", "cardLast4": str(seq[0]), "initialDeposit": deposit})
     st, k = http("POST", "/cards/issue", {"customerId": c["id"], "productId": ppre, "embossedName": name.upper(), "cardCategory": "VIRTUAL", "last4": str(seq[0]), "initialDeposit": deposit})
     card = k["id"]; http("POST", f"/cards/{card}/status", {"status": "ACTIVE"})
     # the cards in this test are minutes old; push their creation back so NEW_CARD_HIGH does not colour every case

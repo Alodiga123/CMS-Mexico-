@@ -3,6 +3,7 @@
 each demo role sees what it may and is refused what it may not, the system API key opens
 everything, and the audit trail names the authenticated person, not what the request claimed."""
 import os, json, subprocess, time, urllib.request, urllib.error
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__file__)); from kyc_demo import identity
 
 CMS = "http://localhost:8085/api"
 PSQL = r"C:\Program Files\PostgreSQL\17\bin\psql.exe"
@@ -72,7 +73,7 @@ T = mesa["accessToken"]
 st, me = http("GET", "/auth/me", token=T); check("/auth/me devuelve la identidad", st == 200 and me["username"] == "mesa.cms" and me["project"] == "EMISION_CMS", (st, me))
 st, cards = http("GET", "/cards?page=0&size=3", token=T); check("puede consultar tarjetas", st == 200 and cards["content"], st)
 ppre = int(sql("select id from card_products where product_code='PRE-MX'"))
-st, c = http("POST", "/customers", {"fullName": "Titular Seguridad " + RUN, "phoneNumber": "5550000050", "cardLast4": "6" + RUN[-3:], "initialDeposit": 10}, token=T)
+st, c = http("POST", "/customers", {**identity("Titular Seguridad " + RUN), "fullName": "Titular Seguridad " + RUN, "phoneNumber": "5550000050", "cardLast4": "6" + RUN[-3:], "initialDeposit": 10}, token=T)
 st, k = http("POST", "/cards/issue", {"customerId": c["id"], "productId": ppre, "embossedName": "TITULAR SEG", "cardCategory": "VIRTUAL", "last4": "6" + RUN[-3:], "initialDeposit": 100}, token=T)
 check("puede emitir una tarjeta (CMS:OPERATE)", st in (200, 201) and k.get("id"), (st, k))
 CARD = k["id"]

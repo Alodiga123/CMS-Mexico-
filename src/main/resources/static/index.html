@@ -1496,18 +1496,30 @@
                         <span>Registrar Nuevo Cliente + Verificación KYC</span>
                         <span class="icon">👤</span>
                     </div>
-                    <form onsubmit="handleCreateCustomer(event)">
-                        <div class="form-grid" style="margin-bottom: 1.25rem;">
-                            <div class="form-group">
-                                <label>Nombre Completo:</label>
-                                <input type="text" id="custName" class="form-control" placeholder="Ej: María Gutiérrez" required />
-                            </div>
-                            <div class="form-group">
-                                <label>Teléfono de Contacto:</label>
-                                <input type="text" id="custPhone" class="form-control" placeholder="Ej: 55 1234 5678" required />
-                            </div>
+                    <form onsubmit="handleCreateCustomer(event)" id="customerForm">
+                        <div class="form-grid" style="margin-bottom: 0.75rem;">
+                            <div class="form-group"><label>Nombre(s):</label><input type="text" id="custFirst" class="form-control" placeholder="Ej: María José" required /></div>
+                            <div class="form-group"><label>Apellido paterno:</label><input type="text" id="custPat" class="form-control" placeholder="Ej: Gutiérrez" required /></div>
+                            <div class="form-group"><label>Apellido materno:</label><input type="text" id="custMat" class="form-control" placeholder="Ej: López" /></div>
+                            <div class="form-group"><label>Fecha de nacimiento:</label><input type="date" id="custBirth" class="form-control" required /></div>
+                            <div class="form-group"><label>Sexo (como en la CURP):</label><select id="custSex" class="form-control"><option value="M">Mujer (M)</option><option value="H">Hombre (H)</option></select></div>
+                            <div class="form-group"><label>CURP:</label><input type="text" id="custCurp" class="form-control" placeholder="18 caracteres" maxlength="18" style="text-transform:uppercase" required /></div>
+                            <div class="form-group"><label>RFC (persona física):</label><input type="text" id="custRfc" class="form-control" placeholder="13 caracteres" maxlength="13" style="text-transform:uppercase" required /></div>
+                            <div class="form-group"><label>Identificación:</label><select id="custDocType" class="form-control"><option value="INE">INE / IFE</option><option value="PASAPORTE">Pasaporte</option><option value="CEDULA_PROFESIONAL">Cédula profesional</option><option value="FM2_FM3">FM2 / FM3</option><option value="MATRICULA_CONSULAR">Matrícula consular</option></select></div>
+                            <div class="form-group"><label>Número de identificación:</label><input type="text" id="custDocNumber" class="form-control" placeholder="Ej: IDMEX1234567890" required /></div>
+                            <div class="form-group"><label>Vigencia de la identificación:</label><input type="date" id="custDocExp" class="form-control" required /></div>
+                            <div class="form-group"><label>Correo electrónico:</label><input type="email" id="custEmail" class="form-control" placeholder="titular@correo.mx" required /></div>
+                            <div class="form-group"><label>Teléfono de contacto:</label><input type="text" id="custPhone" class="form-control" placeholder="Ej: 55 1234 5678" required /></div>
+                            <div class="form-group"><label>Nacionalidad:</label><input type="text" id="custNat" class="form-control" value="MX" /></div>
+                            <div class="form-group"><label>Ocupación:</label><input type="text" id="custOcc" class="form-control" placeholder="Ej: Empleado" /></div>
+                            <div class="form-group"><label>Domicilio:</label><input type="text" id="custAddr" class="form-control" placeholder="Calle y número" /></div>
+                            <div class="form-group"><label>Código postal:</label><input type="text" id="custCp" class="form-control" maxlength="5" /></div>
+                            <div class="form-group"><label>Estado:</label><input type="text" id="custState" class="form-control" placeholder="Ej: CDMX" /></div>
+                            <div class="form-group" style="display:flex; align-items:end;"><label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="custPep" /> Persona políticamente expuesta (declaración del titular)</label></div>
                         </div>
-                        <button type="submit" class="btn btn-emerald">➕ Crear Cliente</button>
+                        <div id="customerError" class="login-error" hidden style="margin-bottom:0.75rem;"></div>
+                        <button type="submit" class="btn btn-emerald" id="customerBtn">➕ Registrar y verificar KYC</button>
+                        <span style="font-size:0.8rem; color:var(--text-muted); margin-left:10px;">Se valida CURP, RFC, edad, identificación, unicidad, contacto y listas restringidas / PEP.</span>
                     </form>
                 </div>
 
@@ -1523,14 +1535,16 @@
                                     <th>ID Cliente</th>
                                     <th>Nombre Completo</th>
                                     <th>Teléfono</th>
+                                    <th>CURP</th>
                                     <th>Estado KYC</th>
-                                    <th>ID Tarjeta</th>
-                                    <th>Tarjeta (Last 4)</th>
-                                    <th>Saldo Total</th>
+                                    <th>Riesgo</th>
+                                    <th>Tarjeta</th>
+                                    <th>Saldo</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody id="customerTableBody">
-                                <tr><td colspan="7" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
+                                <tr><td colspan="9" style="text-align:center; padding: 2rem;">Cargando clientes...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -3068,9 +3082,13 @@
                 try {
                     const res = await fetch('/api/customers');
                     const data = await res.json();
+                    const ok = data.filter(c => c.kycStatus === 'VERIFIED');
+                    // only customers with verified KYC can receive a card; the rest are listed disabled so the reason is visible
                     select.innerHTML = data.length
-                        ? data.map(c => `<option value="${c.id}">${c.fullName} (ID: ${c.id})</option>`).join('')
+                        ? [...ok.map(c => `<option value="${c.id}">${c.fullName} (ID: ${c.id})</option>`),
+                           ...data.filter(c => c.kycStatus !== 'VERIFIED').map(c => `<option value="" disabled>${c.fullName} (ID: ${c.id}) · KYC ${c.kycStatus === 'REVIEW' ? 'en revisión' : c.kycStatus === 'REJECTED' ? 'rechazado' : 'pendiente'}</option>`)].join('')
                         : '<option value="">No hay clientes: crea uno en "Clientes & KYC"</option>';
+                    if (!ok.length && data.length) select.insertAdjacentHTML('afterbegin', '<option value="">Ningún cliente con KYC verificado</option>');
                     updateMockupNameFromCustomer();
                 } catch (err) { select.innerHTML = `<option value="">Error al cargar clientes: ${err.message}</option>`; }
             }
@@ -3501,27 +3519,99 @@
             // --- OTHER LOADERS ---
             async function handleCreateCustomer(e) {
                 e.preventDefault();
-                const payload = { fullName: document.getElementById('custName').value, phoneNumber: document.getElementById('custPhone').value };
-                const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { alert("¡Cliente creado con éxito!"); loadCustomers(); }
+                const v = id => document.getElementById(id).value.trim();
+                const err = document.getElementById('customerError'); err.hidden = true;
+                const btn = document.getElementById('customerBtn'); btn.disabled = true; btn.textContent = 'Verificando…';
+                const payload = { firstNames: v('custFirst'), paternalSurname: v('custPat'), maternalSurname: v('custMat'), birthDate: v('custBirth'), sex: v('custSex'),
+                    curp: v('custCurp').toUpperCase(), rfc: v('custRfc').toUpperCase(), documentType: v('custDocType'), documentNumber: v('custDocNumber'), documentExpiresAt: v('custDocExp'),
+                    email: v('custEmail'), phoneNumber: v('custPhone'), nationality: v('custNat'), occupation: v('custOcc'), addressLine: v('custAddr'), postalCode: v('custCp'), state: v('custState'),
+                    pep: document.getElementById('custPep').checked, by: (window.auth && auth.session() && auth.session().username) || 'consola' };
+                try {
+                    const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) { err.hidden = false; err.textContent = data.message || ('Error ' + res.status); return; }
+                    document.getElementById('customerForm').reset(); document.getElementById('custNat').value = 'MX';
+                    loadCustomers(); if (window.loadCustomersForSelect) loadCustomersForSelect();
+                    openKycModal(data.id);
+                } catch (ex) { err.hidden = false; err.textContent = 'No se pudo contactar al servidor: ' + ex.message; }
+                finally { btn.disabled = false; btn.textContent = '➕ Registrar y verificar KYC'; }
             }
+
+            const kycBadge = s => `<span class="badge ${s === 'VERIFIED' ? 'badge-emerald' : s === 'REJECTED' ? 'badge-red' : s === 'REVIEW' ? 'badge-amber' : 'badge-cyan'}">${{ VERIFIED: 'Verificado', REJECTED: 'Rechazado', REVIEW: 'En revisión', PENDING: 'Pendiente' }[s] || s}</span>`;
+            const riskBadge = r => r ? `<span class="badge ${r === 'HIGH' ? 'badge-red' : r === 'MEDIUM' ? 'badge-amber' : 'badge-emerald'}">${{ HIGH: 'Alto', MEDIUM: 'Medio', LOW: 'Bajo' }[r] || r}</span>` : '—';
 
             async function loadCustomers() {
                 const tbody = document.getElementById('customerTableBody');
                 const res = await fetch('/api/customers');
                 const data = await res.json();
-                tbody.innerHTML = data.map(c => `
+                if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 2rem;">No hay clientes registrados.</td></tr>'; return; }
+                tbody.innerHTML = data.slice().reverse().map(c => `
                     <tr>
                         <td><strong>#${c.id}</strong></td>
-                        <td>${c.fullName}</td>
-                        <td>${c.phoneNumber}</td>
-                        <td><span class="badge ${c.kycStatus === 'VERIFIED' ? 'badge-emerald' : 'badge-amber'}">${c.kycStatus || 'PENDING'}</span></td>
-                        <td><strong>${c.cardId ? 'Card #' + c.cardId : '—'}</strong></td>
-                        <td><code>**** ${c.cardLast4 || '----'}</code></td>
+                        <td>${c.fullName}<div style="font-size:0.75rem; color:var(--text-muted);">${c.email || ''}</div></td>
+                        <td>${c.phoneNumber || ''}</td>
+                        <td><code>${c.curpMasked || '—'}</code></td>
+                        <td>${kycBadge(c.kycStatus)}${(c.kycFailed || []).length ? `<div style="font-size:0.72rem; color:var(--text-muted);">${c.kycFailed.join(', ')}</div>` : ''}</td>
+                        <td>${riskBadge(c.kycRiskLevel)}</td>
+                        <td>${c.cardId ? `#${c.cardId} <code>**** ${c.cardLast4}</code>` : '—'}</td>
                         <td><strong style="color: var(--accent-emerald);">$${Number(c.balance || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+                        <td><button class="btn btn-primary" style="padding:0.3rem 0.7rem;font-size:0.72rem" onclick="openKycModal(${c.id})">Expediente KYC</button></td>
                     </tr>
                 `).join('');
             }
+
+            // ---- expediente KYC: datos, comprobaciones y decisión del analista
+            async function openKycModal(customerId) {
+                document.getElementById('hsmDetailsModal').classList.add('active');
+                const body = document.getElementById('hsmModalBodyContent');
+                body.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--accent-cyan);">Cargando expediente KYC del cliente #' + customerId + '…</div>';
+                try {
+                    const res = await fetch(`/api/customers/${customerId}/kyc`);
+                    const k = await res.json();
+                    if (!res.ok) { body.innerHTML = `<div style="padding:1.5rem; color:#ef4444;">${k.message || ('Error ' + res.status)}</div>`; return; }
+                    const st = k.status || 'PENDING';
+                    const row = (l, v) => `<tr><td style="color:var(--text-muted); padding:4px 10px 4px 0; white-space:nowrap;">${l}</td><td style="padding:4px 0;">${v ?? '—'}</td></tr>`;
+                    const checks = (k.checks || []).map(c => `<li style="display:flex; gap:10px; align-items:flex-start; padding:6px 0; border-bottom:1px solid var(--border);">
+                        <span class="badge ${c.ok ? 'badge-emerald' : 'badge-red'}" style="min-width:90px; text-align:center;">${c.code}</span><span>${c.detail}</span></li>`).join('');
+                    const canDecide = st === 'REVIEW' || st === 'REJECTED';
+                    body.innerHTML = `
+                        <div style="display:flex; flex-direction:column; gap:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+                                <div><div style="font-size:1.05rem; font-weight:800;">${k.fullName} <span style="color:var(--text-muted); font-weight:500;">· cliente #${k.customerId}</span></div>
+                                <div style="font-size:0.8rem; color:var(--text-muted);">${k.email || ''} · ${k.phoneNumber || ''}</div></div>
+                                <div>${kycBadge(st)} ${riskBadge(k.riskLevel)}</div>
+                            </div>
+                            <table style="font-size:0.85rem;">${row('CURP', k.curp)}${row('RFC', k.rfc)}${row('Nacimiento', k.birthDate)}${row('Identificación', k.documentType ? `${k.documentType} ${k.documentNumber || ''} · vigente hasta ${k.documentExpiresAt || '—'}` : null)}
+                                ${row('Domicilio', [k.address, k.postalCode, k.state].filter(Boolean).join(', ') || null)}${row('Ocupación / nacionalidad', [k.occupation, k.nationality].filter(Boolean).join(' · ') || null)}
+                                ${row('PEP', k.pep ? 'Sí, declarado por el titular' : 'No')}${row('Última verificación', k.screenedAt ? new Date(k.screenedAt).toLocaleString('es-MX') : null)}
+                                ${k.reviewedBy ? row('Decisión del analista', `${k.reviewedBy} · ${new Date(k.reviewedAt).toLocaleString('es-MX')}: ${k.reviewNote}`) : ''}</table>
+                            <div><div style="font-weight:700; margin-bottom:4px;">Comprobaciones</div><ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">${checks || '<li style="color:var(--text-muted);">Sin datos de identidad: registra la CURP, el RFC y la identificación para verificar.</li>'}</ul></div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                <button class="btn btn-secondary" onclick="rerunKyc(${k.customerId})">🔄 Volver a verificar</button>
+                                ${canDecide ? `<input id="kycNote" class="form-control" placeholder="Motivo de la decisión (obligatorio)" style="flex:1; min-width:220px;">
+                                <button class="btn btn-emerald" onclick="decideKyc(${k.customerId}, 'APPROVE')" ${k.riskLevel === 'HIGH' ? 'disabled title="Con coincidencia en listas no se puede aprobar"' : ''}>✔ Aprobar</button>
+                                <button class="btn btn-amber" onclick="decideKyc(${k.customerId}, 'REJECT')">✖ Rechazar</button>` : ''}
+                            </div>
+                        </div>`;
+                } catch (e) { body.innerHTML = `<div style="padding:1.5rem; color:#ef4444;">No se pudo cargar el expediente: ${e.message}</div>`; }
+            }
+
+            async function decideKyc(customerId, decision) {
+                const note = (document.getElementById('kycNote') || {}).value || '';
+                const res = await fetch(`/api/customers/${customerId}/kyc/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ decision, note, by: (window.auth && auth.session() && auth.session().username) || 'consola' }) });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) { alert(d.message || ('Error ' + res.status)); return; }
+                loadCustomers(); if (window.loadCustomersForSelect) loadCustomersForSelect(); openKycModal(customerId);
+            }
+
+            async function rerunKyc(customerId) {
+                const res = await fetch(`/api/customers/${customerId}/kyc/rerun`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ by: (window.auth && auth.session() && auth.session().username) || 'consola' }) });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) { alert(d.message || ('Error ' + res.status)); return; }
+                loadCustomers(); if (window.loadCustomersForSelect) loadCustomersForSelect(); openKycModal(customerId);
+            }
+            window.openKycModal = openKycModal; window.decideKyc = decideKyc; window.rerunKyc = rerunKyc;
 
             let auditFacetsLoaded = false;
             async function loadAuditFacets() {
