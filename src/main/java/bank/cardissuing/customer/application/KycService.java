@@ -143,6 +143,16 @@ public class KycService {
 
     private void run(KYC kyc, String by) {
         Customer c = kyc.getCustomer();
+        if (c.getCurp() == null || c.getCurp().isBlank()) {
+            // nothing captured yet: there is nothing to verify or to reject; the file waits for the identity
+            kyc.setStatus(KYCStatus.PENDING);
+            kyc.setRiskLevel(null);
+            kyc.setChecksJson("[]");
+            kyc.setVerifiedAt(null);
+            kycRepository.save(kyc);
+            audit.log("KYC_PENDING", "Customer", String.valueOf(c.getId()), by);
+            return;
+        }
         boolean taken = c.getCurp() != null && customerRepository.findByCurpIgnoreCase(c.getCurp()).stream().anyMatch(o -> !o.getId().equals(c.getId()));
         KycScreeningClient.Result screen = screening.screen(c.getFullName(), c.getCurp(), c.getRfc(), c.getBirthDate());
         KycDocument front = documents.findFirstByCustomerAndSideOrderByUploadedAtDesc(c, KycDocument.Side.FRONT).orElse(null);

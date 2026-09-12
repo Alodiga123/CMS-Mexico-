@@ -3610,13 +3610,18 @@
                                 <button class="btn btn-emerald" onclick="decideDoc(${k.customerId}, ${d.id}, 'MATCH')">✔ Coincide con el titular</button><button class="btn btn-amber" onclick="decideDoc(${k.customerId}, ${d.id}, 'MISMATCH')">✖ No coincide</button></div>` : ''}
                         </div></div>`).join('');
                     const iso = d => d ? String(d).slice(0, 10) : '';
+                    // clientes registrados solo con nombre completo: proponer nombre y apellidos a partir de él
+                    const words = String(k.fullName || '').trim().split(/\s+/).filter(Boolean);
+                    const guessFirst = k.firstNames || (words.length > 2 ? words.slice(0, -2).join(' ') : words[0] || '');
+                    const guessPat = k.paternalSurname || (words.length > 2 ? words[words.length - 2] : words[1] || '');
+                    const guessMat = k.maternalSurname || (words.length > 2 ? words[words.length - 1] : '');
                     const completar = `
                         <details id="kycEditBox" ${(!k.curp || st === 'REJECTED' || st === 'PENDING') ? 'open' : ''} style="border:1px solid var(--border); border-radius:12px; padding:10px 14px;">
                             <summary style="cursor:pointer; font-weight:700;">Completar o corregir identidad</summary>
                             <div class="form-grid" style="margin-top:0.75rem;">
-                                <div class="form-group"><label>Nombre(s)</label><input id="kFirst" class="form-control" value="${k.firstNames || ''}"></div>
-                                <div class="form-group"><label>Apellido paterno</label><input id="kPat" class="form-control" value="${k.paternalSurname || ''}"></div>
-                                <div class="form-group"><label>Apellido materno</label><input id="kMat" class="form-control" value="${k.maternalSurname || ''}"></div>
+                                <div class="form-group"><label>Nombre(s)</label><input id="kFirst" class="form-control" value="${guessFirst}"></div>
+                                <div class="form-group"><label>Apellido paterno</label><input id="kPat" class="form-control" value="${guessPat}"></div>
+                                <div class="form-group"><label>Apellido materno</label><input id="kMat" class="form-control" value="${guessMat}"></div>
                                 <div class="form-group"><label>Fecha de nacimiento</label><input id="kBirth" type="date" class="form-control" value="${iso(k.birthDate)}"></div>
                                 <div class="form-group"><label>Sexo</label><select id="kSex" class="form-control"><option value="M" ${k.sex === 'M' ? 'selected' : ''}>Mujer (M)</option><option value="H" ${k.sex === 'H' ? 'selected' : ''}>Hombre (H)</option></select></div>
                                 <div class="form-group"><label>CURP</label><input id="kCurp" class="form-control" maxlength="18" style="text-transform:uppercase" value="${k.curp || ''}"></div>

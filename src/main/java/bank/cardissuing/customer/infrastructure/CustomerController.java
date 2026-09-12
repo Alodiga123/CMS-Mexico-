@@ -84,6 +84,9 @@ public class CustomerController {
         Map<String, Object> m = new java.util.LinkedHashMap<>(kyc.view(k));
         m.put("customerId", c.getId());
         m.put("fullName", c.getFullName());
+        m.put("firstNames", c.getFirstNames());
+        m.put("paternalSurname", c.getPaternalSurname());
+        m.put("maternalSurname", c.getMaternalSurname());
         m.put("curp", c.getCurp());
         m.put("rfc", c.getRfc());
         m.put("birthDate", c.getBirthDate());
