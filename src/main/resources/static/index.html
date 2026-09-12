@@ -418,6 +418,12 @@
                 const data = await res.json();
                 if (!res.ok) { $('loginError').hidden = false; $('loginError').textContent = data.message || ('Error ' + res.status); return false; }
                 app.session = data; write(data);
+                if (data.mustChangePassword) {
+                    // cuenta con contrasena temporal: el IAM pide una nueva antes de trabajar
+                    $('loginForm').hidden = true; $('pwdForm').hidden = false; $('pwdCurrent').value = $('loginPass').value;
+                    $('loginPass').value = ''; $('pwdNew').focus();
+                    return false;
+                }
                 $('loginPass').value = '';
                 hide(); applyPermissions();
                 try { localStorage.setItem('ops.operator', data.username); } catch (e) { /* sin almacenamiento */ }
@@ -426,6 +432,38 @@
                 $('loginError').hidden = false; $('loginError').textContent = 'No se pudo contactar al servidor: ' + e.message;
             } finally { btn.disabled = false; btn.textContent = 'Entrar'; }
             return false;
+        }
+
+        async function changePassword(ev) {
+            ev.preventDefault();
+            const err = $('pwdError'); err.hidden = true;
+            const nueva = $('pwdNew').value, rep = $('pwdRepeat').value;
+            if (nueva !== rep) { err.hidden = false; err.textContent = 'Las contrasenas nuevas no coinciden'; return false; }
+            if (nueva.length < 10) { err.hidden = false; err.textContent = 'Usa al menos 10 caracteres'; return false; }
+            const btn = $('pwdBtn'); btn.disabled = true; btn.textContent = 'Guardando...';
+            try {
+                const res = await fetch('/api/auth/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: app.session.userId, currentPassword: $('pwdCurrent').value, newPassword: nueva }) });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) { err.hidden = false; err.textContent = data.message || ('Error ' + res.status); return false; }
+                app.session.mustChangePassword = false; write(app.session);
+                $('pwdCurrent').value = ''; $('pwdNew').value = ''; $('pwdRepeat').value = '';
+                $('pwdForm').hidden = true; $('loginForm').hidden = false;
+                hide(); applyPermissions();
+                try { localStorage.setItem('ops.operator', app.session.username); } catch (e) { /* sin almacenamiento */ }
+                document.dispatchEvent(new CustomEvent('cms:login', { detail: app.session }));
+                if (window.toast) toast('Contrasena actualizada', 'ok');
+            } catch (e) {
+                err.hidden = false; err.textContent = 'No se pudo contactar al servidor: ' + e.message;
+            } finally { btn.disabled = false; btn.textContent = 'Guardar y entrar'; }
+            return false;
+        }
+
+        /** Autoservicio desde la sesion: vuelve a la tarjeta de acceso con el formulario de cambio. */
+        function openChangePassword() {
+            if (!app.session) return;
+            $('loginForm').hidden = true; $('pwdForm').hidden = false; $('pwdCurrent').value = ''; $('pwdNew').value = ''; $('pwdRepeat').value = '';
+            $('loginScreen').hidden = false; $('pwdCurrent').focus();
         }
 
         async function logout() {
@@ -465,7 +503,7 @@
             } catch (e) { alert('No se pudo descargar: ' + e.message); }
         }, true);
 
-        window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show };
+        window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show, changePassword, openChangePassword };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
     })();
     </script>
@@ -482,6 +520,15 @@
                 <label class="field"><span>Contraseña</span><input id="loginPass" type="password" autocomplete="current-password" required></label>
                 <div id="loginError" class="login-error" hidden></div>
                 <button class="btn btn-primary btn-block" id="loginBtn" type="submit">Entrar</button>
+            </form>
+            <form id="pwdForm" onsubmit="return auth.changePassword(event)" hidden>
+                <p class="login-sub" style="margin:0">Define tu contraseña</p>
+                <label class="field"><span>Contraseña actual</span><input id="pwdCurrent" type="password" autocomplete="current-password" required></label>
+                <label class="field"><span>Contraseña nueva (mínimo 10 caracteres)</span><input id="pwdNew" type="password" autocomplete="new-password" minlength="10" required></label>
+                <label class="field"><span>Repite la nueva</span><input id="pwdRepeat" type="password" autocomplete="new-password" minlength="10" required></label>
+                <div id="pwdError" class="login-error" hidden></div>
+                <button class="btn btn-primary btn-block" id="pwdBtn" type="submit">Guardar y entrar</button>
+                <button class="btn btn-block" type="button" onclick="auth.logout()">Cancelar y salir</button>
             </form>
             <p class="login-note">Acceso con las credenciales del IAM corporativo · proyecto EMISION_CMS</p>
         </div>
@@ -501,6 +548,7 @@
         <div id="sessionBox" class="session-box" style="display:none">
             <span class="session-avatar">👤</span>
             <span><strong id="sessionUser"></strong><small id="sessionRoles"></small></span>
+            <button class="btn btn-sm" onclick="auth.openChangePassword()" title="Cambiar mi contrasena">Contraseña</button>
             <button class="btn btn-amber btn-sm session-logout" onclick="auth.logout()" title="Cerrar sesión">Salir</button>
         </div>
         <button id="navBack" class="btn btn-amber nav-back" onclick="navBack()" title="Volver a la pantalla anterior">← Volver</button>

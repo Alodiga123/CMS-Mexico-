@@ -51,3 +51,16 @@ CMS_API_KEY_NAME=scripts
 
 Los scripts de `scripts/` leen `CMS_API_KEY` (por defecto `dev-api-key`, el valor con el que se
 arranca el servidor en desarrollo).
+
+## Contraseña temporal y cambio obligatorio
+
+Cuando el IAM crea una cuenta con contraseña temporal (marca `mustChangePassword`), la consola
+lo detecta al entrar: `POST /api/auth/login` devuelve `userId` y `mustChangePassword`, y la
+tarjeta de acceso muestra el formulario "Define tu contraseña" antes de dejar trabajar. El
+cambio viaja por `POST /api/auth/change-password` (sesión requerida; `userId`,
+`currentPassword`, `newPassword` de al menos 10 caracteres) al `/auth/change-password` del
+IAM, que verifica la contraseña actual y borra la marca. El mismo formulario sirve de
+autoservicio desde el botón "Contraseña" de la sesión. `scripts/verify_password_change.py`
+(10 comprobaciones) lo prueba contra el IAM local. Para operar sin la consola del IAM hay
+`scripts/iam_crear_usuario_cms.py` (alta con rol CMS_* y proyecto) y
+`scripts/iam_cambiar_clave.py` (cambio de clave por consola).

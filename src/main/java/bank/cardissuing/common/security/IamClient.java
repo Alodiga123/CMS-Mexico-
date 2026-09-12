@@ -34,7 +34,7 @@ public class IamClient {
 
     /** The IAM's login answer, passed through to the console. */
     public record Login(String accessToken, String refreshToken, long expiresIn, String username, String email,
-                        String firstName, String lastName, Set<String> roles, Set<String> assignedProjects) { }
+                        String firstName, String lastName, Set<String> roles, Set<String> assignedProjects, Long userId) { }
 
     public Login login(String username, String password) {
         JsonNode n;
@@ -48,7 +48,34 @@ public class IamClient {
         }
         return new Login(n.path("accessToken").asText(null), n.path("refreshToken").asText(null), n.path("expiresIn").asLong(0),
                 n.path("username").asText(null), n.path("email").asText(null), n.path("firstName").asText(null), n.path("lastName").asText(null),
-                strings(n.path("roles")), strings(n.path("assignedProjects")));
+                strings(n.path("roles")), strings(n.path("assignedProjects")), n.hasNonNull("userId") ? n.get("userId").asLong() : null);
+    }
+
+    /**
+     * Whether the IAM flagged the account for a password change on first access. The IAM does not
+     * say it at login, so we read the user's own record with the user's token; when the IAM does not
+     * let a plain user read it we cannot know and answer false.
+     */
+    public boolean mustChangePassword(String token, Long userId) {
+        if (userId == null) return false;
+        try {
+            JsonNode n = get("/users/" + userId, token);
+            return n.path("mustChangePassword").asBoolean(false);
+        } catch (IamHttpException | BusinessException e) {
+            return false;
+        }
+    }
+
+    /** Changes the user's own password in the IAM; the IAM checks the current one. */
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        try {
+            post("/auth/change-password", Map.of("userId", String.valueOf(userId), "currentPassword", currentPassword, "newPassword", newPassword));
+        } catch (IamHttpException e) {
+            if (e.status == 401 || e.status == 403 || e.status == 400) {
+                throw new BusinessException("AUTH_PASSWORD_REJECTED", messageOf(e.body, "El IAM rechazo el cambio de contrasena"), HttpStatus.BAD_REQUEST);
+            }
+            throw new BusinessException("AUTH_IAM_ERROR", "El IAM respondio " + e.status, HttpStatus.SERVICE_UNAVAILABLE);
+        }
     }
 
     public Introspection introspect(String token) {
@@ -80,6 +107,22 @@ public class IamClient {
             return json.readTree(r.body() == null || r.body().isBlank() ? "{}" : r.body());
         } catch (IOException e) {
             log.warn("IAM unreachable at {}: {}", settings.getIam().getBaseUrl(), e.getMessage());
+            throw new BusinessException("AUTH_IAM_UNAVAILABLE", "No se pudo contactar al IAM", HttpStatus.SERVICE_UNAVAILABLE);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException("AUTH_IAM_UNAVAILABLE", "Llamada al IAM interrumpida", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+    }
+
+    private JsonNode get(String path, String bearer) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(settings.getIam().getBaseUrl() + path))
+                    .timeout(Duration.ofMillis(settings.getIam().getTimeoutMs()))
+                    .header("Accept", "application/json").header("Authorization", "Bearer " + bearer).GET().build();
+            HttpResponse<String> r = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (r.statusCode() / 100 != 2) throw new IamHttpException(r.statusCode(), r.body());
+            return json.readTree(r.body() == null || r.body().isBlank() ? "{}" : r.body());
+        } catch (IOException e) {
             throw new BusinessException("AUTH_IAM_UNAVAILABLE", "No se pudo contactar al IAM", HttpStatus.SERVICE_UNAVAILABLE);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

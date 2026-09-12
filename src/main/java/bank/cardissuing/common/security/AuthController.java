@@ -54,7 +54,27 @@ public class AuthController {
         m.put("roles", i.roles());
         m.put("permissions", perms);
         m.put("project", settings.getIam().getProjectCode());
+        m.put("userId", l.userId());
+        // the IAM marks accounts created with a temporary password; the console asks for a new one before letting the user in
+        m.put("mustChangePassword", iam.mustChangePassword(l.accessToken(), l.userId()));
         return ResponseEntity.ok(m);
+    }
+
+    public record ChangePasswordBody(Long userId, String currentPassword, String newPassword) { }
+
+    /** The user changes their own IAM password from the console; the IAM verifies the current one. */
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, Object>> changePassword(@RequestBody ChangePasswordBody b) {
+        CmsPrincipal p = CmsPrincipal.current().orElseThrow(() -> new BusinessException("AUTH_REQUIRED", "Inicia sesion", HttpStatus.UNAUTHORIZED));
+        if (b == null || b.userId() == null || b.currentPassword() == null || b.newPassword() == null || b.newPassword().length() < 10) {
+            throw new BusinessException("AUTH_PASSWORD_INVALID", "La contrasena nueva debe tener al menos 10 caracteres", HttpStatus.BAD_REQUEST);
+        }
+        if (b.newPassword().equals(b.currentPassword())) {
+            throw new BusinessException("AUTH_PASSWORD_INVALID", "La contrasena nueva debe ser distinta de la actual", HttpStatus.BAD_REQUEST);
+        }
+        iam.changePassword(b.userId(), b.currentPassword(), b.newPassword());
+        audit.log("PASSWORD_CHANGED", "User", p.username(), p.username());
+        return ResponseEntity.ok(Map.of("ok", true));
     }
 
     @GetMapping("/me")
