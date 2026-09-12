@@ -91,3 +91,4 @@ el historial de git; esa contraseña debe considerarse comprometida y rotarse en
 - [KYC del titular: alta de clientes con verificación](docs/kyc-clientes.md)
 - [RFP-FINSUS-TDC-CORP-2025 · Anexo B: matriz de cobertura](docs/rfp-finsus-tdc-corporativa-anexo-b.md)
 - [Seguridad de la consola y la API con el IAM](docs/seguridad-iam.md)
+- [PCI PIN v3.1: catálogo de controles y estado actual](docs/pci-pin-controles.md)
