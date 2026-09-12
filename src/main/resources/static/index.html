@@ -6,7 +6,7 @@
     <title>finsus · CMS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="/ops/ops.css">
+    <link rel="stylesheet" href="/ops/ops.css?v=20260912a">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -356,7 +356,7 @@
             border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.75rem;
         }
     </style>
-    <link rel="stylesheet" href="/theme/finsus.css">
+    <link rel="stylesheet" href="/theme/finsus.css?v=20260912a">
 
     <script>
     /* Sesión con el IAM: token en sessionStorage, cabecera Authorization en cada llamada a /api,
@@ -507,7 +507,7 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
     })();
     </script>
-    <script src="/ops/pager.js" defer></script>
+    <script src="/ops/pager.js?v=20260912a" defer></script>
 </head>
 <body>
     <!-- ══════════ INICIO DE SESIÓN (IAM) ══════════ -->
@@ -3595,7 +3595,7 @@
                 document.addEventListener('cms:login', () => { loadProducts(); });
                 fetch('/ops/ops.html').then(r => r.text()).then(html => {
                     document.querySelector('main.main-content').insertAdjacentHTML('beforeend', html);
-                    const sc = document.createElement('script'); sc.src = '/ops/ops.js'; document.body.appendChild(sc);
+                    const sc = document.createElement('script'); sc.src = '/ops/ops.js?v=20260912a'; document.body.appendChild(sc);
                 }).catch(e => console.error('No se pudo cargar la consola de operación', e));
             });
         </script>
