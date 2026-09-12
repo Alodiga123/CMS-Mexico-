@@ -50,6 +50,7 @@ with cu as (select id from customers where full_name in (%s)),
  d10 as (delete from reconciliation_items where card_id in (select id from c)),
  d11 as (delete from authorization_holds where card_id in (select id from c)),
  d12 as (delete from cards where id in (select id from c)),
+ d12b as (delete from kyc_documents where customer_id in (select id from cu)),
  d13 as (delete from kyc where customer_id in (select id from cu))
 delete from customers where id in (select id from cu)""" % lst], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
 
@@ -67,7 +68,7 @@ def check(label, cond, detail=""):
 print("== 1. el registro de terceros ==")
 st, tp = http("GET", "/thirdparties")
 keys = [t["key"] for t in tp]
-check("14 terceros en el registro, cada uno con salud y contrato sembrado", st == 200 and len(tp) == 14 and all(t["health"] and t["contract"] for t in tp), (st, keys))
+check("15 terceros en el registro, cada uno con salud y contrato sembrado", st == 200 and len(tp) == 15 and all(t["health"] and t["contract"] for t in tp), (st, keys))
 by = {t["key"]: t for t in tp}
 check("core bancario en modo fineract y sin señales de caída", by["CORE_BANKING"]["mode"] == "fineract" and by["CORE_BANKING"]["health"]["up"], by["CORE_BANKING"]["health"])
 check("HSM responde al diagnóstico", by["HSM"]["health"]["up"], by["HSM"]["health"])

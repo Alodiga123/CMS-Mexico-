@@ -6,7 +6,7 @@ with HIGH risk and cannot be approved; a PEP goes to REVIEW, cannot get a card, 
 approves it with a note; a duplicate CURP is rejected; a customer without identity stays PENDING.
 Cleans up its customers."""
 import os, sys, json, time, subprocess, urllib.request, urllib.error
-sys.path.insert(0, os.path.dirname(__file__)); from kyc_demo import identity
+sys.path.insert(0, os.path.dirname(__file__)); from kyc_demo import identity, document_image
 
 CMS = os.environ.get("CMS_URL", "http://localhost:8085/api")
 API_KEY = os.environ.get("CMS_API_KEY", "dev-api-key")
@@ -52,7 +52,13 @@ st, c1 = customer("Kyc Limpio " + RUN)
 check("registro con CURP, RFC, identificación y contacto válidos queda VERIFIED con riesgo bajo", st == 200 and c1.get("kycStatus") == "VERIFIED" and c1.get("kycRiskLevel") == "LOW" and not c1.get("kycFailed"), (st, c1))
 st, f = http("GET", "/customers/%s/kyc" % c1["id"])
 codes = {x["code"]: x["ok"] for x in f.get("checks", [])}
-check("el expediente guarda las 8 comprobaciones aprobadas", st == 200 and len(codes) == 8 and all(codes.values()), codes)
+check("el expediente guarda las 9 comprobaciones aprobadas, incluido el cotejo de la identificación", st == 200 and len(codes) == 9 and all(codes.values()), codes)
+docs = f.get("documents") or []
+check("la imagen del frente quedó guardada, cifrada y cotejada (MATCH)", len(docs) == 1 and docs[0]["side"] == "FRONT" and docs[0]["verification"] == "MATCH" and docs[0]["sha256"], docs)
+try:
+    with urllib.request.urlopen(urllib.request.Request(CMS + "/customers/%s/kyc/documents/%s/content" % (c1["id"], docs[0]["id"]), headers={"X-Api-Key": API_KEY}), timeout=30) as x: img_st, img_ct, img_len = x.status, x.headers.get("Content-Type"), len(x.read())
+except urllib.error.HTTPError as e: img_st, img_ct, img_len = e.code, None, 0
+check("la imagen se recupera descifrada para la vista previa", img_st == 200 and img_ct == "image/png" and img_len == 119, (img_st, img_ct, img_len))
 check("el expediente muestra CURP completa, identificación y fecha de la consulta de listas", len(f.get("curp") or "") == 18 and f.get("documentType") == "INE" and f.get("screenedAt"), f)
 st, k = http("POST", "/cards/issue", {"customerId": c1["id"], "productId": ppre, "embossedName": "KYC LIMPIO", "cardCategory": "VIRTUAL", "initialDeposit": 10})
 check("con KYC verificado se emite la tarjeta", st == 200 and k.get("id"), (st, k))
@@ -67,7 +73,7 @@ names.append("Kyc Menor " + RUN)
 st, c3 = http("POST", "/customers", {**menor, "fullName": "Kyc Menor " + RUN, "phoneNumber": "5550000" + RUN[-3:], "by": "scripts"})
 check("menor de edad con CURP válida: REJECTED por EDAD", st == 200 and c3.get("kycStatus") == "REJECTED" and c3.get("kycFailed") == ["EDAD"], (st, c3))
 st, c4 = customer("Kyc Vencida " + RUN, documentExpiresAt="2020-01-01")
-check("identificación vencida: REJECTED por DOCUMENTO", st == 200 and c4.get("kycStatus") == "REJECTED" and c4.get("kycFailed") == ["DOCUMENTO"], (st, c4))
+check("identificación vencida: REJECTED por DOCUMENTO (la imagen sigue siendo del titular)", st == 200 and c4.get("kycStatus") == "REJECTED" and c4.get("kycFailed") == ["DOCUMENTO"], (st, c4))
 st, kk = http("POST", "/cards/issue", {"customerId": c4["id"], "productId": ppre, "embossedName": "KYC VENCIDA", "cardCategory": "VIRTUAL"})
 check("sin KYC verificado no se emite tarjeta (422 KYC_NOT_VERIFIED)", st == 422 and (kk or {}).get("code") == "KYC_NOT_VERIFIED" or st == 422, (st, kk))
 st, c4b = http("PUT", "/customers/%s" % c4["id"], {**identity("Kyc Vencida " + RUN), "fullName": "Kyc Vencida " + RUN, "phoneNumber": "5550000" + RUN[-3:], "by": "scripts"})
@@ -89,6 +95,26 @@ check("el analista aprueba con motivo y queda VERIFIED con su firma", st == 200 
 st, k6 = http("POST", "/cards/issue", {"customerId": c6["id"], "productId": ppre, "embossedName": "KYC PEP", "cardCategory": "VIRTUAL", "initialDeposit": 5})
 check("aprobado el PEP, ya se emite su tarjeta", st == 200 and k6.get("id"), (st, k6))
 
+print("== 3b. la identificación debe corresponder al titular ==")
+st, c9 = customer("Kyc Otra Persona " + RUN, documentImage=document_image("ine_mal.png"))
+check("imagen de otra persona: REJECTED por COTEJO con riesgo alto", st == 200 and c9.get("kycStatus") == "REJECTED" and c9.get("kycRiskLevel") == "HIGH" and c9.get("kycFailed") == ["COTEJO"], (st, c9))
+st, r = http("POST", "/customers/%s/kyc/review" % c9["id"], {"decision": "APPROVE", "note": "intento indebido", "by": "scripts"})
+check("tampoco se puede aprobar a mano (409)", st == 409, (st, r))
+st, c10 = customer("Kyc Ilegible " + RUN, documentImage=document_image("ine_ilegible.png"))
+check("imagen ilegible: REVIEW, pendiente del analista", st == 200 and c10.get("kycStatus") == "REVIEW" and c10.get("kycFailed") == ["COTEJO"], (st, c10))
+st, f10 = http("GET", "/customers/%s/kyc" % c10["id"])
+d10 = (f10.get("documents") or [{}])[0]
+st, r = http("POST", "/customers/%s/kyc/documents/%s/verify" % (c10["id"], d10.get("id")), {"decision": "MATCH", "note": "", "by": "analista.kyc"})
+check("el cotejo manual exige motivo (400)", st == 400, (st, r))
+st, r = http("POST", "/customers/%s/kyc/documents/%s/verify" % (c10["id"], d10.get("id")), {"decision": "MATCH", "note": "Cotejo visual: nombre, CURP y fotografía coinciden", "by": "analista.kyc"})
+check("el analista coteja la imagen y el cliente queda VERIFIED", st == 200 and r.get("verification") == "MATCH" and r["customer"]["kycStatus"] == "VERIFIED" and r.get("verifiedBy") == "analista.kyc", (st, r))
+st, c11 = customer("Kyc SinImagen " + RUN, documentImage=None)
+check("datos completos pero sin imagen: REVIEW hasta cargarla", st == 200 and c11.get("kycStatus") == "REVIEW" and c11.get("kycFailed") == ["COTEJO"], (st, c11))
+st, r = http("POST", "/customers/%s/kyc/documents" % c11["id"], {"side": "FRONT", "documentType": "INE", **document_image("ine_frente.png"), "by": "scripts"})
+check("cargada después desde el expediente, se coteja y pasa a VERIFIED", st == 200 and r.get("verification") == "MATCH" and r["customer"]["kycStatus"] == "VERIFIED", (st, r))
+st, r = http("POST", "/customers/%s/kyc/documents" % c11["id"], {"side": "FRONT", "documentType": "INE", "fileName": "x.txt", "contentType": "text/plain", "base64": "aG9sYQ==", "by": "scripts"})
+check("solo se admiten imágenes o PDF (400)", st == 400, (st, r))
+
 print("== 4. unicidad y registro sin identidad ==")
 st, c7 = customer("Kyc Duplicado " + RUN, curp=identity("Kyc Limpio " + RUN)["curp"], rfc=identity("Kyc Limpio " + RUN)["rfc"], birthDate=identity("Kyc Limpio " + RUN)["birthDate"], firstNames="Kyc", paternalSurname="Limpio")
 check("la CURP de otro cliente se rechaza por UNICIDAD", st == 200 and c7.get("kycStatus") == "REJECTED" and "UNICIDAD" in c7.get("kycFailed", []), (st, c7))
@@ -97,12 +123,16 @@ st, c8 = http("POST", "/customers", {"fullName": "Kyc SinDatos " + RUN, "phoneNu
 check("un registro sin identidad queda PENDING, sin comprobaciones", st == 200 and c8.get("kycStatus") == "PENDING" and c8.get("kyc", {}).get("checks") == [], (st, c8))
 st, kk = http("POST", "/cards/issue", {"customerId": c8["id"], "productId": ppre, "embossedName": "SIN DATOS", "cardCategory": "VIRTUAL"})
 check("y no recibe tarjeta", st == 422, (st, kk))
+st, c8b = http("PUT", "/customers/%s" % c8["id"], {**identity("Kyc SinDatos " + RUN), "fullName": "Kyc SinDatos " + RUN, "phoneNumber": "5550000" + RUN[-3:], "by": "scripts"})
+check("completar la identidad (con imagen) desde el expediente lo lleva a VERIFIED", st == 200 and c8b.get("kycStatus") == "VERIFIED", (st, c8b))
 st, a = http("GET", "/audit?entity=Customer&size=50")
 acts = {x.get("action") for x in (a.get("content") if isinstance(a, dict) else a or [])}
 check("la auditoría registra verificaciones, rechazos y la aprobación del analista", {"KYC_VERIFIED", "KYC_REJECTED", "KYC_REVIEW", "KYC_APPROVED"} <= acts, acts)
 st, tp = http("GET", "/thirdparties")
 tpk = next((t for t in tp if t.get("key") == "KYC_SCREENING"), None)
 check("el registro de terceros incluye el proveedor de listas (simulado, arriba)", tpk is not None and tpk["health"]["up"] and tpk.get("mode") == "simulated", tpk)
+tpd = next((t for t in tp if t.get("key") == "KYC_DOCUMENT"), None)
+check("y el verificador de identificación (simulado)", tpd is not None and tpd["health"]["up"] and tpd.get("mode") == "simulated", tpd)
 
 print("== 5. limpieza ==")
 lst = "','".join(names)
@@ -120,6 +150,7 @@ with cu as (select id from customers where full_name in ('%s')),
  d9 as (delete from guild_alerts where card_id in (select id from c)),
  d11 as (delete from authorization_holds where card_id in (select id from c)),
  d12 as (delete from cards where id in (select id from c)),
+ d12b as (delete from kyc_documents where customer_id in (select id from cu)),
  d13 as (delete from kyc where customer_id in (select id from cu))
 delete from customers where id in (select id from cu)""" % lst], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
 check("datos de prueba borrados", sql("select count(*) from customers where full_name in ('%s')" % lst) == "0", "")

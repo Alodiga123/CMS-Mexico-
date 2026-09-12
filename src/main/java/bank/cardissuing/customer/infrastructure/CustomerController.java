@@ -53,6 +53,7 @@ public class CustomerController {
         KYC k;
         if (r.hasIdentity()) {
             k = kyc.register(c, r.getDocumentType(), r.getDocumentNumber(), r.getDocumentExpiresAt(), CmsPrincipal.auditName(r.getBy()));
+            k = attachInline(c, r, k);
         } else {
             // no identity captured: the file exists, nothing is verified, no card can be issued
             k = new KYC();
@@ -133,8 +134,72 @@ public class CustomerController {
                     r.getDocumentNumber() != null ? r.getDocumentNumber() : (k != null ? k.getDocumentNumber() : null),
                     r.getDocumentExpiresAt() != null ? r.getDocumentExpiresAt() : (k != null && k.getExpiresAt() != null ? k.getExpiresAt().toLocalDate() : null),
                     CmsPrincipal.auditName(r.getBy()));
+            k = attachInline(c, r, k);
         }
         return ResponseEntity.ok(view(c, k));
+    }
+
+    // ------------------------------------------------------------------ identification documents
+
+    public record DocumentBody(String side, String documentType, String fileName, String contentType, String base64, String by) { }
+
+    /** Uploads the identification image (JSON with base64); the CMS reads it, compares it with the customer and re-runs the KYC. */
+    @PostMapping("/{id}/kyc/documents")
+    public ResponseEntity<Map<String, Object>> uploadDocument(@PathVariable Long id, @RequestBody DocumentBody b) {
+        if (b == null || b.base64() == null || b.base64().isBlank()) throw new BusinessException("KYC_DOCUMENT_EMPTY", "Falta el archivo (base64)", HttpStatus.BAD_REQUEST);
+        byte[] bytes;
+        try { bytes = java.util.Base64.getDecoder().decode(b.base64().replaceAll("^data:[^,]*,", "")); } catch (IllegalArgumentException e) { throw new BusinessException("KYC_DOCUMENT_EMPTY", "El archivo no es base64 válido", HttpStatus.BAD_REQUEST); }
+        var side = b.side() != null && b.side().equalsIgnoreCase("BACK") ? bank.cardissuing.customer.domain.KycDocument.Side.BACK : bank.cardissuing.customer.domain.KycDocument.Side.FRONT;
+        var d = kyc.attachDocument(id, side, b.documentType(), b.fileName(), b.contentType(), bytes, CmsPrincipal.auditName(b.by()));
+        Map<String, Object> m = new java.util.LinkedHashMap<>(kyc.documentView(d));
+        Customer c = find(id);
+        m.put("customer", view(c, kycRepository.findByCustomer(c).orElse(null)));
+        return ResponseEntity.ok(m);
+    }
+
+    @GetMapping("/{id}/kyc/documents")
+    public ResponseEntity<List<Map<String, Object>>> documents(@PathVariable Long id) {
+        return ResponseEntity.ok(kyc.documentsOf(find(id)).stream().map(kyc::documentView).toList());
+    }
+
+    /** The image itself, for the analyst's preview. */
+    @GetMapping("/{id}/kyc/documents/{docId}/content")
+    public ResponseEntity<byte[]> documentContent(@PathVariable Long id, @PathVariable Long docId) {
+        Customer c = find(id);
+        var d = kyc.documentsOf(c).stream().filter(x -> x.getId().equals(docId)).findFirst()
+                .orElseThrow(() -> new BusinessException("KYC_DOCUMENT_NOT_FOUND", "Documento " + docId + " no encontrado", HttpStatus.NOT_FOUND));
+        return ResponseEntity.ok().header("Content-Type", d.getContentType() != null ? d.getContentType() : "application/octet-stream")
+                .header("Cache-Control", "no-store").header("Content-Disposition", "inline; filename=\"" + (d.getFileName() != null ? d.getFileName() : "documento") + "\"")
+                .body(kyc.content(d));
+    }
+
+    public record DocumentDecision(String decision, String note, String by) { }
+
+    /** The analyst compared the image with the data: MATCH or MISMATCH, with a note. */
+    @PostMapping("/{id}/kyc/documents/{docId}/verify")
+    public ResponseEntity<Map<String, Object>> verifyDocument(@PathVariable Long id, @PathVariable Long docId, @RequestBody DocumentDecision b) {
+        if (b == null || b.decision() == null) throw new BusinessException("KYC_DECISION_REQUIRED", "decision debe ser MATCH o MISMATCH", HttpStatus.BAD_REQUEST);
+        boolean matches = switch (b.decision().toUpperCase(Locale.ROOT)) { case "MATCH", "COINCIDE" -> true; case "MISMATCH", "NO_COINCIDE" -> false; default -> throw new BusinessException("KYC_DECISION_REQUIRED", "decision debe ser MATCH o MISMATCH", HttpStatus.BAD_REQUEST); };
+        var d = kyc.decideDocument(id, docId, matches, b.note(), CmsPrincipal.auditName(b.by()));
+        Map<String, Object> m = new java.util.LinkedHashMap<>(kyc.documentView(d));
+        Customer c = find(id);
+        m.put("customer", view(c, kycRepository.findByCustomer(c).orElse(null)));
+        return ResponseEntity.ok(m);
+    }
+
+    private KYC attachInline(Customer c, CustomerCreateRequest r, KYC k) {
+        KYC out = k;
+        var sides = new bank.cardissuing.customer.domain.KycDocument.Side[] { bank.cardissuing.customer.domain.KycDocument.Side.FRONT, bank.cardissuing.customer.domain.KycDocument.Side.BACK };
+        var files = new CustomerCreateRequest.InlineFile[] { r.getDocumentImage(), r.getDocumentImageBack() };
+        for (int i = 0; i < sides.length; i++) {
+            var f = files[i];
+            if (f == null || !f.present()) continue;
+            byte[] bytes;
+            try { bytes = java.util.Base64.getDecoder().decode(f.getBase64().replaceAll("^data:[^,]*,", "")); } catch (IllegalArgumentException e) { throw new BusinessException("KYC_DOCUMENT_EMPTY", "La imagen no es base64 válido", HttpStatus.BAD_REQUEST); }
+            kyc.attachDocument(c.getId(), sides[i], r.getDocumentType(), f.getFileName(), f.getContentType(), bytes, CmsPrincipal.auditName(r.getBy()));
+            out = kycRepository.findByCustomer(c).orElse(out);
+        }
+        return out;
     }
 
     // ------------------------------------------------------------------ helpers

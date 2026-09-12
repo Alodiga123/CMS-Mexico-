@@ -1515,11 +1515,13 @@
                             <div class="form-group"><label>Domicilio:</label><input type="text" id="custAddr" class="form-control" placeholder="Calle y número" /></div>
                             <div class="form-group"><label>Código postal:</label><input type="text" id="custCp" class="form-control" maxlength="5" /></div>
                             <div class="form-group"><label>Estado:</label><input type="text" id="custState" class="form-control" placeholder="Ej: CDMX" /></div>
+                            <div class="form-group"><label>Imagen de la identificación (frente):</label><input type="file" id="custDocFront" class="form-control" accept="image/*,.pdf" required /></div>
+                            <div class="form-group"><label>Reverso (opcional):</label><input type="file" id="custDocBack" class="form-control" accept="image/*,.pdf" /></div>
                             <div class="form-group" style="display:flex; align-items:end;"><label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="custPep" /> Persona políticamente expuesta (declaración del titular)</label></div>
                         </div>
                         <div id="customerError" class="login-error" hidden style="margin-bottom:0.75rem;"></div>
                         <button type="submit" class="btn btn-emerald" id="customerBtn">➕ Registrar y verificar KYC</button>
-                        <span style="font-size:0.8rem; color:var(--text-muted); margin-left:10px;">Se valida CURP, RFC, edad, identificación, unicidad, contacto y listas restringidas / PEP.</span>
+                        <span style="font-size:0.8rem; color:var(--text-muted); margin-left:10px;">Se valida CURP, RFC, edad, identificación, unicidad, contacto, listas restringidas / PEP y que la imagen de la identificación corresponda al titular.</span>
                     </form>
                 </div>
 
@@ -3524,7 +3526,9 @@
                 const v = id => document.getElementById(id).value.trim();
                 const err = document.getElementById('customerError'); err.hidden = true;
                 const btn = document.getElementById('customerBtn'); btn.disabled = true; btn.textContent = 'Verificando…';
-                const payload = { firstNames: v('custFirst'), paternalSurname: v('custPat'), maternalSurname: v('custMat'), birthDate: v('custBirth'), sex: v('custSex'),
+                const front = await fileToInline(document.getElementById('custDocFront')); const back = await fileToInline(document.getElementById('custDocBack'));
+                if (front === 'TOO_BIG' || back === 'TOO_BIG') { err.hidden = false; err.textContent = 'La imagen supera 6 MB'; btn.disabled = false; btn.textContent = '➕ Registrar y verificar KYC'; return; }
+                const payload = { documentImage: front, documentImageBack: back, firstNames: v('custFirst'), paternalSurname: v('custPat'), maternalSurname: v('custMat'), birthDate: v('custBirth'), sex: v('custSex'),
                     curp: v('custCurp').toUpperCase(), rfc: v('custRfc').toUpperCase(), documentType: v('custDocType'), documentNumber: v('custDocNumber'), documentExpiresAt: v('custDocExp'),
                     email: v('custEmail'), phoneNumber: v('custPhone'), nationality: v('custNat'), occupation: v('custOcc'), addressLine: v('custAddr'), postalCode: v('custCp'), state: v('custState'),
                     pep: document.getElementById('custPep').checked, by: (window.auth && auth.session() && auth.session().username) || 'consola' };
@@ -3537,6 +3541,19 @@
                     openKycModal(data.id);
                 } catch (ex) { err.hidden = false; err.textContent = 'No se pudo contactar al servidor: ' + ex.message; }
                 finally { btn.disabled = false; btn.textContent = '➕ Registrar y verificar KYC'; }
+            }
+
+            /** Un <input type=file> a {fileName, contentType, base64} (o null si está vacío). */
+            function fileToInline(input) {
+                const f = input && input.files && input.files[0];
+                if (!f) return Promise.resolve(null);
+                if (f.size > 6 * 1024 * 1024) return Promise.resolve('TOO_BIG');
+                return new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve({ fileName: f.name, contentType: f.type || 'application/octet-stream', base64: String(r.result).replace(/^data:[^,]*,/, '') });
+                    r.onerror = () => reject(new Error('No se pudo leer ' + f.name));
+                    r.readAsDataURL(f);
+                });
             }
 
             const kycBadge = s => `<span class="badge ${s === 'VERIFIED' ? 'badge-emerald' : s === 'REJECTED' ? 'badge-red' : s === 'REVIEW' ? 'badge-amber' : 'badge-cyan'}">${{ VERIFIED: 'Verificado', REJECTED: 'Rechazado', REVIEW: 'En revisión', PENDING: 'Pendiente' }[s] || s}</span>`;
@@ -3581,6 +3598,45 @@
                     const checks = (k.checks || []).map(c => `<li style="display:flex; gap:10px; align-items:flex-start; padding:6px 0; border-bottom:1px solid var(--border);">
                         <span class="badge ${c.ok ? 'badge-emerald' : 'badge-red'}" style="min-width:90px; text-align:center;">${c.code}</span><span>${c.detail}</span></li>`).join('');
                     const canDecide = st === 'REVIEW' || st === 'REJECTED';
+                    const docBadge = v => `<span class="badge ${v === 'MATCH' ? 'badge-emerald' : v === 'MISMATCH' ? 'badge-red' : 'badge-amber'}">${{ MATCH: 'Corresponde al titular', MISMATCH: 'No corresponde', UNREADABLE: 'Ilegible', PENDING_MANUAL: 'Pendiente de cotejo' }[v] || v}</span>`;
+                    const docs = (k.documents || []).map(d => `<div style="display:flex; gap:12px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border);">
+                        <div style="width:150px; height:100px; background:var(--surface-2); border-radius:10px; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:zoom-in;" onclick="openKycImage(${k.customerId}, ${d.id})" title="Ver en grande"><img data-kyc-doc="${k.customerId}/${d.id}" alt="${d.side === 'FRONT' ? 'frente' : 'reverso'}" style="max-width:100%; max-height:100%; object-fit:contain;"></div>
+                        <div style="flex:1; font-size:0.82rem;">
+                            <div><strong>${d.side === 'FRONT' ? 'Frente' : 'Reverso'}</strong> · ${d.documentType || ''} · ${d.fileName || ''} · ${(d.sizeBytes / 1024).toFixed(0)} KB · subido ${d.uploadedAt ? new Date(d.uploadedAt).toLocaleString('es-MX') : ''}</div>
+                            <div style="margin:4px 0;">${docBadge(d.verification)} <span style="color:var(--text-muted);">${d.verificationDetail || ''}</span></div>
+                            ${d.extracted && d.extracted.readable ? `<div style="color:var(--text-muted);">Leído: ${d.extracted.fullName || '—'} · CURP ${d.extracted.curp || '—'} · nac. ${d.extracted.birthDate || '—'} · núm. ${d.extracted.documentNumber || '—'}</div>` : ''}
+                            ${d.verifiedBy ? `<div style="color:var(--text-muted);">Cotejó ${d.verifiedBy} · ${new Date(d.verifiedAt).toLocaleString('es-MX')}</div>` : ''}
+                            ${d.side === 'FRONT' && d.verification !== 'MATCH' ? `<div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;"><input id="docNote${d.id}" class="form-control" placeholder="Motivo del cotejo (obligatorio)" style="flex:1; min-width:200px;">
+                                <button class="btn btn-emerald" onclick="decideDoc(${k.customerId}, ${d.id}, 'MATCH')">✔ Coincide con el titular</button><button class="btn btn-amber" onclick="decideDoc(${k.customerId}, ${d.id}, 'MISMATCH')">✖ No coincide</button></div>` : ''}
+                        </div></div>`).join('');
+                    const iso = d => d ? String(d).slice(0, 10) : '';
+                    const completar = `
+                        <details id="kycEditBox" ${(!k.curp || st === 'REJECTED' || st === 'PENDING') ? 'open' : ''} style="border:1px solid var(--border); border-radius:12px; padding:10px 14px;">
+                            <summary style="cursor:pointer; font-weight:700;">Completar o corregir identidad</summary>
+                            <div class="form-grid" style="margin-top:0.75rem;">
+                                <div class="form-group"><label>Nombre(s)</label><input id="kFirst" class="form-control" value="${k.firstNames || ''}"></div>
+                                <div class="form-group"><label>Apellido paterno</label><input id="kPat" class="form-control" value="${k.paternalSurname || ''}"></div>
+                                <div class="form-group"><label>Apellido materno</label><input id="kMat" class="form-control" value="${k.maternalSurname || ''}"></div>
+                                <div class="form-group"><label>Fecha de nacimiento</label><input id="kBirth" type="date" class="form-control" value="${iso(k.birthDate)}"></div>
+                                <div class="form-group"><label>Sexo</label><select id="kSex" class="form-control"><option value="M" ${k.sex === 'M' ? 'selected' : ''}>Mujer (M)</option><option value="H" ${k.sex === 'H' ? 'selected' : ''}>Hombre (H)</option></select></div>
+                                <div class="form-group"><label>CURP</label><input id="kCurp" class="form-control" maxlength="18" style="text-transform:uppercase" value="${k.curp || ''}"></div>
+                                <div class="form-group"><label>RFC</label><input id="kRfc" class="form-control" maxlength="13" style="text-transform:uppercase" value="${k.rfc || ''}"></div>
+                                <div class="form-group"><label>Identificación</label><select id="kDocType" class="form-control">${['INE', 'PASAPORTE', 'CEDULA_PROFESIONAL', 'FM2_FM3', 'MATRICULA_CONSULAR'].map(t => `<option value="${t}" ${k.documentType === t ? 'selected' : ''}>${t.replace('_', ' ')}</option>`).join('')}</select></div>
+                                <div class="form-group"><label>Número de identificación</label><input id="kDocNumber" class="form-control" placeholder="${k.documentNumber ? 'guardado: ' + k.documentNumber : ''}"></div>
+                                <div class="form-group"><label>Vigencia</label><input id="kDocExp" type="date" class="form-control" value="${iso(k.documentExpiresAt)}"></div>
+                                <div class="form-group"><label>Correo</label><input id="kEmail" type="email" class="form-control" value="${k.email || ''}"></div>
+                                <div class="form-group"><label>Teléfono</label><input id="kPhone" class="form-control" value="${k.phoneNumber || ''}"></div>
+                                <div class="form-group"><label>Domicilio</label><input id="kAddr" class="form-control" value="${k.address || ''}"></div>
+                                <div class="form-group"><label>Código postal</label><input id="kCp" class="form-control" value="${k.postalCode || ''}"></div>
+                                <div class="form-group"><label>Estado</label><input id="kState" class="form-control" value="${k.state || ''}"></div>
+                                <div class="form-group"><label>Ocupación</label><input id="kOcc" class="form-control" value="${k.occupation || ''}"></div>
+                                <div class="form-group"><label>Imagen de la identificación (frente)</label><input id="kDocFront" type="file" class="form-control" accept="image/*,.pdf"></div>
+                                <div class="form-group"><label>Reverso</label><input id="kDocBack" type="file" class="form-control" accept="image/*,.pdf"></div>
+                                <div class="form-group" style="display:flex; align-items:end;"><label style="display:flex; gap:8px; align-items:center; margin:0;"><input type="checkbox" id="kPep" ${k.pep ? 'checked' : ''}> Persona políticamente expuesta</label></div>
+                            </div>
+                            <div id="kycEditError" class="login-error" hidden style="margin-bottom:0.5rem;"></div>
+                            <button class="btn btn-emerald" id="kycEditBtn" onclick="saveIdentity(${k.customerId})">💾 Guardar y verificar</button>
+                        </details>`;
                     body.innerHTML = `
                         <div style="display:flex; flex-direction:column; gap:1rem;">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
@@ -3592,7 +3648,9 @@
                                 ${row('Domicilio', [k.address, k.postalCode, k.state].filter(Boolean).join(', ') || null)}${row('Ocupación / nacionalidad', [k.occupation, k.nationality].filter(Boolean).join(' · ') || null)}
                                 ${row('PEP', k.pep ? 'Sí, declarado por el titular' : 'No')}${row('Última verificación', k.screenedAt ? new Date(k.screenedAt).toLocaleString('es-MX') : null)}
                                 ${k.reviewedBy ? row('Decisión del analista', `${k.reviewedBy} · ${new Date(k.reviewedAt).toLocaleString('es-MX')}: ${k.reviewNote}`) : ''}</div>
-                            <div><div style="font-weight:700; margin-bottom:4px;">Comprobaciones</div><ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">${checks || '<li style="color:var(--text-muted);">Sin datos de identidad: registra la CURP, el RFC y la identificación para verificar.</li>'}</ul></div>
+                            <div><div style="font-weight:700; margin-bottom:4px;">Identificación</div>${docs || '<div style="font-size:0.85rem; color:var(--text-muted);">Sin imagen de la identificación: cárgala en "Completar o corregir identidad".</div>'}</div>
+                            <div><div style="font-weight:700; margin-bottom:4px;">Comprobaciones</div><ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">${checks || '<li style="color:var(--text-muted);">Sin datos de identidad: completa la CURP, el RFC y la identificación para verificar.</li>'}</ul></div>
+                            ${completar}
                             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                                 <button class="btn btn-amber" onclick="rerunKyc(${k.customerId})">🔄 Volver a verificar</button>
                                 ${canDecide ? `<input id="kycNote" class="form-control" placeholder="Motivo de la decisión (obligatorio)" style="flex:1; min-width:220px;">
@@ -3600,8 +3658,54 @@
                                 <button class="btn btn-amber" onclick="decideKyc(${k.customerId}, 'REJECT')">✖ Rechazar</button>` : ''}
                             </div>
                         </div>`;
+                    loadKycImages();
                 } catch (e) { body.innerHTML = `<div style="padding:1.5rem; color:#ef4444;">No se pudo cargar el expediente: ${e.message}</div>`; }
             }
+
+            /** Las imágenes viajan con la sesión (fetch con token), no como src directo. */
+            function loadKycImages() {
+                document.querySelectorAll('img[data-kyc-doc]').forEach(async img => {
+                    try {
+                        const res = await fetch(`/api/customers/${img.dataset.kycDoc.split('/')[0]}/kyc/documents/${img.dataset.kycDoc.split('/')[1]}/content`);
+                        if (!res.ok) return;
+                        const blob = await res.blob();
+                        if (blob.type === 'application/pdf') { img.replaceWith(Object.assign(document.createElement('span'), { textContent: 'PDF', style: 'font-weight:700;color:var(--text-muted)' })); return; }
+                        img.src = URL.createObjectURL(blob);
+                    } catch (e) { /* sin vista previa */ }
+                });
+            }
+            async function openKycImage(customerId, docId) {
+                const res = await fetch(`/api/customers/${customerId}/kyc/documents/${docId}/content`);
+                if (!res.ok) return;
+                const url = URL.createObjectURL(await res.blob());
+                window.open(url, '_blank');
+            }
+            async function decideDoc(customerId, docId, decision) {
+                const note = (document.getElementById('docNote' + docId) || {}).value || '';
+                const res = await fetch(`/api/customers/${customerId}/kyc/documents/${docId}/verify`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ decision, note, by: (window.auth && auth.session() && auth.session().username) || 'consola' }) });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) { alert(d.message || ('Error ' + res.status)); return; }
+                loadCustomers(); if (window.loadCustomersForSelect) loadCustomersForSelect(); openKycModal(customerId);
+            }
+            async function saveIdentity(customerId) {
+                const v = id => (document.getElementById(id) || {}).value || '';
+                const err = document.getElementById('kycEditError'); err.hidden = true;
+                const btn = document.getElementById('kycEditBtn'); btn.disabled = true; btn.textContent = 'Verificando…';
+                try {
+                    const front = await fileToInline(document.getElementById('kDocFront')); const back = await fileToInline(document.getElementById('kDocBack'));
+                    if (front === 'TOO_BIG' || back === 'TOO_BIG') { err.hidden = false; err.textContent = 'La imagen supera 6 MB'; return; }
+                    const body = { firstNames: v('kFirst'), paternalSurname: v('kPat'), maternalSurname: v('kMat'), birthDate: v('kBirth') || null, sex: v('kSex'), curp: v('kCurp').toUpperCase(), rfc: v('kRfc').toUpperCase(),
+                        documentType: v('kDocType'), documentNumber: v('kDocNumber') || null, documentExpiresAt: v('kDocExp') || null, email: v('kEmail'), phoneNumber: v('kPhone'), addressLine: v('kAddr'), postalCode: v('kCp'), state: v('kState'), occupation: v('kOcc'),
+                        pep: !!(document.getElementById('kPep') || {}).checked, documentImage: front, documentImageBack: back, by: (window.auth && auth.session() && auth.session().username) || 'consola' };
+                    const res = await fetch(`/api/customers/${customerId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    const d = await res.json().catch(() => ({}));
+                    if (!res.ok) { err.hidden = false; err.textContent = d.message || ('Error ' + res.status); return; }
+                    loadCustomers(); if (window.loadCustomersForSelect) loadCustomersForSelect(); openKycModal(customerId);
+                } catch (e) { err.hidden = false; err.textContent = 'No se pudo guardar: ' + e.message; }
+                finally { btn.disabled = false; btn.textContent = '💾 Guardar y verificar'; }
+            }
+            window.decideDoc = decideDoc; window.saveIdentity = saveIdentity; window.openKycImage = openKycImage;
 
             async function decideKyc(customerId, decision) {
                 const note = (document.getElementById('kycNote') || {}).value || '';

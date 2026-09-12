@@ -3,7 +3,7 @@
 with the name and birth date) plus the document and contact fields the KYC asks for. Import it
 from any verify_*.py: {**identity("Onus 123"), "phoneNumber": ...}. The CURP is derived from the
 name and a sequence so each test customer is unique."""
-import unicodedata, hashlib, datetime, time, os
+import unicodedata, hashlib, datetime, time, os, zlib, struct, base64
 
 # stable within one script run (a script may derive the same identity twice), different between runs, so
 # a customer left behind by an interrupted run never collides by CURP with the next run
@@ -43,7 +43,21 @@ def _consonant(word, skip_first=True):
     return "X"
 
 
-def identity(full_name, seq=None, birth=datetime.date(1990, 5, 14), sex="M", state="DF", pep=False):
+def png_bytes(width=64, height=40, rgb=(30, 90, 160)):
+    """A small valid PNG (solid colour) to stand in for the scanned identification in test benches."""
+    filt = bytes([0])
+    raw = b"".join(filt + bytes(rgb) * width for _ in range(height))
+    def chunk(t, d): return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+    signature = bytes([137, 80, 78, 71, 13, 10, 26, 10])
+    return signature + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+
+
+def document_image(file_name="ine_frente.png"):
+    """Inline file for documentImage / POST .../kyc/documents (simulated verifier: *_mal.* = otra persona, *_ilegible.* = ilegible)."""
+    return {"fileName": file_name, "contentType": "image/png", "base64": base64.b64encode(png_bytes()).decode()}
+
+
+def identity(full_name, seq=None, birth=datetime.date(1990, 5, 14), sex="M", state="DF", pep=False, document=True):
     """full_name: 'Nombre Apellido' or 'Nombre Segundo ApellidoP ApellidoM' (words without letters,
     like the run number the scripts add, count as the surname PRUEBA). Returns the KYC fields."""
     words = normalize(full_name).split() or ["PRUEBA"]
@@ -69,6 +83,7 @@ def identity(full_name, seq=None, birth=datetime.date(1990, 5, 14), sex="M", sta
         "nationality": "MX", "occupation": "Empleado", "addressLine": "Av. Prueba 100", "postalCode": "06600", "state": "CDMX",
         "documentType": "INE", "documentNumber": "IDMEX%09d" % (key * 7 % 10 ** 9), "documentExpiresAt": (datetime.date.today() + datetime.timedelta(days=900)).isoformat(),
         "pep": pep,
+        **({"documentImage": document_image()} if document else {}),
     }
 
 

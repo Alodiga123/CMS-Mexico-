@@ -136,6 +136,7 @@ with c as (select %d as id),
  d9 as (delete from authorization_holds where card_id in (select id from c)),
  d10 as (delete from guild_alerts where card_id in (select id from c))
 delete from cards where id in (select id from c)""" % CARD], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
+sql("delete from kyc_documents where customer_id=%d" % c["id"]); sql("delete from kyc where customer_id=%d" % c["id"])
 sql("delete from customers where id=%d and not exists (select 1 from cards where customer_id=%d)" % (c["id"], c["id"]))
 check("datos de prueba borrados", sql("select count(*) from cards where id=%d" % CARD) == "0", out.stderr.strip()[:200])
 

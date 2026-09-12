@@ -38,7 +38,7 @@ class KycServiceTest {
         KycService.Outcome o = KycService.evaluate(maria(), "INE", "IDMEX1234567890", DOC_OK, false, CLEAN);
         assertEquals(KYCStatus.VERIFIED, o.status(), failed(o));
         assertEquals("LOW", o.riskLevel());
-        assertEquals(8, o.checks().size());
+        assertEquals(9, o.checks().size());
     }
 
     @Test

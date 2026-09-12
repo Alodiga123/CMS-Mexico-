@@ -43,6 +43,19 @@ public class CustomerCreateRequest {
 
     private String by;
 
+    /** Image of the identification, front and (optional) back, sent inline so one request registers and verifies. */
+    private InlineFile documentImage;
+    private InlineFile documentImageBack;
+
+    @Data
+    public static class InlineFile {
+        private String fileName;
+        private String contentType;
+        /** base64 of the file bytes */
+        private String base64;
+        public boolean present() { return base64 != null && !base64.isBlank(); }
+    }
+
     // legacy fields, accepted and ignored: cards are issued through /api/cards/issue
     private String cardLast4;
     @PositiveOrZero(message = "Initial deposit must be zero or positive")

@@ -78,6 +78,10 @@ public class ThirdPartyRegistry {
                     "Proveedor de listas PLD (p. ej. Dow Jones, LexisNexis, Bridger) o motor PLD corporativo", List.of("KYC_SCREENING_MODE", "KYC_SCREENING_URL", "KYC_SCREENING_API_KEY"),
                     List.of("Contrato con el proveedor de listas y frecuencia de actualización", "Clave de API y URL de consulta por persona (nombre, CURP, RFC, fecha de nacimiento)", "Umbral de coincidencia y tratamiento de falsos positivos", "Bitácora de consultas para la CNBV (PLD)", "Prueba: nombre de la lista de prueba rechazado, PEP a revisión"),
                     "kyc-clientes.md"),
+            new Definition("KYC_DOCUMENT", "Verificación de identificación (OCR / cotejo)", "Lee la INE o el pasaporte del titular y comprueba que corresponda a la persona registrada; sin proveedor, el analista coteja desde el expediente", Integration.ONLINE,
+                    "Proveedor de OCR y verificación de identidad (p. ej. Incode, Veridas, Jumio) o cotejo manual", List.of("KYC_DOCUMENT_MODE", "KYC_DOCUMENT_URL", "KYC_DOCUMENT_API_KEY", "KYC_DOCUMENT_MAX_BYTES"),
+                    List.of("Contrato con el proveedor y tipos de documento cubiertos (INE, pasaporte, FM2/FM3, matrícula consular)", "Clave de API y URL de lectura por imagen (JSON base64) con campos nombre, CURP, fecha, número y vigencia", "Umbral de similitud del nombre y tratamiento de ilegibles", "Resguardo cifrado de las imágenes y plazo de conservación (PLD)", "Prueba: imagen del titular coincide, imagen de otra persona rechaza"),
+                    "kyc-clientes.md"),
             new Definition("PERSO_BUREAU", "Bureau de personalización (plásticos)", "Recibe el archivo de emboce cifrado, produce y entrega los plásticos y el PIN mailer", Integration.FILE,
                     "IDEMIA / Thales / bureau local", List.of("PLASTICS_MANUFACTURER", "PLASTICS_MANUFACTURER_KEY", "PLASTICS_CHIP_PROFILE"),
                     List.of("Llave AES del archivo de emboce intercambiada en ceremonia", "Perfil de chip aprobado por la red (EMV) y datos de personalización", "Canal SFTP con llaves y ventana de corte", "Prueba de lote: archivo, acuse, producción, embarque", "Certificación PCI Card Production"),
@@ -118,6 +122,7 @@ public class ThirdPartyRegistry {
     private final MessagingProvider messaging;
     private final bank.cardissuing.thirdparty.merchants.MerchantDirectoryClient merchants;
     private final bank.cardissuing.customer.application.KycScreeningClient kycScreening;
+    private final bank.cardissuing.customer.application.DocumentVerifierClient kycDocuments;
     private final Environment env;
     private final AuditService audit;
 
@@ -168,6 +173,7 @@ public class ThirdPartyRegistry {
             case "MESSAGING" -> messaging.mode();
             case "MERCHANT_PORTAL" -> merchants.mode();
             case "KYC_SCREENING" -> kycScreening.simulated() ? "simulated" : "http";
+            case "KYC_DOCUMENT" -> kycDocuments.mode();
             case "HSM" -> env.getProperty("HSM_HOST", "localhost") + ":" + env.getProperty("HSM_PORT", "1500");
             case "IAM" -> Boolean.parseBoolean(env.getProperty("security.enabled", "true")) ? "introspection" : "disabled";
             case "PERSO_BUREAU" -> DEV_PERSO_KEY.equals(env.getProperty("plastics.manufacturer-key-base64", DEV_PERSO_KEY)) ? "dev-key" : "own-key";
@@ -204,6 +210,7 @@ public class ThirdPartyRegistry {
                     var h = kycScreening.health();
                     return new Health(h.available(), h.detail(), now);
                 }
+                case "KYC_DOCUMENT": return new Health(kycDocuments.healthy(), kycDocuments.health(), now);
                 case "PERSO_BUREAU": return "dev-key".equals(mode(d)) ? new Health(true, "clave de desarrollo: sustituir por la del bureau antes de producción", now) : new Health(true, "clave propia configurada", now);
                 case "COURIER": return new Health(true, "manual: la guía se captura al despachar", now);
                 case "TREASURY_SPEI": return new Health(true, "manual: la referencia SPEI se captura al pagar el ciclo", now);

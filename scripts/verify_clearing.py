@@ -52,6 +52,7 @@ with cu as (select id from customers where full_name in (%s)),
  d10 as (delete from reconciliation_items where card_id in (select id from c)),
  d11 as (delete from authorization_holds where card_id in (select id from c)),
  d12 as (delete from cards where id in (select id from c)),
+ d12b as (delete from kyc_documents where customer_id in (select id from cu)),
  d13 as (delete from kyc where customer_id in (select id from cu))
 delete from customers where id in (select id from cu)""" % lst], capture_output=True, text=True, env=dict(os.environ, PGPASSWORD="alodiga.123"))
 
