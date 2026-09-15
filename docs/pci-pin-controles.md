@@ -10,6 +10,15 @@ Los textos de los requisitos son paráfrasis para uso interno; antes de la evalu
 oficial de PCI SSC (biblioteca de documentos, filtro *PIN*). Las fechas de bloques de llave provienen del boletín de PCI SSC
 de agosto de 2020 recogido por Visa y Mastercard: fase 2 el 1 de enero de 2023, fase 3 el 1 de enero de 2025.
 
+## Camino de verificación de PIN ya implementado (sandbox)
+
+El flujo de verificación de PIN de extremo a extremo (terminal SoftPOS → DUKPT → traducción a la
+ZPK en el HSM del adquirente → DE52 → verificación contra el PVV en el autorizador del CMS) está
+implementado y probado en el entorno de pruebas. Ejercita el camino de datos de los controles de
+flujo de PIN (PINF-004, PINF-005, PINF-007, ISO-001, DUKPT-003/004); los controles de HSM
+certificado, dispositivo PTS, KIF y ceremonias de llaves siguen abiertos porque dependen de
+hardware y procedimientos. Detalle del flujo: `puntos-adquisicion-pos/VERIFICACION-PIN-PCI.md`.
+
 ## Cómo leer el estado
 
 | Estado | Significa |
