@@ -40,5 +40,10 @@ public class IsoSettings {
         /** Ruta al keystore PKCS12 con la llave y el certificado del servidor ISO. */
         private String keystore = "";
         private String keystorePassword = "";
+        /** TLS mutuo: exige y valida el certificado de cliente del adquirente. */
+        private boolean needClientAuth = false;
+        /** Truststore PKCS12 con el certificado de cliente autorizado (el del adquirente). */
+        private String truststore = "";
+        private String truststorePassword = "";
     }
 }

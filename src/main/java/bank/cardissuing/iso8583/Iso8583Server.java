@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
@@ -69,9 +71,18 @@ public class Iso8583Server {
             try (FileInputStream fis = new FileInputStream(tls.getKeystore())) { ks.load(fis, pw); }
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(ks, pw);
+            TrustManager[] tms = null;
+            if (tls.isNeedClientAuth()) {
+                KeyStore ts = KeyStore.getInstance("PKCS12");
+                try (FileInputStream tf = new FileInputStream(tls.getTruststore())) { ts.load(tf, tls.getTruststorePassword().toCharArray()); }
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tmf.init(ts);
+                tms = tmf.getTrustManagers();
+            }
             SSLContext ctx = SSLContext.getInstance("TLS");
-            ctx.init(kmf.getKeyManagers(), null, null);
+            ctx.init(kmf.getKeyManagers(), tms, null);
             SSLServerSocket ss = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket();
+            if (tls.isNeedClientAuth()) { ss.setNeedClientAuth(true); log.info("ISO 8583: TLS mutuo (exige certificado de cliente, truststore {})", tls.getTruststore()); }
             log.info("ISO 8583: TLS activado (keystore {})", tls.getKeystore());
             return ss;
         } catch (Exception e) {
