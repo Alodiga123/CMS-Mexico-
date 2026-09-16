@@ -66,10 +66,15 @@ public class IamClient {
         }
     }
 
-    /** Changes the user's own password in the IAM; the IAM checks the current one. */
-    public void changePassword(Long userId, String currentPassword, String newPassword) {
+    /**
+     * Changes the user's own password in the IAM; the IAM checks the current one. El IAM endureció
+     * este endpoint (PCI DSS 8.3.6): exige el Bearer del propio usuario y toma el userId del JWT
+     * (ignora cualquier userId del body). Sin token respondía 401 -> "cambio rechazado". Por eso se
+     * reenvía el token de sesión del usuario.
+     */
+    public void changePassword(String token, String currentPassword, String newPassword) {
         try {
-            post("/auth/change-password", Map.of("userId", String.valueOf(userId), "currentPassword", currentPassword, "newPassword", newPassword));
+            post("/auth/change-password", Map.of("currentPassword", currentPassword, "newPassword", newPassword), token);
         } catch (IamHttpException e) {
             if (e.status == 401 || e.status == 403 || e.status == 400) {
                 throw new BusinessException("AUTH_PASSWORD_REJECTED", messageOf(e.body, "El IAM rechazo el cambio de contrasena"), HttpStatus.BAD_REQUEST);
@@ -97,10 +102,16 @@ public class IamClient {
     }
 
     private JsonNode post(String path, Map<String, String> body) {
+        return post(path, body, null);
+    }
+
+    private JsonNode post(String path, Map<String, String> body, String bearer) {
         try {
-            HttpRequest req = HttpRequest.newBuilder(URI.create(settings.getIam().getBaseUrl() + path))
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(settings.getIam().getBaseUrl() + path))
                     .timeout(Duration.ofMillis(settings.getIam().getTimeoutMs()))
-                    .header("Content-Type", "application/json").header("Accept", "application/json")
+                    .header("Content-Type", "application/json").header("Accept", "application/json");
+            if (bearer != null && !bearer.isBlank()) builder.header("Authorization", "Bearer " + bearer);
+            HttpRequest req = builder
                     .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
             HttpResponse<String> r = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (r.statusCode() / 100 != 2) throw new IamHttpException(r.statusCode(), r.body());

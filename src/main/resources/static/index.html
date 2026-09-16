@@ -439,7 +439,7 @@
             const err = $('pwdError'); err.hidden = true;
             const nueva = $('pwdNew').value, rep = $('pwdRepeat').value;
             if (nueva !== rep) { err.hidden = false; err.textContent = 'Las contrasenas nuevas no coinciden'; return false; }
-            if (nueva.length < 10) { err.hidden = false; err.textContent = 'Usa al menos 10 caracteres'; return false; }
+            if (nueva.length < 12) { err.hidden = false; err.textContent = 'Usa al menos 12 caracteres'; return false; }
             const btn = $('pwdBtn'); btn.disabled = true; btn.textContent = 'Guardando...';
             try {
                 const res = await fetch('/api/auth/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -524,7 +524,7 @@
             <form id="pwdForm" onsubmit="return auth.changePassword(event)" hidden>
                 <p class="login-sub" style="margin:0">Define tu contraseña</p>
                 <label class="field"><span>Contraseña actual</span><input id="pwdCurrent" type="password" autocomplete="current-password" required></label>
-                <label class="field"><span>Contraseña nueva (mínimo 10 caracteres)</span><input id="pwdNew" type="password" autocomplete="new-password" minlength="10" required></label>
+                <label class="field"><span>Contraseña nueva (mínimo 12 caracteres)</span><input id="pwdNew" type="password" autocomplete="new-password" minlength="12" required></label>
                 <label class="field"><span>Repite la nueva</span><input id="pwdRepeat" type="password" autocomplete="new-password" minlength="10" required></label>
                 <div id="pwdError" class="login-error" hidden></div>
                 <button class="btn btn-primary btn-block" id="pwdBtn" type="submit">Guardar y entrar</button>

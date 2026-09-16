@@ -64,15 +64,22 @@ public class AuthController {
 
     /** The user changes their own IAM password from the console; the IAM verifies the current one. */
     @PostMapping("/change-password")
-    public ResponseEntity<Map<String, Object>> changePassword(@RequestBody ChangePasswordBody b) {
+    public ResponseEntity<Map<String, Object>> changePassword(@RequestBody ChangePasswordBody b,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         CmsPrincipal p = CmsPrincipal.current().orElseThrow(() -> new BusinessException("AUTH_REQUIRED", "Inicia sesion", HttpStatus.UNAUTHORIZED));
-        if (b == null || b.userId() == null || b.currentPassword() == null || b.newPassword() == null || b.newPassword().length() < 10) {
-            throw new BusinessException("AUTH_PASSWORD_INVALID", "La contrasena nueva debe tener al menos 10 caracteres", HttpStatus.BAD_REQUEST);
+        // El IAM exige mínimo 12 caracteres (AuthService.MIN_PASSWORD_LENGTH); validar aquí lo mismo
+        // evita que el CMS acepte una clave de 10-11 y luego el IAM la rechace con "cambio rechazado".
+        if (b == null || b.currentPassword() == null || b.newPassword() == null || b.newPassword().length() < 12) {
+            throw new BusinessException("AUTH_PASSWORD_INVALID", "La contrasena nueva debe tener al menos 12 caracteres", HttpStatus.BAD_REQUEST);
         }
         if (b.newPassword().equals(b.currentPassword())) {
             throw new BusinessException("AUTH_PASSWORD_INVALID", "La contrasena nueva debe ser distinta de la actual", HttpStatus.BAD_REQUEST);
         }
-        iam.changePassword(b.userId(), b.currentPassword(), b.newPassword());
+        // El IAM exige el Bearer del propio usuario y saca el userId del JWT (ver IamClient.changePassword).
+        if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            throw new BusinessException("AUTH_REQUIRED", "Inicia sesion", HttpStatus.UNAUTHORIZED);
+        }
+        iam.changePassword(authHeader.substring(7).trim(), b.currentPassword(), b.newPassword());
         audit.log("PASSWORD_CHANGED", "User", p.username(), p.username());
         return ResponseEntity.ok(Map.of("ok", true));
     }
