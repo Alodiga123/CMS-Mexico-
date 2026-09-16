@@ -7,12 +7,17 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyStore;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,7 +45,7 @@ public class Iso8583Server {
     public void start() {
         if (!settings.isEnabled()) { log.info("ISO 8583 listener disabled"); return; }
         try {
-            server = new ServerSocket();
+            server = createServerSocket();
             server.setReuseAddress(true);
             server.bind(new InetSocketAddress(settings.getBind(), settings.getPort()));
             pool = Executors.newCachedThreadPool(r -> { Thread t = new Thread(r, "iso8583-conn"); t.setDaemon(true); return t; });
@@ -51,6 +56,26 @@ public class Iso8583Server {
             log.info("ISO 8583 listener on {}:{}", settings.getBind(), settings.getPort());
         } catch (IOException e) {
             log.error("ISO 8583 listener could not bind {}:{}: {}", settings.getBind(), settings.getPort(), e.getMessage());
+        }
+    }
+
+    /** Socket TCP plano, o TLS (SSLServerSocket) cuando iso.tls.enabled=true, para cifrar el canal. */
+    private ServerSocket createServerSocket() throws IOException {
+        IsoSettings.Tls tls = settings.getTls();
+        if (!tls.isEnabled()) return new ServerSocket();
+        try {
+            char[] pw = tls.getKeystorePassword().toCharArray();
+            KeyStore ks = KeyStore.getInstance("PKCS12");
+            try (FileInputStream fis = new FileInputStream(tls.getKeystore())) { ks.load(fis, pw); }
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(ks, pw);
+            SSLContext ctx = SSLContext.getInstance("TLS");
+            ctx.init(kmf.getKeyManagers(), null, null);
+            SSLServerSocket ss = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket();
+            log.info("ISO 8583: TLS activado (keystore {})", tls.getKeystore());
+            return ss;
+        } catch (Exception e) {
+            throw new IOException("ISO 8583: no se pudo iniciar TLS: " + e.getMessage(), e);
         }
     }
 

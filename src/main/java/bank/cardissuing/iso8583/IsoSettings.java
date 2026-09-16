@@ -28,4 +28,17 @@ public class IsoSettings {
     private String arc = "3030";
     /** Messages kept in memory for the console. */
     private int logSize = 200;
+
+    /** TLS para el canal 8583 (cifra el PAN en tránsito, PCI DSS 4.2). */
+    private final Tls tls = new Tls();
+    public Tls getTls() { return tls; }
+
+    @Getter
+    @Setter
+    public static class Tls {
+        private boolean enabled = false;
+        /** Ruta al keystore PKCS12 con la llave y el certificado del servidor ISO. */
+        private String keystore = "";
+        private String keystorePassword = "";
+    }
 }
