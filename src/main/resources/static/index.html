@@ -2420,20 +2420,21 @@
                     globalHsmKeys = data;
 
                     if (!Array.isArray(data) || data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">No hay llaves en el Key Vault HSM.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">No hay llaves configuradas.</td></tr>';
                         return;
                     }
 
+                    // Referencias reales de las llaves configuradas en el CMS (bajo la LMK del HSM);
+                    // no se muestran blobs ni KCV fabricados.
                     tbody.innerHTML = data.map(k => `
                         <tr>
                             <td><strong>${k.label || k.id}</strong></td>
                             <td><span class="badge badge-purple">${k.keyTypeName || 'KEY'}</span></td>
-                            <td><code>${k.keyTypeCode || '000'}</code></td>
-                            <td><span class="badge badge-cyan">LMK ${k.lmkPairId || '14'} (Var ${k.variant || '00'})</span></td>
-                            <td><span class="badge badge-amber">${k.scheme === 'U' ? 'TDES-2KEY (U)' : (k.scheme === 'T' ? 'TDES-3KEY (T)' : 'AES-128 (S)')}</span></td>
-                            <td><strong style="color:var(--accent-emerald); font-family:'JetBrains Mono',monospace;">${k.kcv || '8A4F1D'}</strong></td>
-                            <td><code style="font-size:0.72rem; color:#38bdf8;">${(k.keyBlob || 'U0051400...').substring(0, 24)}...</code></td>
-                            <td><span class="badge badge-emerald">🟢 ACTIVE (PORT 8080)</span></td>
+                            <td><code>${k.keyTypeCode || ''}</code></td>
+                            <td colspan="3" style="color:var(--text-muted);">${k.detalle || '—'}</td>
+                            <td colspan="2">${k.configured
+                                ? '<span class="badge badge-emerald">🟢 Configurada</span>'
+                                : '<span class="badge badge-amber">⚪ No configurada</span>'}</td>
                         </tr>
                     `).join('');
                 } catch (err) {
@@ -2498,46 +2499,35 @@
             }
 
             async function viewHsmCardDetails(cardId) {
-                setHsmModalHeader('Detalles Criptográficos HSM de Tarjeta', 'Cifrado y verificación por PayShield 10K');
+                setHsmModalHeader('Detalles Criptográficos HSM de Tarjeta', 'Metadatos del material criptográfico (sin datos sensibles)');
                 document.getElementById('hsmDetailsModal').classList.add('active');
                 const body = document.getElementById('hsmModalBodyContent');
-                body.innerHTML = '<div style="text-align:center; padding: 2.5rem; color: var(--accent-cyan);">🔒 Conectando con Simulador HSM PayShield 10K en http://localhost:8080...</div>';
+                body.innerHTML = '<div style="text-align:center; padding: 2.5rem; color: var(--accent-cyan);">🔒 Consultando el HSM...</div>';
                 try {
-                    const res = await fetch(`/api/hsm/crypto/generate?bin=453211&last4=${cardId}&pinBlockFormat=ISO-0&pvkIndex=PVK-01`, { method: 'POST' });
+                    const res = await fetch(`/api/hsm/card/${cardId}`);
                     const data = await res.json();
-
+                    if (!res.ok) { body.innerHTML = `<div style="color:#ef4444; padding:2rem; text-align:center;">${data.message || ('Error ' + res.status)}</div>`; return; }
+                    const prov = data.provisioned ? '🟢 Aprovisionada' : '⚪ Sin aprovisionar';
+                    const online = data.hsmOnline ? '🟢 En línea' : '🔴 Fuera de línea';
                     body.innerHTML = `
                         <div style="display:flex; flex-direction:column; gap:1.2rem;">
                             <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3); padding:1rem; border-radius:14px;">
-                                <div style="font-size:0.8rem; font-weight:700; color:var(--accent-emerald); text-transform:uppercase;">Estado de Cifrado HSM</div>
-                                <div style="font-size:1.1rem; font-weight:800; color:#fff; margin-top:0.2rem;">${data.status} — ${data.hsmEndpoint}</div>
+                                <div style="font-size:0.8rem; font-weight:700; color:var(--accent-emerald); text-transform:uppercase;">HSM</div>
+                                <div style="font-size:1.1rem; font-weight:800; color:#fff; margin-top:0.2rem;">${online} · Tarjeta #${data.cardId} — ${prov}</div>
                             </div>
                             <div class="form-grid">
-                                <div class="form-group">
-                                    <label>Formato PIN Block ISO-0:</label>
-                                    <input type="text" class="form-control" value="${data.pinBlock}" readonly style="font-family:'JetBrains Mono',monospace; color:var(--accent-cyan);" />
-                                </div>
-                                <div class="form-group">
-                                    <label>PIN Verification Value (PVV):</label>
-                                    <input type="text" class="form-control" value="${data.pvv}" readonly style="font-family:'JetBrains Mono',monospace; color:var(--accent-emerald);" />
-                                </div>
-                                <div class="form-group">
-                                    <label>CVV2 Criptográfico:</label>
-                                    <input type="text" class="form-control" value="${data.cvv2}" readonly style="font-family:'JetBrains Mono',monospace; color:var(--accent-amber);" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Par de Claves CVK:</label>
-                                    <input type="text" class="form-control" value="${data.cvkPair || 'CVK-PAIR-01'} (KCV: ${data.kcvCvk || '3F9E2A'})" readonly style="font-family:'JetBrains Mono',monospace;" />
-                                </div>
-                                <div class="form-group" style="grid-column: 1/-1;">
-                                    <label>Clave DUKPT BDK Derivation:</label>
-                                    <input type="text" class="form-control" value="${data.bdkDukpt || 'BDK-01-DUKPT'} (KCV: ${data.kcvBdk || 'C7B1E4'})" readonly style="font-family:'JetBrains Mono',monospace;" />
-                                </div>
-                                <div class="form-group" style="grid-column: 1/-1;">
-                                    <label>KeyBlob LMK Encrypted Header:</label>
-                                    <textarea class="form-control" style="height:70px; font-family:'JetBrains Mono',monospace; color:var(--accent-emerald);" readonly>${data.keyBlob}</textarea>
-                                </div>
+                                <div class="form-group"><label>Formato de PIN block:</label>
+                                    <input type="text" class="form-control" value="${data.pinBlockFormat || ''}" readonly style="font-family:'JetBrains Mono',monospace; color:var(--accent-cyan);" /></div>
+                                <div class="form-group"><label>Índice PVKI:</label>
+                                    <input type="text" class="form-control" value="${data.pvki || ''}" readonly style="font-family:'JetBrains Mono',monospace;" /></div>
+                                <div class="form-group"><label>Índice de llave PVK:</label>
+                                    <input type="text" class="form-control" value="${data.pvkIndex || ''}" readonly style="font-family:'JetBrains Mono',monospace;" /></div>
+                                <div class="form-group"><label>Índice de llave CVK:</label>
+                                    <input type="text" class="form-control" value="${data.cvkIndex || ''}" readonly style="font-family:'JetBrains Mono',monospace;" /></div>
+                                <div class="form-group" style="grid-column: 1/-1;"><label>Aprovisionado el:</label>
+                                    <input type="text" class="form-control" value="${data.cryptoProvisionedAt || 'N/D'}" readonly style="font-family:'JetBrains Mono',monospace;" /></div>
                             </div>
+                            <div style="font-size:0.78rem; color:var(--text-muted);">${data.nota || ''} El PVV vive cifrado; el PIN nunca se almacena; el CVV se recalcula en el HSM cuando se necesita.</div>
                         </div>
                     `;
                 } catch (err) {

@@ -6,7 +6,6 @@ import bank.cardissuing.card.domain.CardStatus;
 import bank.cardissuing.card.infrastructure.CardRepository;
 import bank.cardissuing.common.exception.BusinessException;
 import bank.cardissuing.common.exception.ResourceNotFoundException;
-import bank.cardissuing.hsm.infrastructure.HsmService;
 import bank.cardissuing.plastics.domain.Plastic;
 import bank.cardissuing.plastics.domain.Plastic.Reason;
 import bank.cardissuing.plastics.domain.Plastic.Status;
@@ -39,7 +38,6 @@ public class PlasticService {
     private final PlasticRepository plastics;
     private final PlasticBatchRepository batches;
     private final CardRepository cards;
-    private final HsmService hsm;
     private final PersoFileBuilder files;
     private final PlasticSettings settings;
     private final AuditService audit;
@@ -112,14 +110,13 @@ public class PlasticService {
                 }
                 pvv = card.getPvv();
                 cvv2 = cardCrypto.cvvs(pan, p.getExpiry() != null ? p.getExpiry() : card.getExpiryDate(), settings.getServiceCode()).cvv2();
-            } else try {
-                HsmService.HsmCardCryptoResult crypto = hsm.generateCardCryptograms(bin, card.getLast4(),
-                        card.getProduct() != null ? card.getProduct().getPinBlockFormat() : "ISO-0",
-                        card.getProduct() != null ? card.getProduct().getPvkIndex() : "PVK-01");
-                if (crypto != null) { pvv = crypto.getPvv(); cvv2 = crypto.getCvv2(); }
-            } catch (RuntimeException e) {
+            } else {
+                // Sin PAN en la bóveda no se personaliza: se retiró el generador HSM heredado que
+                // fabricaba PVV/CVV con Math.random (A6). La cripto de personalización es la real
+                // (CardCryptoService) del bloque de arriba.
                 throw new BusinessException("HSM_UNAVAILABLE",
-                        "Cannot personalize without the HSM: " + e.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
+                        "No se puede personalizar la tarjeta " + card.getId() + " sin PAN cifrado / HSM",
+                        HttpStatus.SERVICE_UNAVAILABLE);
             }
             records.add(new PersoFileBuilder.Record(++recordNo, p.getId(), p.getSequence(), card.getId(), bin, card.getLast4(),
                     p.getEmbossedName(), p.getExpiry(), settings.getServiceCode(), p.getChipProfile(), pvv, cvv2, p.isPinMailer(),

@@ -5,7 +5,7 @@ import bank.cardissuing.card.domain.*;
 import bank.cardissuing.card.infrastructure.CardRepository;
 import bank.cardissuing.common.exception.BusinessException;
 import bank.cardissuing.customer.domain.Customer;
-import bank.cardissuing.hsm.infrastructure.HsmService;
+import bank.cardissuing.hsm.application.CardCryptoService;
 import bank.cardissuing.plastics.application.PersoFileBuilder;
 import bank.cardissuing.plastics.application.PlasticService;
 import bank.cardissuing.plastics.application.PlasticSettings;
@@ -41,9 +41,8 @@ class PlasticServiceTest {
     @Mock PlasticRepository plastics;
     @Mock PlasticBatchRepository batches;
     @Mock CardRepository cards;
-    @Mock HsmService hsm;
+    @Mock CardCryptoService cardCrypto;
     @Mock AuditService audit;
-    @Mock HsmService.HsmCardCryptoResult crypto;
 
     PlasticSettings settings = new PlasticSettings();
     PersoFileBuilder files = new PersoFileBuilder(settings);
@@ -55,10 +54,12 @@ class PlasticServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PlasticService(plastics, batches, cards, hsm, files, settings, audit);
+        service = new PlasticService(plastics, batches, cards, files, settings, audit);
+        service.setCardCrypto(cardCrypto);
         card = new Card(new Customer("Ana Pérez", "555"), "4321", CardStatus.ACTIVE, LocalDate.of(2028, 6, 30));
         card.setId(7L);
         card.setEmbossedName("ANA PEREZ");
+        card.setPanEncrypted("k1:enc"); // hay PAN en la bóveda -> se usa el HSM real (CardCryptoService)
         card.setProduct(new CardProduct("P", "Prepago MX", CardType.PREPAID, PaymentType.PREPAID, CardNetwork.VISA, "453212", "MXN", null, true));
         when(cards.findById(7L)).thenReturn(Optional.of(card));
         when(cards.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -71,9 +72,10 @@ class PlasticServiceTest {
         when(batches.save(any())).thenAnswer(i -> { PlasticBatch b = i.getArgument(0); if (b.getId() == null) b.setId(ids.getAndIncrement()); return b; });
         when(batches.findById(anyLong())).thenAnswer(i -> Optional.ofNullable(lastBatch));
         when(batches.countByCreatedAtAfter(any())).thenReturn(0L);
-        when(crypto.getPvv()).thenReturn("1234");
-        when(crypto.getCvv2()).thenReturn("567");
-        when(hsm.generateCardCryptograms(any(), any(), any(), any())).thenReturn(crypto);
+        // HSM real (CardCryptoService): PAN de la bóveda, PVV/CVV para el archivo de personalización.
+        when(cardCrypto.panOf(any())).thenReturn(Optional.of("4532127108082256"));
+        when(cardCrypto.provisionPin(any())).thenReturn(new CardCryptoService.Provisioned("1234", "1", "0000"));
+        when(cardCrypto.cvvs(any(), any(), any())).thenReturn(new CardCryptoService.Cvvs("111", "567", "999"));
     }
 
     private PlasticBatch build() { lastBatch = service.buildBatch(null, "ops"); return lastBatch; }
@@ -81,6 +83,7 @@ class PlasticServiceTest {
     private Card otherCard(long id, String last4, CardStatus status) {
         Card c = new Card(new Customer("Luis Gómez", "555"), last4, status, LocalDate.of(2027, 1, 31));
         c.setId(id); c.setProduct(card.getProduct()); c.setEmbossedName("LUIS GOMEZ");
+        c.setPanEncrypted("k1:enc");
         return c;
     }
 
@@ -128,7 +131,7 @@ class PlasticServiceTest {
     @Test
     void buildBatch_withoutTheHsm_fails() {
         service.request(card, Reason.NEW, null, false, null);
-        when(hsm.generateCardCryptograms(any(), any(), any(), any())).thenThrow(new RuntimeException("connection refused"));
+        when(cardCrypto.provisionPin(any())).thenThrow(new BusinessException("HSM_UNAVAILABLE", "connection refused", org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE));
         assertEquals("HSM_UNAVAILABLE", assertThrows(BusinessException.class, () -> service.buildBatch(null, null)).getErrorCode());
     }
 
