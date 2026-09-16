@@ -82,10 +82,17 @@ public class CardController {
     private CardResponse toResponse(Card card) {
         Customer customer = card.getCustomer();
         CardProduct product = card.getProduct();
-        BigDecimal balance = BigDecimal.ZERO;
-        LedgerAccount account = ledgerAccountRepository.findByCard(card).orElse(null);
-        if (account != null) {
-            balance = ledgerEntryRepository.calculateBalance(account);
+        // Saldo disponible REAL según el tipo de fondos, no solo el ledger local: prepago = ledger,
+        // crédito = línea disponible, débito-core = saldo en el core. Antes se calculaba solo desde el
+        // ledger, así que crédito y débito-core salían siempre en 0.00 en el listado (el detalle sí
+        // usaba el FundsRouter). Si el core está caído o la tarjeta no tiene producto, se cae al
+        // ledger para no romper el listado completo.
+        BigDecimal balance;
+        try {
+            balance = fundsRouter.forCard(card).available(card);
+        } catch (RuntimeException e) {
+            LedgerAccount account = ledgerAccountRepository.findByCard(card).orElse(null);
+            balance = account != null ? ledgerEntryRepository.calculateBalance(account) : BigDecimal.ZERO;
         }
         return new CardResponse(
                 card.getId(),
