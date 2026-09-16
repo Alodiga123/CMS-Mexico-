@@ -72,7 +72,8 @@ public class HsmService {
 
             // Execute HSM cryptographic calculation
             Map<?, ?> hsmRes = restTemplate.postForObject(HSM_URL + "/api/bank-lab/card-data/run", payload, Map.class);
-            log.info("HSM Card Cryptogram Generation Response from http://localhost:8080: {}", hsmRes);
+            // No registrar la respuesta cruda del HSM: puede contener criptogramas/SAD (PCI DSS 3.3.1/10).
+            log.info("Generación de criptogramas en el HSM completada ({})", hsmRes != null ? "ok" : "sin respuesta");
 
             long ts = System.currentTimeMillis() % 1000000;
             result.setPinBlock("ISO0_" + ts + "A8F9");

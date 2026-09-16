@@ -54,6 +54,7 @@ public class CardController {
     private final bank.cardissuing.hsm.infrastructure.HsmService hsmService;
     private final CoreAccountLinker coreAccountLinker;
     private final CoreBankingClient coreBankingClient;
+    private final org.springframework.core.env.Environment env;
     private final bank.cardissuing.funds.infrastructure.AuthorizationHoldRepository holdRepository;
 
     @GetMapping
@@ -145,8 +146,8 @@ public class CardController {
         String pvk = product != null ? product.getPvkIndex() : "PVK-01";
         bank.cardissuing.hsm.infrastructure.HsmService.HsmCardCryptoResult crypto = hsmService.generateCardCryptograms(bin, last4, format, pvk);
 
-        log.info("HSM Cryptogram Result from PayShield Simulator (http://localhost:8080): PINBlock={}, PVV={}, CVV2={}, Status={}",
-                crypto.getPinBlock(), crypto.getPvv(), crypto.getCvv2(), crypto.getStatus());
+        // Nunca registrar PIN block / PVV / CVV en bitácora (SAD, PCI DSS 3.3.1/10): solo el estado.
+        log.info("Criptogramas de tarjeta generados en el HSM para la emisión (estado={})", crypto.getStatus());
 
         Card card = new Card();
         card.setCustomer(customer);
@@ -190,7 +191,8 @@ public class CardController {
 
         BigDecimal initialDeposit = request.getInitialDeposit() != null ? request.getInitialDeposit() : BigDecimal.ZERO;
         if (!linkedToCore && initialDeposit.compareTo(BigDecimal.ZERO) > 0) {
-            LedgerEntry entry = new LedgerEntry(account, EntryType.CREDIT, initialDeposit, "Initial Issuance Deposit (HSM Encrypted PIN Block: " + crypto.getPinBlock() + ")");
+            // La descripción del asiento nunca lleva el PIN block (SAD, PCI DSS 3.3.1).
+            LedgerEntry entry = new LedgerEntry(account, EntryType.CREDIT, initialDeposit, "Initial Issuance Deposit");
             ledgerEntryRepository.save(entry);
         }
 
@@ -275,6 +277,11 @@ public class CardController {
     /** Test benches only (hsm.host.expose-test-secrets=true): what a terminal or a chip would know about this card. */
     @GetMapping("/{id}/test-secrets")
     public ResponseEntity<Map<String, Object>> testSecrets(@PathVariable Long id) {
+        // Bloqueo duro en producción: este endpoint expone PAN/PIN/CVV/track2 en claro y NO debe
+        // existir en prod, ni siquiera con el flag activo (PCI DSS 3.2/3.3/3.5). No depende solo del flag.
+        if (env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"))) {
+            throw new BusinessException("TEST_SECRETS_OFF", "no disponible en producción", HttpStatus.NOT_FOUND);
+        }
         if (!cardCrypto.exposesTestSecrets()) throw new BusinessException("TEST_SECRETS_OFF", "hsm.host.expose-test-secrets is off", HttpStatus.NOT_FOUND);
         Card card = cardRepository.findById(id).orElseThrow(() -> new BusinessException("CARD_NOT_FOUND", "Card " + id + " not found", HttpStatus.NOT_FOUND));
         String pan = cardCrypto.panOf(card).orElseThrow(() -> new BusinessException("CARD_WITHOUT_PAN", "Card " + id + " was issued before the PAN vault", HttpStatus.UNPROCESSABLE_ENTITY));

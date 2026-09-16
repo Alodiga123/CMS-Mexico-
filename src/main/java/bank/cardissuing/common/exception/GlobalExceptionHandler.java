@@ -58,12 +58,12 @@ public class GlobalExceptionHandler {
                         Exception ex, HttpServletRequest request) {
                 log.error("Unhandled exception at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
 
+                // No revelar detalles internos al cliente (PCI DSS 6.2.4): el detalle va solo al log
+                // del servidor con el traceId; el cliente recibe un mensaje genérico y ese traceId.
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                 .body(ApiErrorResponse.builder()
                                                 .errorCode("INTERNAL_SERVER_ERROR")
-                                                .message("An unexpected error occurred: " + ex.toString()) // Temporary
-                                                                                                           // for
-                                                                                                           // debugging
+                                                .message("Ocurrió un error inesperado. Refiere el traceId al soporte técnico.")
                                                 .path(request.getRequestURI())
                                                 .timestamp(LocalDateTime.now())
                                                 .traceId(MDC.get("traceId"))

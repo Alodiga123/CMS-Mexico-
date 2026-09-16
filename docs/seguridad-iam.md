@@ -57,9 +57,11 @@ arranca el servidor en desarrollo).
 Cuando el IAM crea una cuenta con contraseña temporal (marca `mustChangePassword`), la consola
 lo detecta al entrar: `POST /api/auth/login` devuelve `userId` y `mustChangePassword`, y la
 tarjeta de acceso muestra el formulario "Define tu contraseña" antes de dejar trabajar. El
-cambio viaja por `POST /api/auth/change-password` (sesión requerida; `userId`,
-`currentPassword`, `newPassword` de al menos 10 caracteres) al `/auth/change-password` del
-IAM, que verifica la contraseña actual y borra la marca. El mismo formulario sirve de
+cambio viaja por `POST /api/auth/change-password` (sesión requerida; el CMS reenvía el Bearer
+del usuario, y el IAM toma el `userId` del JWT; `currentPassword` y `newPassword` de al menos
+**12 caracteres**, PCI DSS 8.3.6) al `/auth/change-password` del IAM, que verifica la
+contraseña actual y borra la marca. La complejidad (historial, expiración, bloqueo) la aplica
+el IAM. El mismo formulario sirve de
 autoservicio desde el botón "Contraseña" de la sesión. `scripts/verify_password_change.py`
 (10 comprobaciones) lo prueba contra el IAM local. Para operar sin la consola del IAM hay
 `scripts/iam_crear_usuario_cms.py` (alta con rol CMS_* y proyecto) y

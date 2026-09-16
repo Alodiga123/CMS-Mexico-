@@ -25,6 +25,7 @@ public class AuthController {
     private final IamSettings settings;
     private final IamAuthenticationFilter filter;
     private final AuditService audit;
+    private final LoginRateLimiter rateLimiter;
 
     public record LoginBody(String username, String password) { }
 
@@ -33,7 +34,21 @@ public class AuthController {
         if (b == null || b.username() == null || b.username().isBlank() || b.password() == null || b.password().isBlank()) {
             throw new BusinessException("AUTH_INVALID_CREDENTIALS", "Usuario y contraseña son obligatorios", HttpStatus.BAD_REQUEST);
         }
-        IamClient.Login l = iam.login(b.username().trim(), b.password());
+        // Bloqueo por intentos en el propio CMS (PCI DSS 8.3.4), además del que aplique el IAM.
+        // Se bloquea por USUARIO (control por cuenta): no por IP, porque detrás del reverse proxy
+        // muchos usuarios pueden compartir la misma IP de origen y unos pocos fallos bloquearían a
+        // todos. Habilitar el bloqueo por IP solo cuando el proxy de borde propague la IP real.
+        String user = b.username().trim();
+        rateLimiter.assertNotBlocked(user);
+        IamClient.Login l;
+        try {
+            l = iam.login(user, b.password());
+        } catch (BusinessException e) {
+            // Solo cuenta como intento fallido el rechazo de credenciales, no una caída del IAM.
+            if (e.getHttpStatus() == HttpStatus.UNAUTHORIZED) rateLimiter.recordFailure(user);
+            throw e;
+        }
+        rateLimiter.reset(user);
         IamClient.Introspection i = iam.introspect(l.accessToken());
         boolean superAdmin = i.roles().contains("SUPER_ADMIN");
         if (!i.projectAccessGranted() && !superAdmin) {

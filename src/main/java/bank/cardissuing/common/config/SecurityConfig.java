@@ -45,7 +45,21 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
-            .logout(AbstractHttpConfigurer::disable);
+            .logout(AbstractHttpConfigurer::disable)
+            // Cabeceras de seguridad (PCI DSS 6.4.1 / OWASP). La CSP tolera el inline de la consola
+            // (SPA con JS/CSS embebido); endurecerla (quitar 'unsafe-inline'/'unsafe-eval') es un paso
+            // posterior con nonces. HSTS solo viaja sobre HTTPS (TLS termina en el reverse proxy).
+            .headers(h -> h
+                .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
+                .frameOptions(f -> f.sameOrigin())
+                .referrerPolicy(r -> r.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                    "font-src 'self' https://fonts.gstatic.com data:; " +
+                    "img-src 'self' data:; connect-src 'self'; " +
+                    "frame-ancestors 'self'; base-uri 'self'; object-src 'none'")));
 
         if (!settings.isEnabled()) {
             log.warn("SECURITY DISABLED (security.enabled=false): every endpoint is open. Development only.");
