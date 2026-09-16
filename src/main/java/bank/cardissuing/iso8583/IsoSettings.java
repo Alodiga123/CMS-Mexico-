@@ -14,6 +14,8 @@ public class IsoSettings {
     private boolean enabled = true;
     private int port = 8583;
     private String bind = "0.0.0.0";
+    /** Direcciones (IP exacta o CIDR) autorizadas a conectarse al listener. Vacío = todas. */
+    private java.util.List<String> allowedPeers = new java.util.ArrayList<>();
     /** Milliseconds a connection may sit idle before it is closed. */
     private int idleTimeoutMs = 300_000;
     /** Most simultaneous switch connections. */

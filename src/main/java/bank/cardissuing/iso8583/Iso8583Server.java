@@ -61,6 +61,32 @@ public class Iso8583Server {
         }
     }
 
+    /** ¿El origen de la conexión está en la lista de direcciones permitidas? Lista vacía = todas. */
+    private boolean peerAllowed(Socket s) {
+        var list = settings.getAllowedPeers();
+        if (list == null || list.isEmpty()) return true;
+        if (!(s.getRemoteSocketAddress() instanceof InetSocketAddress isa) || isa.getAddress() == null) return false;
+        java.net.InetAddress addr = isa.getAddress();
+        for (String rule : list) { if (rule != null && matchesRule(rule.trim(), addr)) return true; }
+        return false;
+    }
+
+    /** Coincidencia por IP exacta o por CIDR (ip/prefijo), IPv4/IPv6. */
+    private static boolean matchesRule(String rule, java.net.InetAddress addr) {
+        if (rule.isEmpty()) return false;
+        try {
+            if (!rule.contains("/")) return java.net.InetAddress.getByName(rule).equals(addr);
+            String[] p = rule.split("/", 2);
+            byte[] a = addr.getAddress();
+            byte[] n = java.net.InetAddress.getByName(p[0]).getAddress();
+            if (a.length != n.length) return false;
+            int prefix = Integer.parseInt(p[1]), full = prefix / 8, rem = prefix % 8;
+            for (int i = 0; i < full; i++) if (a[i] != n[i]) return false;
+            if (rem > 0) { int mask = 0xFF << (8 - rem); if ((a[full] & mask) != (n[full] & mask)) return false; }
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
     /** Socket TCP plano, o TLS (SSLServerSocket) cuando iso.tls.enabled=true, para cifrar el canal. */
     private ServerSocket createServerSocket() throws IOException {
         IsoSettings.Tls tls = settings.getTls();
@@ -94,6 +120,7 @@ public class Iso8583Server {
         while (running) {
             try {
                 Socket s = server.accept();
+                if (!peerAllowed(s)) { log.warn("ISO 8583: conexión rechazada por allowlist desde {}", s.getRemoteSocketAddress()); s.close(); continue; }
                 if (connections.get() >= settings.getMaxConnections()) { log.warn("ISO 8583: connection limit reached, refusing {}", s.getRemoteSocketAddress()); s.close(); continue; }
                 connections.incrementAndGet();
                 pool.submit(() -> serve(s));
