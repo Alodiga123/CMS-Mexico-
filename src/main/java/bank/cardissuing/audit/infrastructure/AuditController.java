@@ -22,6 +22,13 @@ import java.util.stream.Collectors;
 public class AuditController {
 
     private final AuditLogRepository auditLogRepository;
+    private final bank.cardissuing.audit.application.AuditService auditService;
+
+    /** Verifica la integridad (tamper-evidence) de la cadena de hash de la bitácora (PCI DSS 10.5). */
+    @GetMapping("/verify")
+    public ResponseEntity<bank.cardissuing.audit.application.AuditService.ChainCheck> verify() {
+        return ResponseEntity.ok(auditService.verifyChain());
+    }
 
     /** Paged, newest first, with filters. Without page/size the whole log comes back as before. */
     @GetMapping(params = {"page"})

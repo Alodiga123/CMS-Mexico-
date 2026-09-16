@@ -27,4 +27,12 @@ public class AuditLog {
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 
+    // Tamper-evidence (PCI DSS 10.3.2/10.5): cada registro encadena el hash del anterior. Alterar,
+    // borrar o insertar una fila rompe la cadena y lo detecta AuditService.verifyChain().
+    @Column(length = 64)
+    private String prevHash;
+
+    @Column(length = 64)
+    private String recordHash;
+
 }

@@ -11,6 +11,12 @@ import java.util.List;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
+    /** El último registro por id, para encadenar el hash del siguiente (tamper-evidence). */
+    AuditLog findTopByOrderByIdDesc();
+
+    /** Todos en orden de inserción, para verificar la cadena de hash. */
+    List<AuditLog> findAllByOrderByIdAsc();
+
     /** Newest first, narrowed by whatever filters the reader gave (null means any). */
     @Query("select a from AuditLog a where (:entity is null or a.entityName = :entity) and (:action is null or a.action = :action)"
             + " and (:user is null or a.username = :user) and (:entityId is null or a.entityId = :entityId) order by a.timestamp desc, a.id desc")

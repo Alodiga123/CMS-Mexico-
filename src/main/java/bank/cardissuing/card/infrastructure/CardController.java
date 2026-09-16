@@ -51,7 +51,6 @@ public class CardController {
     private final bank.cardissuing.customer.infrastructure.KYCRepository kycRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
-    private final bank.cardissuing.hsm.infrastructure.HsmService hsmService;
     private final CoreAccountLinker coreAccountLinker;
     private final CoreBankingClient coreBankingClient;
     private final org.springframework.core.env.Environment env;
@@ -140,14 +139,10 @@ public class CardController {
                 ? request.getLast4()
                 : String.format("%04d", new Random().nextInt(10000));
 
-        // Invoke Simulador-HSM-Alodiga on http://localhost:8080 to generate cryptograms
+        // La criptografía real (PVV/CVV) se hace más abajo vía CardCryptoService contra el HSM
+        // (comandos BA/DG/CW). Se retiró la llamada al HsmService heredado que fabricaba PIN block/PVV/CVV
+        // con Math.random() (A6): no debe generar material criptográfico en la emisión.
         String bin = product != null ? product.getBin() : "453211";
-        String format = product != null ? product.getPinBlockFormat() : "ISO-0";
-        String pvk = product != null ? product.getPvkIndex() : "PVK-01";
-        bank.cardissuing.hsm.infrastructure.HsmService.HsmCardCryptoResult crypto = hsmService.generateCardCryptograms(bin, last4, format, pvk);
-
-        // Nunca registrar PIN block / PVV / CVV en bitácora (SAD, PCI DSS 3.3.1/10): solo el estado.
-        log.info("Criptogramas de tarjeta generados en el HSM para la emisión (estado={})", crypto.getStatus());
 
         Card card = new Card();
         card.setCustomer(customer);
