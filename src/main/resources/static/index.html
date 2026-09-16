@@ -389,6 +389,7 @@
             const sc = $('loginScreen'); if (!sc) return;
             sc.hidden = false; document.body.classList.add('login-open');
             const err = $('loginError'); if (err) { err.hidden = !message; err.textContent = message || ''; }
+            captchaNew();
             setTimeout(() => { const u = $('loginUser'); if (u) u.focus(); }, 50);
         }
         function hide() { const sc = $('loginScreen'); if (sc) sc.hidden = true; document.body.classList.remove('login-open'); }
@@ -409,8 +410,41 @@
             }
         }
 
+        // Verificación anti-bot del login (reCAPTCHA v2, reto 100% de cliente: casilla + suma).
+        // Igual que el Portal de Adquisición. Es una barrera de UI; la protección real de la API
+        // vive en el IAM (bloqueo por intentos). No viaja al backend.
+        let capA = 4, capB = 7, capOk = false;
+        function captchaNew() {
+            capA = Math.floor(Math.random() * 8) + 1;
+            capB = Math.floor(Math.random() * 8) + 1;
+            capOk = false;
+            const q = $('captchaQ'); if (q) q.textContent = capA + ' + ' + capB + ' =';
+            const a = $('captchaAns'); if (a) a.value = '';
+            const m = $('captchaMark'); if (m) m.style.display = 'none';
+            const s = $('captchaSpin'); if (s) s.style.display = 'none';
+            const c = $('captchaCheck'); if (c) c.setAttribute('aria-checked', 'false');
+        }
+        function captchaToggle() {
+            const m = $('captchaMark'), s = $('captchaSpin'), c = $('captchaCheck');
+            if (capOk) { capOk = false; if (m) m.style.display = 'none'; if (c) c.setAttribute('aria-checked', 'false'); return; }
+            if (s) s.style.display = 'inline-block';
+            setTimeout(() => {
+                if (s) s.style.display = 'none';
+                if (m) m.style.display = 'inline';
+                if (c) c.setAttribute('aria-checked', 'true');
+                capOk = true;
+            }, 500);
+        }
+
         async function submit(ev) {
             ev.preventDefault();
+            const errEl = $('loginError');
+            // Reto anti-bot antes de llamar al backend
+            if (!capOk) { errEl.hidden = false; errEl.textContent = 'Marca la casilla de verificación (No soy un robot).'; return false; }
+            if (parseInt($('captchaAns').value, 10) !== capA + capB) {
+                errEl.hidden = false; errEl.textContent = 'Prueba anti-bot incorrecta: ¿cuánto es ' + capA + ' + ' + capB + '?';
+                captchaNew(); return false;
+            }
             const btn = $('loginBtn'); btn.disabled = true; btn.textContent = 'Entrando…';
             try {
                 const res = await rawFetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -503,13 +537,32 @@
             } catch (e) { alert('No se pudo descargar: ' + e.message); }
         }, true);
 
-        window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show, changePassword, openChangePassword };
+        window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show, changePassword, openChangePassword, captchaToggle, captchaNew };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
     })();
     </script>
     <script src="/ops/pager.js?v=20260912a" defer></script>
 </head>
 <body>
+    <style>
+      /* Verificación anti-bot (reCAPTCHA v2, reto de cliente) del login */
+      .captcha-box{border:1px solid #d7dde8;border-radius:10px;padding:12px;margin:2px 0 12px;background:#f8fafc;}
+      .captcha-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+      .captcha-check-wrap{display:flex;align-items:center;gap:10px;}
+      .captcha-check{width:26px;height:26px;border:2px solid #9aa7bd;border-radius:5px;background:#fff;display:grid;place-items:center;cursor:pointer;flex:0 0 auto;}
+      .captcha-mark{color:#15803d;font-weight:800;font-size:16px;display:none;line-height:1;}
+      .captcha-spin{display:none;width:15px;height:15px;border:2px solid #cbd5e1;border-top-color:#4b5563;border-radius:50%;animation:capspin .7s linear infinite;}
+      @keyframes capspin{to{transform:rotate(360deg);}}
+      .captcha-title{font-weight:600;font-size:.9rem;color:#1f2937;line-height:1.15;}
+      .captcha-note{font-size:.72rem;color:#6b7280;}
+      .captcha-brand{text-align:right;line-height:1.15;}
+      .captcha-brand-1{font-size:.72rem;color:#0f766e;font-weight:700;}
+      .captcha-brand-2{font-size:.62rem;color:#9aa7bd;}
+      .captcha-challenge{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+      .captcha-q{font-family:'JetBrains Mono',monospace;font-weight:700;background:rgba(224,87,79,.12);color:#e0574f;padding:2px 8px;border-radius:6px;}
+      .captcha-input{width:72px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem;}
+      .captcha-refresh{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:4px 9px;cursor:pointer;color:#4b5563;}
+    </style>
     <!-- ══════════ INICIO DE SESIÓN (IAM) ══════════ -->
     <section id="loginScreen" class="login" hidden>
         <div class="login-card">
@@ -518,6 +571,32 @@
             <form id="loginForm" onsubmit="return auth.submit(event)">
                 <label class="field"><span>Usuario</span><input id="loginUser" type="text" autocomplete="username" required></label>
                 <label class="field"><span>Contraseña</span><input id="loginPass" type="password" autocomplete="current-password" required></label>
+                <!-- Verificación anti-bot (reCAPTCHA v2, reto de cliente) -->
+                <div id="captchaBox" class="captcha-box">
+                    <div class="captcha-top">
+                        <div class="captcha-check-wrap">
+                            <div id="captchaCheck" class="captcha-check" role="checkbox" aria-checked="false" tabindex="0"
+                                 onclick="auth.captchaToggle()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();auth.captchaToggle();}">
+                                <span id="captchaMark" class="captcha-mark">✓</span>
+                                <span id="captchaSpin" class="captcha-spin"></span>
+                            </div>
+                            <div>
+                                <div class="captcha-title">No soy un robot</div>
+                                <div class="captcha-note">Verificación de seguridad anti-bot</div>
+                            </div>
+                        </div>
+                        <div class="captcha-brand">
+                            <div class="captcha-brand-1">🛡 reCAPTCHA v2</div>
+                            <div class="captcha-brand-2">PCI Security Pass</div>
+                        </div>
+                    </div>
+                    <div class="captcha-challenge">
+                        <span class="captcha-note">Resolver prueba:</span>
+                        <span id="captchaQ" class="captcha-q">4 + 7 =</span>
+                        <input id="captchaAns" type="number" inputmode="numeric" class="captcha-input" aria-label="Respuesta de la prueba anti-bot">
+                        <button type="button" class="captcha-refresh" title="Nuevo reto" onclick="auth.captchaNew()">↻</button>
+                    </div>
+                </div>
                 <div id="loginError" class="login-error" hidden></div>
                 <button class="btn btn-primary btn-block" id="loginBtn" type="submit">Entrar</button>
             </form>
@@ -525,7 +604,7 @@
                 <p class="login-sub" style="margin:0">Define tu contraseña</p>
                 <label class="field"><span>Contraseña actual</span><input id="pwdCurrent" type="password" autocomplete="current-password" required></label>
                 <label class="field"><span>Contraseña nueva (mínimo 12 caracteres)</span><input id="pwdNew" type="password" autocomplete="new-password" minlength="12" required></label>
-                <label class="field"><span>Repite la nueva</span><input id="pwdRepeat" type="password" autocomplete="new-password" minlength="10" required></label>
+                <label class="field"><span>Repite la nueva</span><input id="pwdRepeat" type="password" autocomplete="new-password" minlength="12" required></label>
                 <div id="pwdError" class="login-error" hidden></div>
                 <button class="btn btn-primary btn-block" id="pwdBtn" type="submit">Guardar y entrar</button>
                 <button class="btn btn-block" type="button" onclick="auth.logout()">Cancelar y salir</button>
