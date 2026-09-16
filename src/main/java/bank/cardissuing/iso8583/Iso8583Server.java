@@ -1,5 +1,6 @@
 package bank.cardissuing.iso8583;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,29 @@ public class Iso8583Server {
 
     private final IsoSettings settings;
     private final IsoAuthorizationHandler handler;
+    private final org.springframework.core.env.Environment env;
+
+    /**
+     * En producción (perfil 'prod') el canal 8583 transporta PAN y el bloque de PIN (DE52): no debe
+     * arrancar en TCP plano ni sin control de acceso (PCI DSS 4.2.1, PCI PIN v3.1 Req 1). Si falta
+     * TLS, TLS mutuo o la allowlist, se aborta el arranque (falla el contexto) en vez de exponer el
+     * canal en claro. Fuera de 'prod' (dev/demo) solo se avisa, para no estorbar las pruebas.
+     */
+    @PostConstruct
+    void validateProdConfig() {
+        if (!settings.isEnabled()) return;
+        IsoSettings.Tls tls = settings.getTls();
+        java.util.List<String> faltas = new java.util.ArrayList<>();
+        if (!tls.isEnabled()) faltas.add("iso.tls.enabled=true (cifrado del canal)");
+        if (!tls.isNeedClientAuth()) faltas.add("iso.tls.need-client-auth=true (TLS mutuo)");
+        if (settings.getAllowedPeers() == null || settings.getAllowedPeers().isEmpty())
+            faltas.add("iso.allowed-peers con IP/CIDR autorizadas (allowlist)");
+        if (faltas.isEmpty()) return;
+        if (env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"))) {
+            throw new IllegalStateException("Canal ISO 8583 inseguro para producción; configura: " + String.join("; ", faltas));
+        }
+        log.warn("ISO 8583 sin endurecer (solo dev/demo): falta {}. En producción (perfil prod) esto aborta el arranque.", faltas);
+    }
 
     private ServerSocket server;
     private ExecutorService pool;
@@ -108,8 +132,14 @@ public class Iso8583Server {
             SSLContext ctx = SSLContext.getInstance("TLS");
             ctx.init(kmf.getKeyManagers(), tms, null);
             SSLServerSocket ss = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket();
+            // Solo TLS 1.2/1.3 (PCI DSS 4.2.1): descarta SSLv3/TLS 1.0/1.1. Si el runtime no ofrece
+            // TLS 1.3 se queda con 1.2.
+            java.util.List<String> supported = java.util.Arrays.asList(ss.getSupportedProtocols());
+            java.util.List<String> strong = new java.util.ArrayList<>();
+            for (String p : new String[]{"TLSv1.3", "TLSv1.2"}) if (supported.contains(p)) strong.add(p);
+            if (!strong.isEmpty()) ss.setEnabledProtocols(strong.toArray(new String[0]));
             if (tls.isNeedClientAuth()) { ss.setNeedClientAuth(true); log.info("ISO 8583: TLS mutuo (exige certificado de cliente, truststore {})", tls.getTruststore()); }
-            log.info("ISO 8583: TLS activado (keystore {})", tls.getKeystore());
+            log.info("ISO 8583: TLS activado (keystore {}, protocolos {})", tls.getKeystore(), strong);
             return ss;
         } catch (Exception e) {
             throw new IOException("ISO 8583: no se pudo iniciar TLS: " + e.getMessage(), e);
