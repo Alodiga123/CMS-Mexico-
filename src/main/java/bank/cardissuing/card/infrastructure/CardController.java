@@ -299,6 +299,54 @@ public class CardController {
         return ResponseEntity.ok(m);
     }
 
+    /** Distribución de tarjetas por id de llave de cifrado del PAN (sin descifrar): para ver si falta rotar. */
+    @GetMapping("/pan/key-status")
+    public ResponseEntity<Map<String, Object>> panKeyStatus() {
+        java.util.Map<String, Long> porLlave = new java.util.TreeMap<>();
+        long total = 0;
+        for (Card c : cardRepository.findAll()) {
+            if (c.getPanEncrypted() == null) continue;
+            total++;
+            porLlave.merge(panVault.keyIdOf(c.getPanEncrypted()), 1L, Long::sum);
+        }
+        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("activeKeyId", panVault.getActiveKeyId());
+        m.put("totalConPan", total);
+        m.put("porLlave", porLlave);
+        return ResponseEntity.ok(m);
+    }
+
+    /** Re-cifra los PAN que no estén con la llave activa (rotación de llave de la bóveda, PCI DSS 3.6.1/3.7.4). */
+    @PostMapping("/pan/rotate")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> panRotate() {
+        String active = panVault.getActiveKeyId();
+        long total = 0, reencrypted = 0, yaActivas = 0, fallidas = 0;
+        for (Card c : cardRepository.findAll()) {
+            String enc = c.getPanEncrypted();
+            if (enc == null) continue;
+            total++;
+            if (panVault.keyIdOf(enc).equals(active)) { yaActivas++; continue; }
+            try {
+                String pan = panVault.decrypt(enc);
+                c.setPanEncrypted(panVault.encrypt(pan));
+                cardRepository.save(c);
+                reencrypted++;
+            } catch (RuntimeException e) {
+                fallidas++;
+                log.warn("No se pudo re-cifrar el PAN de la tarjeta {}: {}", c.getId(), e.getMessage());
+            }
+        }
+        auditService.log("PAN_KEY_ROTATE", "Card", "*", null);
+        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("activeKeyId", active);
+        m.put("total", total);
+        m.put("reencrypted", reencrypted);
+        m.put("yaEnLlaveActiva", yaActivas);
+        m.put("fallidas", fallidas);
+        return ResponseEntity.ok(m);
+    }
+
     /** Credit the card's funds where they live (the core account for debit-with-core, the ledger otherwise): manual adjustments and test benches. */
     @PostMapping("/{id}/core-deposit")
     public ResponseEntity<Map<String, Object>> coreDeposit(@PathVariable Long id, @RequestBody Map<String, Object> body) {

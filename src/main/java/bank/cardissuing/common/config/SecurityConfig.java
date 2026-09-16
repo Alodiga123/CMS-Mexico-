@@ -75,6 +75,8 @@ public class SecurityConfig {
                 // console, docs, login
                 .requestMatchers("/", "/index.html", "/ops/**", "/theme/**", "/favicon.ico", "/error",
                         "/swagger-ui.html", "/swagger-ui/**", "/api-docs", "/api-docs/**", "/api/auth/**").permitAll()
+                // rotación/estado de la llave de la bóveda de PAN: operación de administración
+                .requestMatchers("/api/cards/pan/**").hasAuthority(Permissions.ADMIN)
                 // administration: products, promotions, HSM keys
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/promotions/**", "/api/hsm/**").hasAuthority(Permissions.READ)
                 .requestMatchers("/api/products/**", "/api/promotions/**", "/api/hsm/**").hasAuthority(Permissions.ADMIN)

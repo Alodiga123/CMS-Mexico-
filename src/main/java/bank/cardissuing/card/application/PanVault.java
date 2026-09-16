@@ -29,22 +29,75 @@ public class PanVault {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /** AES-256 key, base64 (32 bytes). */
+    /** AES-256 key, base64 (32 bytes). Es la llave con id "0" del registro (retrocompatibilidad). */
     private String encryptionKeyBase64 = "ZGV2LW9ubHktcGFuLWVuY3J5cHRpb24ta2V5LTAwMzI=";
     /** HMAC pepper, base64. */
     private String hmacKeyBase64 = "ZGV2LW9ubHktcGFuLWhtYWMtcGVwcGVy";
+
+    /**
+     * Rotación de llave (PCI DSS 3.6.1/3.7.4): llaves adicionales en formato "id:base64,id:base64".
+     * La llave "0" siempre es {@code encryptionKeyBase64}. Se cifra con {@code activeKeyId} y se
+     * conservan las retiradas para descifrar lo antiguo hasta re-cifrar todo (POST /api/cards/pan/rotate).
+     */
+    private String keys = "";
+    /** Id de la llave activa para cifrar lo nuevo; debe existir en el registro. */
+    private String activeKeyId = "0";
+
+    private volatile java.util.Map<String, byte[]> registry;
+
+    private java.util.Map<String, byte[]> registry() {
+        java.util.Map<String, byte[]> r = registry;
+        if (r != null) return r;
+        synchronized (this) {
+            if (registry != null) return registry;
+            java.util.Map<String, byte[]> m = new java.util.HashMap<>();
+            m.put("0", decodeKey(encryptionKeyBase64, "cards.pan.encryption-key-base64"));
+            if (keys != null && !keys.isBlank()) {
+                for (String entry : keys.split(",")) {
+                    String e = entry.trim();
+                    if (e.isEmpty()) continue;
+                    int i = e.indexOf(':');
+                    if (i <= 0) throw new IllegalStateException("cards.pan.keys mal formado (esperado id:base64): " + e);
+                    String id = e.substring(0, i).trim();
+                    m.put(id, decodeKey(e.substring(i + 1).trim(), "cards.pan.keys[" + id + "]"));
+                }
+            }
+            if (!m.containsKey(activeKeyId))
+                throw new IllegalStateException("cards.pan.active-key-id '" + activeKeyId + "' no está en el registro de llaves");
+            registry = m;
+            return m;
+        }
+    }
+
+    private static byte[] decodeKey(String b64, String name) {
+        byte[] k = Base64.getDecoder().decode(b64);
+        if (k.length != 32) throw new IllegalStateException(name + " debe decodificar a 32 bytes");
+        return k;
+    }
+
+    /** Id de la llave con que está cifrado un valor: el prefijo "k<id>:" o "0" para el formato antiguo. */
+    public String keyIdOf(String encrypted) {
+        if (encrypted != null && encrypted.length() > 1 && encrypted.charAt(0) == 'k') {
+            int i = encrypted.indexOf(':'); // ':' nunca aparece en base64, así que distingue el formato nuevo
+            if (i > 1) return encrypted.substring(1, i);
+        }
+        return "0";
+    }
+
+    public String getActiveKeyId() { return activeKeyId; }
 
     public String encrypt(String pan) {
         try {
             byte[] iv = new byte[12];
             RANDOM.nextBytes(iv);
             Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
-            c.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key(), "AES"), new GCMParameterSpec(128, iv));
+            c.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(registry().get(activeKeyId), "AES"), new GCMParameterSpec(128, iv));
             byte[] ct = c.doFinal(pan.getBytes(StandardCharsets.US_ASCII));
             byte[] out = new byte[iv.length + ct.length];
             System.arraycopy(iv, 0, out, 0, iv.length);
             System.arraycopy(ct, 0, out, iv.length, ct.length);
-            return Base64.getEncoder().encodeToString(out);
+            // Prefijo "k<id>:" para saber, al descifrar y al rotar, con qué llave se cifró.
+            return "k" + activeKeyId + ":" + Base64.getEncoder().encodeToString(out);
         } catch (Exception e) {
             throw new BusinessException("PAN_ENCRYPT_FAILED", "Could not protect the PAN: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -52,10 +105,21 @@ public class PanVault {
 
     public String decrypt(String encrypted) {
         try {
-            byte[] all = Base64.getDecoder().decode(encrypted);
+            String id = keyIdOf(encrypted);
+            String b64 = encrypted;
+            if (encrypted.charAt(0) == 'k') {
+                int i = encrypted.indexOf(':');
+                if (i > 1) b64 = encrypted.substring(i + 1);
+            }
+            byte[] keyBytes = registry().get(id);
+            if (keyBytes == null)
+                throw new BusinessException("PAN_DECRYPT_FAILED", "No hay llave configurada para el id '" + id + "'", HttpStatus.INTERNAL_SERVER_ERROR);
+            byte[] all = Base64.getDecoder().decode(b64);
             Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
-            c.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key(), "AES"), new GCMParameterSpec(128, all, 0, 12));
+            c.init(Cipher.DECRYPT_MODE, new SecretKeySpec(keyBytes, "AES"), new GCMParameterSpec(128, all, 0, 12));
             return new String(c.doFinal(all, 12, all.length - 12), StandardCharsets.US_ASCII);
+        } catch (BusinessException be) {
+            throw be;
         } catch (Exception e) {
             throw new BusinessException("PAN_DECRYPT_FAILED", "Could not read the PAN: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -110,9 +174,4 @@ public class PanVault {
         return pan == null || pan.length() < 10 ? "****" : pan.substring(0, 6) + "******" + pan.substring(pan.length() - 4);
     }
 
-    private byte[] key() {
-        byte[] k = Base64.getDecoder().decode(encryptionKeyBase64);
-        if (k.length != 32) throw new IllegalStateException("cards.pan.encryption-key-base64 must decode to 32 bytes");
-        return k;
-    }
 }
