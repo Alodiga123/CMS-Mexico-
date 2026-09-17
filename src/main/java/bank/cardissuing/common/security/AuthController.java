@@ -26,8 +26,10 @@ public class AuthController {
     private final IamAuthenticationFilter filter;
     private final AuditService audit;
     private final LoginRateLimiter rateLimiter;
+    private final bank.cardissuing.mfa.MfaService mfa;
 
     public record LoginBody(String username, String password) { }
+    public record MfaBody(String challenge, String code) { }
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody LoginBody b) {
@@ -72,7 +74,26 @@ public class AuthController {
         m.put("userId", l.userId());
         // the IAM marks accounts created with a temporary password; the console asks for a new one before letting the user in
         m.put("mustChangePassword", iam.mustChangePassword(l.accessToken(), l.userId()));
+        // Segundo factor (A3): con MFA activo la contraseña sola no basta; se devuelve un challenge y
+        // el token real solo se emite tras verificar el código TOTP (o darlo de alta la primera vez).
+        if (mfa.isEnabled()) return ResponseEntity.ok(mfa.startChallenge(l.username(), m));
         return ResponseEntity.ok(m);
+    }
+
+    /** Segundo paso del login con MFA: verifica el código TOTP de un usuario ya dado de alta. */
+    @PostMapping("/mfa/verify")
+    public ResponseEntity<Map<String, Object>> mfaVerify(@RequestBody MfaBody b) {
+        Map<String, Object> s = mfa.verify(b == null ? null : b.challenge(), b == null ? null : b.code());
+        audit.log("LOGIN_MFA", "User", String.valueOf(s.get("username")), String.valueOf(s.get("username")));
+        return ResponseEntity.ok(s);
+    }
+
+    /** Alta del segundo factor: verifica el primer código contra el secreto pendiente y lo activa. */
+    @PostMapping("/mfa/enable")
+    public ResponseEntity<Map<String, Object>> mfaEnable(@RequestBody MfaBody b) {
+        Map<String, Object> s = mfa.enable(b == null ? null : b.challenge(), b == null ? null : b.code());
+        audit.log("MFA_ENROLLED", "User", String.valueOf(s.get("username")), String.valueOf(s.get("username")));
+        return ResponseEntity.ok(s);
     }
 
     public record ChangePasswordBody(Long userId, String currentPassword, String newPassword) { }

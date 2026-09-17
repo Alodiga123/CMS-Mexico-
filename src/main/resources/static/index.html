@@ -451,21 +451,66 @@
                     body: JSON.stringify({ username: $('loginUser').value.trim(), password: $('loginPass').value }) });
                 const data = await res.json();
                 if (!res.ok) { $('loginError').hidden = false; $('loginError').textContent = data.message || ('Error ' + res.status); return false; }
-                app.session = data; write(data);
-                if (data.mustChangePassword) {
-                    // cuenta con contrasena temporal: el IAM pide una nueva antes de trabajar
-                    $('loginForm').hidden = true; $('pwdForm').hidden = false; $('pwdCurrent').value = $('loginPass').value;
-                    $('loginPass').value = ''; $('pwdNew').focus();
-                    return false;
-                }
-                $('loginPass').value = '';
-                hide(); applyPermissions();
-                try { localStorage.setItem('ops.operator', data.username); } catch (e) { /* sin almacenamiento */ }
-                document.dispatchEvent(new CustomEvent('cms:login', { detail: data }));
+                app._loginPass = $('loginPass').value; // se conserva para el cambio de contraseña forzado
+                if (data.mfaRequired) { startMfaStep(data); return false; } // segundo factor antes de emitir la sesión
+                completeLogin(data);
             } catch (e) {
                 $('loginError').hidden = false; $('loginError').textContent = 'No se pudo contactar al servidor: ' + e.message;
             } finally { btn.disabled = false; btn.textContent = 'Entrar'; }
             return false;
+        }
+
+        // Segundo factor (TOTP): muestra el paso MFA (alta con secreto/QR o verificación de código).
+        function startMfaStep(data) {
+            app._mfaChallenge = data.mfaChallenge;
+            app._mfaSetup = !!data.mfaSetupRequired;
+            $('loginForm').hidden = true; $('pwdForm').hidden = true; $('mfaForm').hidden = false;
+            $('mfaError').hidden = true; $('mfaCode').value = '';
+            const setup = $('mfaSetup');
+            if (app._mfaSetup) {
+                setup.hidden = false;
+                $('mfaSecret').textContent = data.secret || '';
+                $('mfaUri').value = data.otpauthUri || '';
+                $('mfaBtn').textContent = 'Activar y entrar';
+            } else {
+                setup.hidden = true;
+                $('mfaBtn').textContent = 'Verificar';
+            }
+            setTimeout(() => $('mfaCode').focus(), 50);
+        }
+
+        async function verifyMfa(ev) {
+            ev.preventDefault();
+            const err = $('mfaError'); err.hidden = true;
+            const code = ($('mfaCode').value || '').trim();
+            if (!/^\d{6}$/.test(code)) { err.hidden = false; err.textContent = 'Escribe el código de 6 dígitos.'; return false; }
+            const btn = $('mfaBtn'); const label = btn.textContent; btn.disabled = true; btn.textContent = 'Verificando…';
+            try {
+                const url = app._mfaSetup ? '/api/auth/mfa/enable' : '/api/auth/mfa/verify';
+                const res = await rawFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ challenge: app._mfaChallenge, code }) });
+                const data = await res.json();
+                if (!res.ok) { err.hidden = false; err.textContent = data.message || ('Error ' + res.status); return false; }
+                $('mfaForm').hidden = true; $('loginForm').hidden = false;
+                completeLogin(data);
+            } catch (e) {
+                err.hidden = false; err.textContent = 'No se pudo contactar al servidor: ' + e.message;
+            } finally { btn.disabled = false; btn.textContent = label; }
+            return false;
+        }
+
+        // Finaliza el login (con o sin MFA): guarda la sesión y, si toca, pide cambio de contraseña.
+        function completeLogin(data) {
+            app.session = data; write(data);
+            if (data.mustChangePassword) {
+                $('loginForm').hidden = true; $('mfaForm').hidden = true; $('pwdForm').hidden = false;
+                $('pwdCurrent').value = app._loginPass || ''; $('pwdNew').focus();
+                return;
+            }
+            $('loginPass').value = ''; app._loginPass = null;
+            hide(); applyPermissions();
+            try { localStorage.setItem('ops.operator', data.username); } catch (e) { /* sin almacenamiento */ }
+            document.dispatchEvent(new CustomEvent('cms:login', { detail: data }));
         }
 
         async function changePassword(ev) {
@@ -537,7 +582,7 @@
             } catch (e) { alert('No se pudo descargar: ' + e.message); }
         }, true);
 
-        window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show, changePassword, openChangePassword, captchaToggle, captchaNew };
+        window.auth = { submit, logout, can, applyPermissions, session: () => app.session, boot, show, changePassword, openChangePassword, captchaToggle, captchaNew, verifyMfa };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
     })();
     </script>
@@ -607,6 +652,18 @@
                 <label class="field"><span>Repite la nueva</span><input id="pwdRepeat" type="password" autocomplete="new-password" minlength="12" required></label>
                 <div id="pwdError" class="login-error" hidden></div>
                 <button class="btn btn-primary btn-block" id="pwdBtn" type="submit">Guardar y entrar</button>
+                <button class="btn btn-block" type="button" onclick="auth.logout()">Cancelar y salir</button>
+            </form>
+            <form id="mfaForm" onsubmit="return auth.verifyMfa(event)" hidden>
+                <p class="login-sub" style="margin:0 0 .3rem">Verificación en dos pasos</p>
+                <div id="mfaSetup" hidden>
+                    <p class="login-note" style="margin:.2rem 0 .5rem">Da de alta este secreto en tu app autenticadora (Google Authenticator, Authy) y escribe el código que genere:</p>
+                    <div id="mfaSecret" style="font-family:'JetBrains Mono',monospace; font-weight:700; letter-spacing:2px; font-size:1.05rem; text-align:center; padding:.5rem; background:#f1f5f9; border-radius:8px; word-break:break-all;"></div>
+                    <label class="field"><span>URI otpauth (alternativa)</span><input id="mfaUri" type="text" readonly style="font-size:.72rem"></label>
+                </div>
+                <label class="field"><span>Código de 6 dígitos</span><input id="mfaCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required></label>
+                <div id="mfaError" class="login-error" hidden></div>
+                <button class="btn btn-primary btn-block" id="mfaBtn" type="submit">Verificar</button>
                 <button class="btn btn-block" type="button" onclick="auth.logout()">Cancelar y salir</button>
             </form>
             <p class="login-note">Acceso con las credenciales del IAM corporativo · proyecto EMISION_CMS</p>
