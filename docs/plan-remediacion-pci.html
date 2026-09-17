@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<title>Plan de remediación PCI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa;
+    --ink:#141b26; --muted:#5b6675; --faint:#8b95a3;
+    --line:#dde3ea;
+    --primary:#1f3a5f; --primary-soft:#e7edf5;
+    --accent:#0f766e; --accent-soft:#dbefec;
+    --coral:#e0574f;
+    --ok:#15803d; --ok-soft:#e2f2e6;
+    --warn:#b45309; --warn-soft:#f7ebd9;
+    --crit:#b91c1c; --crit-soft:#f7e2e2;
+    --shadow:0 1px 2px rgba(20,27,38,.05),0 6px 20px rgba(20,27,38,.06);
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+    --serif:"IBM Plex Serif",Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;font-size:14.5px;margin:0}
+  .wrap{max-width:940px;margin:0 auto;padding-inline:22px;padding-block:34px 72px}
+  h1,h2,h3,h4{text-wrap:balance}
+
+  .doc-head{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .doc-head .band{background:var(--primary);color:#fff;padding:8px 22px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:12px;letter-spacing:.04em}
+  .doc-head .band .tag{text-transform:uppercase;font-weight:600;opacity:.9}
+  .doc-head .band .sep{opacity:.4}
+  .doc-head .body{padding:26px 22px 24px}
+  .eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--coral);font-weight:600;margin:0 0 8px}
+  h1{font-family:var(--serif);font-weight:600;font-size:28px;line-height:1.18;margin:0 0 12px;letter-spacing:-.01em}
+  .lede{color:var(--muted);margin:0;max-width:72ch}
+  .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line);margin-top:24px}
+  .meta div{background:var(--surface);padding:13px 22px}
+  .meta dt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0 0 3px}
+  .meta dd{margin:0;font-weight:600;font-size:14px}
+
+  section{margin-top:34px}
+  h2.sec{font-family:var(--serif);font-weight:600;font-size:20px;margin:0 0 6px;letter-spacing:-.01em}
+  .sec-note{color:var(--muted);margin:0 0 16px;font-size:13.7px;max-width:74ch}
+
+  /* Done banner */
+  .done{background:var(--ok-soft);border:1px solid var(--ok);border-radius:13px;padding:16px 20px;margin-top:22px;display:flex;gap:14px;align-items:flex-start}
+  .done .mark{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-weight:700}
+  .done h3{margin:0 0 4px;font-size:15px}
+  .done p{margin:0;font-size:13.5px;color:var(--ink)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{font-family:var(--mono);font-size:11.5px;background:#fff;border:1px solid var(--ok);color:var(--ok);border-radius:6px;padding:1px 7px}
+
+  /* Priority table */
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:11px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:0}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{background:var(--surface-2);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  tbody tr:last-child td{border-bottom:none}
+  td .id{font-family:var(--mono);font-weight:600}
+
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 9px;border-radius:20px;white-space:nowrap}
+  .p-alta{background:var(--crit-soft);color:var(--crit)}
+  .p-media{background:var(--warn-soft);color:var(--warn)}
+  .p-baja{background:var(--primary-soft);color:var(--primary)}
+  .e-s{background:var(--ok-soft);color:var(--ok)} .e-m{background:var(--warn-soft);color:var(--warn)} .e-l{background:var(--crit-soft);color:var(--crit)}
+
+  /* Item cards */
+  .item{background:var(--surface);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);padding:18px 20px;margin-bottom:14px}
+  .item-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline;margin-bottom:6px}
+  .item-head .id{font-family:var(--mono);font-size:12px;color:#fff;background:var(--primary);border-radius:6px;padding:2px 8px;font-weight:500}
+  .item-head h3{margin:0;font-size:16.5px;flex:1;min-width:200px}
+  .item p{margin:7px 0;font-size:13.7px}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:2px 10px;font-size:13.3px;margin-top:8px}
+  .kv dt{color:var(--faint);font-weight:600}
+  .kv dd{margin:0}
+  .item ul{margin:6px 0;padding-left:20px;font-size:13.5px}
+  .item ul li{margin:3px 0}
+  code{font-family:var(--mono);font-size:12.3px;background:var(--surface-2);padding:1px 5px;border-radius:5px}
+
+  /* Roadmap */
+  .phase{display:grid;grid-template-columns:120px 1fr;gap:14px;border-left:3px solid var(--accent);padding:10px 0 10px 16px;margin-left:6px}
+  .phase + .phase{border-top:1px dashed var(--line)}
+  .phase .when{font-weight:700;color:var(--accent);font-size:13.5px}
+  .phase .what{font-size:13.5px}
+  .phase .what b{color:var(--ink)}
+
+  .foot{margin-top:40px;border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:12.5px}
+  .foot p{margin:5px 0}
+
+  @page{ size:A4; margin:14mm 13mm; }
+  @media print{
+    :root{ --bg:#ffffff; }
+    body{ background:#fff; font-size:10pt; }
+    .wrap{ max-width:100%; padding:0; }
+    .doc-head,.item,.tblwrap,.done{ box-shadow:none; }
+    .doc-head,.item,.tblwrap,.done,.phase{ break-inside:avoid; }
+    section{ margin-top:18px; }
+    h2.sec{ break-after:avoid; }
+    h1{ font-size:20pt; }
+  }
+  *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @media (max-width:560px){ .kv{grid-template-columns:1fr} .phase{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <article class="doc-head">
+    <div class="band">
+      <span class="tag">Plan de remediación</span><span class="sep">·</span>
+      <span>CMS emisor — cumplimiento PCI</span><span class="sep">·</span>
+      <span>Para dirección e infraestructura</span>
+    </div>
+    <div class="body">
+      <p class="eyebrow">Plataforma de tarjetas México</p>
+      <h1>Plan de remediación de los pendientes estructurales</h1>
+      <p class="lede">Cierre de las brechas de la auditoría PCI (DSS v4.0 / PIN v3.1) que ya no son de
+        código sino de <strong>infraestructura, hardware o proceso regulatorio</strong>. Los hallazgos
+        de software del CMS ya se remediaron y desplegaron; aquí quedan los que requieren compra,
+        decisiones de plataforma o coordinación con áreas externas.</p>
+      <dl class="meta">
+        <div><dt>Fecha</dt><dd>16 sep 2026</dd></div>
+        <div><dt>Cerrados (código)</dt><dd>13 hallazgos</dd></div>
+        <div><dt>Pendientes</dt><dd>5 estructurales</dd></div>
+        <div><dt>Estándares</dt><dd>PCI DSS v4.0 · PIN v3.1</dd></div>
+      </dl>
+    </div>
+  </article>
+
+  <div class="done">
+    <div class="mark">✓</div>
+    <div>
+      <h3>Ya remediado y desplegado (no requiere acción)</h3>
+      <p>Cerrado en código durante esta ronda, de forma reversible y verificado en el servidor:</p>
+      <div class="chips">
+        <span class="chip">A1 test-secrets</span><span class="chip">A2 SAD en logs</span>
+        <span class="chip">A3 MFA consola*</span><span class="chip">A4 anti-bot + rate-limit</span>
+        <span class="chip">A6 HSM falso retirado</span><span class="chip">A7 bitácora hash+inmutable</span>
+        <span class="chip">A8 TLS 8583 forzado</span><span class="chip">M1 fuga de errores</span>
+        <span class="chip">M2 TLS en tránsito</span><span class="chip">M3 HSTS/CSP</span>
+        <span class="chip">M4 rotación llave PAN</span><span class="chip">M5 pass BD</span>
+        <span class="chip">M6 política contraseñas</span>
+      </div>
+      <p style="margin-top:8px;font-size:12.5px;color:var(--muted)">* A3 MFA quedó implementado en el CMS con el interruptor apagado; su activación es un paso operativo (ver Fase 1).</p>
+    </div>
+  </div>
+
+  <section>
+    <h2 class="sec">Resumen priorizado</h2>
+    <div class="tblwrap"><table>
+      <thead><tr><th>#</th><th>Pendiente</th><th>Estándar</th><th>Prioridad</th><th>Esfuerzo</th><th>Responsable</th></tr></thead>
+      <tbody>
+        <tr><td class="id">E1</td><td>HSM certificado (PCI HSM / FIPS 140-2 N3) + ceremonia de llaves</td><td>PCI PIN 1/5/18/30</td><td><span class="pill p-alta">Alta</span></td><td><span class="pill e-l">Grande</span></td><td>Infra/Seguridad + proveedor</td></tr>
+        <tr><td class="id">E2</td><td>Bitácora: dueño separado + WORM/SIEM + retención 12 meses</td><td>PCI DSS 10.5/10.7</td><td><span class="pill p-alta">Alta</span></td><td><span class="pill e-m">Media</span></td><td>DBA + Plataforma</td></tr>
+        <tr><td class="id">E3</td><td>Cifrado en reposo de la BD + respaldos cifrados + DR</td><td>PCI DSS 3.5/9.4/12.10</td><td><span class="pill p-alta">Alta</span></td><td><span class="pill e-m">Media</span></td><td>Infraestructura</td></tr>
+        <tr><td class="id">E4</td><td>Reportes regulatorios: formato y canal oficial + sello externo</td><td>UIF/CNBV/Banxico</td><td><span class="pill p-media">Media</span></td><td><span class="pill e-l">Grande</span></td><td>Cumplimiento + Dev</td></tr>
+        <tr><td class="id">E5</td><td>Centralizar MFA en el IAM (WebAuthn) + códigos de recuperación</td><td>PCI DSS 8.4/8.5</td><td><span class="pill p-media">Media</span></td><td><span class="pill e-m">Media</span></td><td>Equipo IAM</td></tr>
+      </tbody>
+    </table></div>
+    <p class="sec-note" style="margin-top:8px">Esfuerzo orientativo: <span class="pill e-s">Pequeño</span> ≤1 sem · <span class="pill e-m">Media</span> 2–4 sem · <span class="pill e-l">Grande</span> &gt;1 mes (incluye compra/regulatorio).</p>
+  </section>
+
+  <section>
+    <h2 class="sec">Detalle por pendiente</h2>
+
+    <div class="item">
+      <div class="item-head"><span class="id">E1</span><h3>HSM certificado y gestión de llaves</h3><span class="pill p-alta">Alta</span></div>
+      <p><b>Hoy:</b> la criptografía de PIN/CVV/ARQC corre contra <b>PayShieldSim</b> (simulador), con llaves
+        de laboratorio sin ceremonia ni bloques de llave. El código ya está listo para un HSM real (comandos
+        payShield BA/DG/EA/CW/CY/KQ); solo falta el hardware certificado y el proceso de llaves.</p>
+      <p><b>Riesgo:</b> ninguna transacción con PIN puede considerarse conforme sobre un HSM simulado. Es el
+        bloqueante principal para operar con dinero real.</p>
+      <dl class="kv">
+        <dt>Qué falta</dt><dd>Adquirir/contratar un <b>PCI HSM (payShield 10K)</b> o HSM-as-a-service con AOC; migrar los blobs a la LMK real; ceremonia de llaves con custodios y bajo doble control; bloques de llave <b>TR-31</b> en vez de variantes; rotación con criptoperiodos.</dd>
+        <dt>Estándar</dt><dd>PCI PIN v3.1 Req 1, 5–18 (gestión de llaves), 30 (HSM certificado).</dd>
+        <dt>Dependencias</dt><dd>Compra/contrato; ventana de red al HSM; definir custodios; ZPK de zona compartida con el adquirente.</dd>
+        <dt>Responsable</dt><dd>Infraestructura/Seguridad + proveedor de HSM; apoyo de Dev para el corte.</dd>
+        <dt>Verificación</dt><dd>KCV de cada llave desde el HSM; prueba on-us RC 00/55 contra el HSM real; evidencia de la ceremonia.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">E2</span><h3>Bitácora de auditoría: inmutabilidad plena</h3><span class="pill p-alta">Alta</span></div>
+      <p><b>Hoy:</b> ya hay <b>tamper-evidence</b> (cadena de hash con verificación) y <b>tamper-prevention</b> a
+        nivel de BD (trigger que bloquea UPDATE/DELETE). Falta el cierre pleno de retención y separación de roles.</p>
+      <dl class="kv">
+        <dt>Qué falta</dt><dd>Que el rol de la app tenga solo <b>INSERT/SELECT</b> sobre <code>audit_logs</code> (dueño de la tabla distinto, para que ni con las credenciales de la app se pueda alterar/borrar ni quitar el trigger); <b>export append-only a WORM/SIEM</b>; <b>retención de 12 meses</b> (3 en línea) con purga controlada.</dd>
+        <dt>Estándar</dt><dd>PCI DSS v4.0 Req 10.5.1 (retención), 10.5/10.7 (protección e integridad), 10.3.2.</dd>
+        <dt>Dependencias</dt><dd>Rol de BD dedicado (dueño ≠ app); destino SIEM/WORM; job/procedimiento de purga privilegiada.</dd>
+        <dt>Responsable</dt><dd>DBA + Plataforma.</dd>
+        <dt>Verificación</dt><dd>La app no puede UPDATE/DELETE ni DROP del trigger; export verificable; política de retención documentada.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">E3</span><h3>Cifrado en reposo, respaldos y DR</h3><span class="pill p-alta">Alta</span></div>
+      <p><b>Hoy:</b> el PAN se cifra a nivel de aplicación (AES-256-GCM con rotación de llave) y el secreto TOTP
+        también. Falta cerrar el cifrado del <b>medio</b> y la continuidad.</p>
+      <dl class="kv">
+        <dt>Qué falta</dt><dd>Cifrado en reposo del volumen/instancia <b>PostgreSQL</b>; <b>respaldos cifrados</b> con prueba de restauración periódica; <b>plan de DR</b> documentado y probado (RTO/RPO).</dd>
+        <dt>Estándar</dt><dd>PCI DSS v4.0 Req 3.5 (medios), 9.4 (respaldos), 12.10 (continuidad).</dd>
+        <dt>Dependencias</dt><dd>Capacidad del hipervisor/almacenamiento (LUKS/cloud KMS); ventana para cifrar; gestión de llaves del respaldo.</dd>
+        <dt>Responsable</dt><dd>Infraestructura.</dd>
+        <dt>Verificación</dt><dd>Evidencia de cifrado del volumen; restauración exitosa de un respaldo cifrado; simulacro de DR.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">E4</span><h3>Reportes regulatorios: formato y canal oficial</h3><span class="pill p-media">Media</span></div>
+      <p><b>Hoy:</b> los reportes (PLD/UIF, R24 Banxico, conciliación, disputas) <b>ya consultan datos reales</b> y
+        se sellan con SHA-256; producen CSV interno. Falta el formato/entrega oficial y un sello no auto-referencial.</p>
+      <dl class="kv">
+        <dt>Qué falta</dt><dd>Layouts oficiales validados con Cumplimiento; <b>canal de presentación</b> a UIF/CNBV/Banxico (SITI/RegTech según aplique); sello de integridad <b>externo</b> (firma/WORM), no guardado junto al dato.</dd>
+        <dt>Estándar</dt><dd>Marco MX: Banxico Circular 4/2014, Disposiciones CNBV, PLD/UIF, CONDUSEF.</dd>
+        <dt>Dependencias</dt><dd>Definición regulatoria por Cumplimiento; credenciales/portales de envío; calendario de reporte.</dd>
+        <dt>Responsable</dt><dd>Cumplimiento (define) + Dev (implementa).</dd>
+        <dt>Verificación</dt><dd>Un reporte aceptado por cada autoridad en su formato; sello verificable de forma independiente.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">E5</span><h3>MFA centralizado en el IAM</h3><span class="pill p-media">Media</span></div>
+      <p><b>Hoy:</b> el segundo factor (TOTP) está <b>implementado en el CMS</b> (apagado hasta activarlo). Lo ideal
+        es que viva en el IAM corporativo para cubrir a todas las plataformas de forma homogénea.</p>
+      <dl class="kv">
+        <dt>Qué falta</dt><dd>MFA en el IAM (<b>TOTP y/o WebAuthn/passkeys</b>) para el proyecto <code>EMISION_CMS</code>; <b>códigos de recuperación</b>; que el CMS exija el claim de "MFA satisfecho" del token en vez de su propio segundo factor.</dd>
+        <dt>Estándar</dt><dd>PCI DSS v4.0 Req 8.4.2 / 8.5 (MFA para todo acceso al CDE).</dd>
+        <dt>Dependencias</dt><dd>Roadmap del equipo del IAM; despliegue del IAM; enrolamiento de usuarios.</dd>
+        <dt>Responsable</dt><dd>Equipo IAM; Dev del CMS para el corte al claim.</dd>
+        <dt>Verificación</dt><dd>Login del CDE exige segundo factor vía IAM; el CMS rechaza tokens sin MFA.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec">Hoja de ruta sugerida</h2>
+    <p class="sec-note">Secuencia por dependencia y valor. Las activaciones operativas (sin compra) van primero.</p>
+    <div class="phase"><div class="when">Fase 0<br>ahora</div><div class="what"><b>Activaciones operativas</b> (sin costo, ya implementado): encender <b>MFA</b> en el CMS con un usuario de prueba y luego para todos; correr el CMS con perfil <code>prod</code> para que el guard de <b>TLS 8583</b> aplique; confirmar TLS del proxy de borde con un escáner externo. Coordinar con dlugo para que sus redeploys no reviertan PIN/TLS/overrides.</div></div>
+    <div class="phase"><div class="when">Fase 1<br>2–4 sem</div><div class="what"><b>E2</b> (bitácora: rol dueño separado, export a SIEM, retención 12 meses) y <b>E3</b> (cifrado en reposo + respaldos cifrados + simulacro DR). Son de plataforma/DBA, sin compra mayor, y cierran controles de alto peso (Req 10 y 3/9/12).</div></div>
+    <div class="phase"><div class="when">Fase 2<br>1–2 meses</div><div class="what"><b>E1</b> (HSM certificado + ceremonia de llaves): iniciar la compra/contrato en paralelo desde ya por el plazo de aprovisionamiento; es el bloqueante para producción con dinero real. <b>E5</b> (MFA en el IAM) si el equipo del IAM lo prioriza.</div></div>
+    <div class="phase"><div class="when">Fase 3<br>regulatorio</div><div class="what"><b>E4</b> (reportes oficiales): al ritmo del calendario y las definiciones de Cumplimiento; implementar layouts y canales conforme se confirmen.</div></div>
+  </section>
+
+  <section>
+    <h2 class="sec">Anexo — detalle de lo ya remediado (código)</h2>
+    <p class="sec-note">Cada uno cerrado en código, desplegado de forma reversible (imagen de respaldo por cambio) y verificado en el servidor interno. Referencia técnica y evidencia en el repositorio.</p>
+
+    <div class="item">
+      <div class="item-head"><span class="id">A1</span><h3>Endpoint <code>test-secrets</code> bloqueado</h3><span class="pill p-alta">Era Alta</span></div>
+      <p><b>Era:</b> <code>GET /api/cards/{id}/test-secrets</code> devolvía PAN + PIN + CVV/CVV2/iCVV + track2 en claro, protegido solo por un flag (activo para la demo) y con el permiso más bajo.</p>
+      <p><b>Se hizo:</b> bloqueo duro en perfil <code>prod</code> (responde 404 aunque el flag esté activo); no depende solo del flag. En dev/demo sigue disponible para las herramientas de prueba.</p>
+      <p><b>Verificado:</b> con perfil prod el endpoint no existe; en demo devuelve los datos de prueba.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">A2</span><h3>SAD fuera de bitácoras y del ledger</h3><span class="pill p-alta">Era Alta</span></div>
+      <p><b>Era:</b> el PIN block, PVV y CVV2 se registraban a nivel INFO y el PIN block cifrado se guardaba en la descripción del asiento contable.</p>
+      <p><b>Se hizo:</b> se eliminaron PIN/PVV/CVV de todos los logs y de la descripción del ledger; se sanitizó el log del HSM (ya no vuelca la respuesta cruda).</p>
+      <p><b>Verificado:</b> 0 ocurrencias de PIN/PVV/CVV en las bitácoras de emisión.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">A3</span><h3>MFA (TOTP) en la consola *</h3><span class="pill p-alta">Era Alta</span></div>
+      <p><b>Era:</b> la consola que administra el CDE entraba solo con usuario + contraseña, sin segundo factor.</p>
+      <p><b>Se hizo:</b> MFA TOTP (RFC 6238, compatible con Google Authenticator) en el login del CMS; el secreto se guarda cifrado (AES-GCM); alta con secreto/URI otpauth; tabla creada por Flyway (V2). Endpoints <code>/api/auth/mfa/enable</code> y <code>/verify</code>.</p>
+      <p><b>Verificado:</b> algoritmo probado con los vectores oficiales RFC 6238; endpoints activos. <b>* Interruptor apagado por defecto</b> (<code>CMS_MFA_ENABLED</code>): su activación para todos los usuarios es un paso operativo (Fase 0). Ideal a futuro: centralizarlo en el IAM (E5).</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">A4</span><h3>Anti-bot honesto + bloqueo por intentos</h3><span class="pill p-alta">Era Alta</span></div>
+      <p><b>Era:</b> el "reCAPTCHA v2" del login era un reto de solo-cliente con insignia engañosa ("reCAPTCHA v2 / PCI Security Pass"), y no había límite de intentos en el servidor.</p>
+      <p><b>Se hizo:</b> etiqueta honesta ("Verificación anti-bot / Finsus Security") y <b>bloqueo por intentos por usuario</b> en <code>/api/auth/login</code> (429 tras 5 fallos en 15 min), además del bloqueo del IAM.</p>
+      <p><b>Verificado:</b> 5 intentos → 401, 6º → 429.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">A6</span><h3>HSM falso retirado</h3><span class="pill p-alta">Era Alta</span></div>
+      <p><b>Era:</b> un <code>HsmService</code> heredado fabricaba PVV/CVV con <code>Math.random()</code> y un inventario de llaves con blobs hardcodeados.</p>
+      <p><b>Se hizo:</b> se eliminó por completo; el controlador de HSM ahora usa el HSM real (<code>CardCryptoService</code>/PayShield): <code>/status</code> con salud real, <code>/keys</code> con referencias de llaves configuradas (sin blobs/KCV falsos), <code>/card/{id}</code> sin datos sensibles; se retiró <code>/crypto/generate</code>. La personalización de plásticos usa solo la cripto real.</p>
+      <p><b>Verificado:</b> suite de pruebas en verde; endpoints reales. Residual: usar un HSM certificado (E1).</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">A7</span><h3>Bitácora con hash encadenado e inmutable</h3><span class="pill p-alta">Era Alta</span></div>
+      <p><b>Era:</b> la bitácora de auditoría era una tabla mutable, sin integridad ni protección: cualquiera con acceso a la BD podía alterar o borrar filas sin detección.</p>
+      <p><b>Se hizo:</b> <b>tamper-evidence</b> (cada registro encadena el hash del anterior; <code>GET /api/audit/verify</code> detecta manipulación y señala el id) + <b>tamper-prevention</b> (trigger en la BD que bloquea UPDATE/DELETE).</p>
+      <p><b>Verificado:</b> alterar un registro → <code>ok=false</code> con el id; revertir → <code>ok=true</code>; UPDATE y DELETE rechazados por la BD. Residual: dueño de tabla separado + WORM + retención 12 meses (E2).</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">A8</span><h3>TLS forzado en el canal 8583</h3><span class="pill p-alta">Era Alta</span></div>
+      <p><b>Era:</b> el listener ISO 8583 (transporta PAN y el bloque de PIN) podía arrancar en TCP plano por defecto.</p>
+      <p><b>Se hizo:</b> guard de arranque — en perfil <code>prod</code> el CMS <b>no arranca</b> si el 8583 no tiene TLS + TLS mutuo + allowlist; y el socket solo habilita <b>TLS 1.2/1.3</b>.</p>
+      <p><b>Verificado:</b> con prod + TLS apagado el arranque aborta; en el servidor corre con TLS 1.3 + mTLS.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">M1</span><h3>Sin fuga de detalles en errores</h3><span class="pill p-media">Era Media</span></div>
+      <p><b>Era:</b> el manejador global devolvía al cliente <code>ex.toString()</code> ("temporary for debugging"), exponiendo internos.</p>
+      <p><b>Se hizo:</b> el cliente recibe un mensaje genérico + <code>traceId</code>; el detalle solo va al log del servidor.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">M2</span><h3>TLS en tránsito reconocido por la app</h3><span class="pill p-media">Era Media</span></div>
+      <p><b>Era:</b> detrás del proxy que termina TLS, la app veía todo como HTTP y no emitía HSTS.</p>
+      <p><b>Se hizo:</b> <code>forward-headers-strategy=framework</code> (la app reconoce HTTPS y emite HSTS) y el nginx de la consola preserva <code>X-Forwarded-Proto</code>.</p>
+      <p><b>Verificado:</b> el borde sirve TLS 1.3 con cert Let's Encrypt válido; HSTS presente en <code>/api</code>. Residual: TLS extremo a extremo en los saltos internos.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">M3</span><h3>Cabeceras de seguridad (HSTS/CSP)</h3><span class="pill p-media">Era Media</span></div>
+      <p><b>Era:</b> la consola no enviaba HSTS, CSP ni cabeceras anti-clickjacking/sniffing.</p>
+      <p><b>Se hizo:</b> HSTS, Content-Security-Policy, X-Content-Type-Options, X-Frame-Options y Referrer-Policy, tanto en la app como en el nginx de la consola.</p>
+      <p><b>Verificado:</b> cabeceras presentes en el documento y en <code>/api</code>. La CSP tolera el inline de la SPA; endurecerla con nonces es un paso posterior.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">M4</span><h3>Rotación de la llave de la bóveda de PAN</h3><span class="pill p-media">Era Media</span></div>
+      <p><b>Era:</b> el PAN se cifraba con una única llave estática, sin versión ni proceso de rotación.</p>
+      <p><b>Se hizo:</b> registro de llaves con id embebido en el ciphertext (<code>k&lt;id&gt;:</code>); las filas antiguas siguen legibles; endpoints ADMIN de estado y de re-cifrado (<code>/api/cards/pan/rotate</code>).</p>
+      <p><b>Verificado:</b> rotación real en el servidor (todas las tarjetas re-cifradas a la llave nueva) y cobro on-us OK bajo la llave rotada.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">M5</span><h3>Contraseña de BD sin default vacío</h3><span class="pill p-media">Era Media</span></div>
+      <p><b>Era:</b> <code>DB_PASSWORD</code> tenía default vacío (podía conectar a una BD con auth 'trust' sin darse cuenta).</p>
+      <p><b>Se hizo:</b> se quitó el default vacío (placeholder de sandbox evidente); en producción viene del <code>.env</code>. Nota pendiente: usuario de BD dedicado con privilegios mínimos (no <code>postgres</code>).</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><span class="id">M6</span><h3>Política de contraseñas alineada</h3><span class="pill p-media">Era Media</span></div>
+      <p><b>Era:</b> el CMS validaba 10 caracteres y la doc decía 10, pero el IAM exige 12 — un cambio de clave con 10-11 se rechazaba.</p>
+      <p><b>Se hizo:</b> alineado a <b>mínimo 12 caracteres</b> en backend, consola y documentación. La complejidad/historial la aplica el IAM.</p>
+    </div>
+  </section>
+
+  <div class="foot">
+    <p><b>Alcance.</b> Este plan cubre los pendientes de la auditoría interna del CMS emisor que no son de código.
+      Los 13 hallazgos de software ya fueron remediados, desplegados de forma reversible y verificados en el
+      servidor interno; el detalle técnico y la evidencia están en el repositorio (<code>docs/</code>) y en los
+      informes de traza/PIN.</p>
+    <p>Documento de uso interno — plataforma de tarjetas México, 16 sep 2026. Los esfuerzos son estimaciones de
+      planeación, no compromisos; confírmense con cada área responsable.</p>
+  </div>
+
+</div>
+</body>
+</html>
