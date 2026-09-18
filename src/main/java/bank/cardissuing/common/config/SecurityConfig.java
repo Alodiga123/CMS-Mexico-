@@ -75,6 +75,10 @@ public class SecurityConfig {
                 // console, docs, login
                 .requestMatchers("/", "/index.html", "/ops/**", "/theme/**", "/favicon.ico", "/error",
                         "/swagger-ui.html", "/swagger-ui/**", "/api-docs", "/api-docs/**", "/api/auth/**").permitAll()
+                // Emulador de tarjeta (banco de pruebas Tap-to-Phone/CDCVM): sin sesión IAM, pero el
+                // propio EmuladorController se auto-blinda (bloqueo en prod + flag expose-test-secrets
+                // + token X-Emulador-Token). Deshabilitado salvo que cms.emulador.token esté puesto.
+                .requestMatchers("/api/emulador/**").permitAll()
                 // rotación/estado de la llave de la bóveda de PAN: operación de administración
                 .requestMatchers("/api/cards/pan/**").hasAuthority(Permissions.ADMIN)
                 // administration: products, promotions, HSM keys
